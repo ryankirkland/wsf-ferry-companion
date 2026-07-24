@@ -1,0 +1,25 @@
+# Env & secrets - never in git
+.env
+.env.*
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+
+# Terraform - state and secrets never in git
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+!example.tfvars
+
+# OS / editor
+.DS_Store
