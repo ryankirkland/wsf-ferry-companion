@@ -344,8 +344,19 @@
   map.on("zoom", declutter);
   declutter();
 
+  function fitSound() {
+    map.fitBounds([[-122.72, 47.52], [-122.30, 47.85]],
+      { padding: { top: 80, bottom: 110, left: 40, right: 40 }, duration: 0 });
+  }
+  // The canvas can be born tiny (hidden/small panel) - re-measure and re-frame
+  // whenever the container resizes or the page becomes visible again.
+  let _rt;
+  new ResizeObserver(() => { clearTimeout(_rt); _rt = setTimeout(() => { map.resize(); fitSound(); }, 120); })
+    .observe(document.getElementById("map"));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { map.resize(); fitSound(); } });
+
   map.on("load", () => {
-    map.fitBounds([[-122.72, 47.52], [-122.30, 47.85]], { padding: { top: 80, bottom: 110, left: 40, right: 40 }, duration: 0 });
+    fitSound();
     // dotted route lines beneath markers
     map.addSource("wsf-routes", { type: "geojson", data: {
       type: "FeatureCollection",
