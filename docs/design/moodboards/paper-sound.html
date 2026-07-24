@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en" data-mode="day">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Board B — Paper Sound</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { --paper:#f6f3ec; --ink:#26333a; --ink-soft:#5d6d75; --accent:#007b5f; --card:#ffffff; --line:#e2ddd0; }
+  body { font-family:'Inter',system-ui,sans-serif; background:var(--paper); color:var(--ink); }
+  h1,h2,h3,.display { font-family:'Gabarito',system-ui,sans-serif; }
+
+  .bar { position:fixed; inset:0 0 auto 0; z-index:50; display:flex; align-items:center; gap:1rem; padding:.6rem 1.1rem; }
+  .bar a { color:#fff; text-decoration:none; font-weight:700; font-size:.85rem; opacity:.85; }
+  .bar .name { color:#fff; font-family:'Gabarito'; font-weight:700; text-shadow:0 1px 8px rgba(0,0,0,.3); }
+  .modes { margin-left:auto; display:flex; gap:.25rem; background:rgba(255,255,255,.18); backdrop-filter:blur(6px);
+           border-radius:12px; padding:.2rem; }
+  .modes button { border:0; background:transparent; color:#fff; font:700 .78rem 'Inter'; padding:.3rem .8rem;
+                  border-radius:9px; cursor:pointer; opacity:.75; }
+  .modes button.on { background:rgba(255,255,255,.94); color:var(--ink); opacity:1; }
+
+  .hero { position:relative; height:100vh; min-height:560px; overflow:hidden; }
+  .hero svg { position:absolute; inset:0; width:100%; height:100%; }
+  .hero-foot { position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:space-between; align-items:flex-end;
+               padding:1.1rem 1.4rem; color:#fff; z-index:5; pointer-events:none; }
+  .hero-foot .clock { font:800 2.2rem 'Gabarito'; text-shadow:0 2px 12px rgba(0,0,0,.35); }
+  .hero-foot .tag { font:600 .95rem 'Inter'; opacity:.92; text-shadow:0 1px 8px rgba(0,0,0,.35); }
+  .hint { position:absolute; bottom:.4rem; left:50%; transform:translateX(-50%); color:#fff; opacity:.55; font-size:.72rem; z-index:5; }
+
+  /* paper-cut palette per mode */
+  .hero { --sky:#e9e4d8; --skyhi:#f6ddb0;
+          --w1:#7fb3ba; --w2:#699fa8; --w3:#548b95; --wbase:#8fbec4;
+          --land:#8aa37b; --land2:#75906a; --shore:#d9c9a3; --mtn:#e5e0d2; --mtn2:#cfc8b6; --snow:#ffffff;
+          --hull:#fffdf6; --cabin:#007b5f; --win:#eaf3ef; --winGlow:0; --stack:#e5674b;
+          --lbl:#2c3f47; --route:rgba(44,63,71,.32); --wake:rgba(255,255,255,.6);
+          --stars:0; --sun:1; --moon:0; --shadow:rgba(38,51,58,.18); }
+  html[data-mode="dusk"] .hero { --sky:#caa3a4; --skyhi:#eeb27f;
+          --w1:#6a8ba0; --w2:#587b92; --w3:#476b83; --wbase:#7897a9;
+          --land:#6e8168; --land2:#5c6f59; --shore:#b3997e; --mtn:#c3aca6; --mtn2:#a68f90; --snow:#f3e0d3;
+          --hull:#f6ecd9; --cabin:#0a6b55; --win:#ffcf7a; --winGlow:.7; --stack:#d05a40;
+          --lbl:#f6ecd9; --route:rgba(246,236,217,.3); --wake:rgba(255,255,255,.45);
+          --stars:.3; --sun:0; --moon:.7; --shadow:rgba(20,30,40,.3); }
+  html[data-mode="night"] .hero { --sky:#16242e; --skyhi:#1e3140;
+          --w1:#274753; --w2:#1f3a46; --w3:#182f39; --wbase:#2d4f5b;
+          --land:#22392f; --land2:#1a2d26; --shore:#2e4038; --mtn:#2b3f4e; --mtn2:#223440; --snow:#b9c8cd;
+          --hull:#d9d3c2; --cabin:#0e5544; --win:#ffcf7a; --winGlow:1; --stack:#8f4433;
+          --lbl:#dbe6e2; --route:rgba(219,230,226,.2); --wake:rgba(255,255,255,.3);
+          --stars:1; --sun:0; --moon:1; --shadow:rgba(0,0,0,.45); }
+
+  .sky { fill:var(--sky); } .skyhi { fill:var(--skyhi); }
+  .w1 { fill:var(--w1); } .w2 { fill:var(--w2); } .w3 { fill:var(--w3); } .wbase { fill:var(--wbase); }
+  .land { fill:var(--land); } .land2 { fill:var(--land2); } .shore { fill:var(--shore); }
+  .mtn { fill:var(--mtn); } .mtn2 { fill:var(--mtn2); } .snow { fill:var(--snow); }
+  .hull { fill:var(--hull); } .cabin { fill:var(--cabin); } .win { fill:var(--win); } .stack { fill:var(--stack); }
+  .routeline { stroke:var(--route); }
+  .lbl { fill:var(--lbl); font:700 16px 'Gabarito'; letter-spacing:.16em; text-transform:uppercase; }
+  .lbl-soft { fill:var(--lbl); opacity:.65; font:600 12.5px 'Inter'; letter-spacing:.1em; }
+  .stars { opacity:var(--stars); } .sung { opacity:var(--sun); } .moong { opacity:var(--moon); }
+  .wake path { stroke:var(--wake); }
+  .vname { fill:var(--lbl); font:700 14.5px 'Gabarito'; letter-spacing:.14em; text-transform:uppercase; text-anchor:middle; }
+  .vstate { fill:var(--lbl); opacity:.6; font:600 12px 'Inter'; letter-spacing:.06em; text-anchor:middle; }
+  .muted-v { opacity:.5; }
+  .papershadow { filter:drop-shadow(0 6px 0 var(--shadow)); }
+  .papershadow-sm { filter:drop-shadow(0 3px 0 var(--shadow)); }
+
+  @keyframes drift1 { from { transform:translateX(0);} to { transform:translateX(-70px);} }
+  @keyframes drift2 { from { transform:translateX(0);} to { transform:translateX(-110px);} }
+  @keyframes drift3 { from { transform:translateX(0);} to { transform:translateX(-46px);} }
+  @keyframes cloudmove { from { transform:translateX(0);} to { transform:translateX(190px);} }
+  .band1 { animation:drift1 16s ease-in-out infinite alternate; }
+  .band2 { animation:drift2 22s ease-in-out infinite alternate; }
+  .band3 { animation:drift3 13s ease-in-out infinite alternate; }
+  .cloud { animation:cloudmove 100s linear infinite alternate; }
+  .cloud.c2 { animation-duration:140s; animation-delay:-50s; }
+  @media (prefers-reduced-motion: reduce) { .band1,.band2,.band3,.cloud { animation:none; } }
+
+  section.page { max-width:1120px; margin:0 auto; padding:4.5rem 1.4rem 1rem; }
+  section.page h2 { font-size:2rem; font-weight:700; margin-bottom:.4rem; }
+  .kicker { font:800 .76rem 'Inter'; letter-spacing:.24em; text-transform:uppercase; color:var(--accent); }
+  .lede { color:var(--ink-soft); max-width:56ch; margin-bottom:2rem; }
+
+  .swatches { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:.7rem; margin:.8rem 0 1.6rem; }
+  .sw { border-radius:12px; overflow:hidden; background:var(--card); box-shadow:0 3px 0 rgba(38,51,58,.12); }
+  .sw .chip { height:64px; }
+  .sw .meta { padding:.45rem .6rem; font-size:.72rem; }
+  .sw .meta b { display:block; font-size:.78rem; }
+  .rowlabel { font:800 .72rem 'Inter'; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-soft); margin-top:1.2rem; }
+
+  .spec { background:var(--card); border-radius:16px; padding:2rem; margin:1rem 0 2rem; box-shadow:0 5px 0 rgba(38,51,58,.12); }
+  .spec .display { font-size:clamp(2.2rem,5vw,3.4rem); font-weight:800; line-height:1.05; letter-spacing:-.01em; }
+  .spec .sub { font-size:1.15rem; color:var(--ink-soft); margin-top:.6rem; font-weight:500; }
+  .spec .body { margin-top:1rem; max-width:60ch; line-height:1.6; }
+  .spec .capt { margin-top:1rem; font:700 .74rem 'Inter'; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-soft); }
+
+  .voice { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1rem; margin-bottom:2rem; }
+  .voice .v { background:var(--card); border-radius:14px; padding:1.1rem 1.2rem; box-shadow:0 4px 0 rgba(38,51,58,.12); }
+  .voice .v .k { font:800 .68rem 'Inter'; letter-spacing:.2em; text-transform:uppercase; color:var(--accent); }
+  .voice .v p { font-size:1rem; margin-top:.45rem; line-height:1.5; font-weight:500; }
+
+  .moments { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:1.2rem; align-items:start; }
+  .card { background:var(--card); border-radius:16px; padding:1.25rem 1.3rem; box-shadow:0 6px 0 rgba(38,51,58,.12); }
+  .card h3 { font-size:1.25rem; font-weight:700; }
+  .card .sub2 { color:var(--ink-soft); font-size:.85rem; margin-bottom:.9rem; }
+  .sailing { display:flex; align-items:baseline; gap:.75rem; padding:.7rem .2rem; border-top:2px dotted var(--line); }
+  .sailing:first-of-type { border-top:0; }
+  .sailing .t { font:800 1.15rem 'Gabarito'; min-width:5.2rem; }
+  .sailing .v { color:var(--ink-soft); font-size:.85rem; flex:1; }
+  .pill { font:700 .68rem 'Inter'; letter-spacing:.04em; padding:.3rem .62rem; border-radius:8px; white-space:nowrap; }
+  .pill.ok { background:#dff0e6; color:#106648; }
+  .pill.warn { background:#fce8cf; color:#8a5310; }
+  .pill.go { background:#e3eaf9; color:#33508f; }
+  .alert { border-left:8px solid #e8a13c; }
+  .alert .when { font:700 .72rem 'Inter'; color:var(--ink-soft); letter-spacing:.1em; text-transform:uppercase; }
+  .alert p { margin-top:.5rem; line-height:1.55; font-size:.95rem; }
+  .stat .big { font:800 2.6rem 'Gabarito'; color:var(--accent); line-height:1; }
+  .stat .cap { color:var(--ink-soft); font-size:.82rem; margin:.2rem 0 1rem; }
+  .chart-note { font-size:.72rem; color:var(--ink-soft); margin-top:.5rem; }
+
+  .cost { background:#ece5d3; border-radius:16px; padding:1.6rem 1.8rem; margin:2.5rem 0; box-shadow:0 5px 0 rgba(38,51,58,.1); }
+  .cost h3 { font-size:1.3rem; margin-bottom:.5rem; }
+  .cost ul { margin:.6rem 0 0 1.1rem; line-height:1.65; font-size:.92rem; }
+  footer { text-align:center; padding:2rem 0 3rem; }
+  footer a { color:var(--accent); font-weight:800; text-decoration:none; }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <a href="index.html">&larr; boards</a>
+  <span class="name">B · Paper Sound</span>
+  <div class="modes" id="modes">
+    <button data-m="auto">Auto</button><button data-m="day">Day</button>
+    <button data-m="dusk">Dusk</button><button data-m="night">Night</button>
+  </div>
+</header>
+
+<div class="hero">
+  <svg viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-label="Paper-cut live map of central Puget Sound">
+    <defs>
+      <filter id="grain" x="-5%" y="-5%" width="110%" height="110%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" result="n"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .05 0"/>
+        <feComposite operator="over" in2="SourceGraphic"/>
+      </filter>
+    </defs>
+
+    <rect class="sky" width="1600" height="1000"/>
+    <rect class="skyhi" y="330" width="1600" height="160" opacity=".55"/>
+    <g class="stars">
+      <path d="M200,90 l4,7 -8,0 Z" fill="#fff"/><path d="M460,60 l4,7 -8,0 Z" fill="#fff"/>
+      <path d="M740,130 l4,7 -8,0 Z" fill="#fff"/><path d="M1020,80 l4,7 -8,0 Z" fill="#fff"/>
+      <path d="M1420,70 l4,7 -8,0 Z" fill="#fff"/><path d="M900,40 l3,6 -6,0 Z" fill="#fff"/>
+    </g>
+    <g class="sung papershadow-sm"><circle cx="1120" cy="130" r="46" fill="#f7d97c"/></g>
+    <g class="moong papershadow-sm"><path d="M1120,95 a42,42 0 1 0 20,80 a34,34 0 1 1 -20,-80 Z" fill="#eae4d2"/></g>
+
+    <g class="cloud papershadow-sm"><g fill="var(--mtn)">
+      <circle cx="380" cy="180" r="30"/><circle cx="420" cy="168" r="38"/><circle cx="466" cy="182" r="26"/>
+      <rect x="352" y="178" width="140" height="26" rx="13"/></g></g>
+    <g class="cloud c2 papershadow-sm"><g fill="var(--mtn)" opacity=".85">
+      <circle cx="880" cy="120" r="24"/><circle cx="914" cy="110" r="30"/><circle cx="950" cy="122" r="20"/>
+      <rect x="858" y="118" width="114" height="22" rx="11"/></g></g>
+
+    <!-- Olympics: flat zigzag band; Rainier: notched triangle -->
+    <g class="papershadow">
+      <path class="mtn2" d="M0,470 L110,360 L200,440 L300,350 L420,450 L540,380 L640,460 L640,505 L0,505 Z"/>
+      <path class="mtn" d="M0,495 L100,410 L190,465 L290,395 L410,470 L520,420 L660,490 L660,530 L0,530 Z"/>
+    </g>
+    <g class="papershadow">
+      <path class="mtn2" d="M1230,480 L1352,296 L1474,480 Z"/>
+      <path class="snow" d="M1310,360 L1352,296 L1396,360 L1376,348 L1352,362 L1330,348 Z"/>
+    </g>
+
+    <!-- water: base + three scalloped paper bands -->
+    <rect class="wbase" y="480" width="1600" height="520" filter="url(#grain)"/>
+    <g class="band1 papershadow"><path class="w1" d="M-120,540 q40,-16 80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 L1880,620 L-120,620 Z"/></g>
+    <g class="band2 papershadow"><path class="w2" d="M-160,668 q40,-14 80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 L1840,760 L-160,760 Z"/></g>
+    <g class="band3 papershadow"><path class="w3" d="M-100,850 q40,-14 80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 t80,0 L1900,1000 L-100,1000 Z"/></g>
+
+    <!-- north shore -->
+    <g class="papershadow">
+      <path class="land2" d="M0,0 L0,205 Q250,162 480,154 L520,120 Q340,50 0,34 Z"/>
+      <path class="land" d="M0,0 L0,182 Q255,142 470,136 L505,96 Q330,36 0,18 Z"/>
+    </g>
+    <g class="papershadow"><path class="land" d="M1600,0 L1600,235 Q1405,198 1262,184 L1235,138 Q1420,74 1600,52 Z"/></g>
+
+    <!-- Bainbridge -->
+    <g class="papershadow">
+      <path class="land2" d="M332,398 Q422,342 542,354 Q642,364 656,432 Q670,472 642,522 Q662,542 642,586 Q602,642 482,646 Q372,650 332,586 Q292,520 306,460 Q314,420 332,398 Z"/>
+      <path class="land" d="M350,410 Q428,360 536,371 Q624,381 638,438 Q648,472 626,514 Q644,536 626,574 Q590,622 484,627 Q386,630 352,576 Q318,520 330,464 Q336,430 350,410 Z"/>
+    </g>
+
+    <!-- Kitsap arm + south foreground -->
+    <g class="papershadow">
+      <path class="land2" d="M0,662 Q122,640 232,668 Q332,692 362,742 Q300,760 258,754 Q140,744 58,782 L0,802 Z"/>
+      <path class="land" d="M0,692 Q112,670 216,692 Q312,712 336,748 Q280,762 240,758 Q130,750 55,788 L0,808 Z"/>
+    </g>
+    <g class="papershadow">
+      <path class="land2" d="M0,842 Q172,822 322,840 Q422,852 522,882 Q562,902 602,942 L602,1000 L0,1000 Z"/>
+      <path class="land" d="M0,870 Q182,848 332,866 Q432,878 522,908 Q558,926 590,962 L590,1000 L0,1000 Z"/>
+    </g>
+
+    <!-- Seattle shore -->
+    <g class="papershadow">
+      <path class="land2" d="M1660,300 L1660,1000 L1240,1000 Q1260,900 1290,830 Q1320,740 1318,640 Q1316,520 1350,420 Q1380,340 1660,300 Z"/>
+      <path class="land" d="M1660,330 L1660,1000 L1300,1000 Q1318,905 1344,838 Q1372,748 1370,648 Q1368,530 1398,436 Q1426,360 1660,330 Z"/>
+    </g>
+    <g fill="var(--land2)" class="papershadow-sm">
+      <rect x="1424" y="482" width="16" height="58" rx="3"/><rect x="1448" y="454" width="18" height="86" rx="3"/>
+      <rect x="1474" y="472" width="14" height="68" rx="3"/><rect x="1496" y="432" width="20" height="108" rx="4"/>
+      <rect x="1524" y="466" width="16" height="74" rx="3"/>
+      <path d="M1400,540 L1400,472 Q1400,454 1410,454 Q1420,454 1420,472 L1420,540 Z"/><circle cx="1410" cy="447" r="9"/>
+    </g>
+
+    <g fill="none" stroke-width="3" stroke-dasharray="2 13" stroke-linecap="round">
+      <path class="routeline" d="M1150,585 C1020,545 860,505 585,470"/>
+      <path class="routeline" d="M1150,600 C960,690 700,770 415,795"/>
+      <path class="routeline" d="M1235,195 C1040,175 800,158 545,150"/>
+    </g>
+
+    <g id="terminals"></g>
+    <g id="fleet"></g>
+  </svg>
+
+  <div class="hero-foot">
+    <div>
+      <div class="clock" id="clock">4:52</div>
+      <div class="tag">Puget Sound, cut from paper, moving for real</div>
+    </div>
+    <div class="tag">Paper Sound</div>
+  </div>
+  <div class="hint">day / dusk / night switch, top right · vessels and states from real WSF data</div>
+</div>
+
+<section class="page">
+  <div class="kicker">Identity</div>
+  <h2>Palette and voice</h2>
+  <p class="lede">Layered paper shapes, one confident green, soft shadows instead of gradients. Whimsy in the cut edges; cleanliness in the flatness.</p>
+
+  <div class="rowlabel">Daylight</div>
+  <div class="swatches" id="sw-day"></div>
+  <div class="rowlabel">After sunset</div>
+  <div class="swatches" id="sw-night"></div>
+
+  <div class="spec">
+    <div class="display">Run for it, or get a coffee?</div>
+    <div class="sub">Gabarito carries the friendliness. Inter does the quiet work.</div>
+    <p class="body">Wenatchee is fourteen minutes out of Bainbridge, on time, with room on the car deck. The 5:30 is the boat you already think it is.</p>
+    <div class="capt">Gabarito 800 display · Inter 400/600 text and numbers</div>
+  </div>
+
+  <div class="voice">
+    <div class="v"><div class="k">A delay</div><p>Wenatchee is running 12 minutes behind. The 6:20 just became the smart choice.</p></div>
+    <div class="v"><div class="k">An empty state</div><p>That was the last boat tonight. First one out tomorrow is 4:45 AM.</p></div>
+    <div class="v"><div class="k">Loading</div><p>Talking to the Sound...</p></div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="kicker">Product moments</div>
+  <h2>The same three cards, in this voice</h2>
+  <p class="lede">Identical content across boards: next sailings, a live delay, one honest statistic.</p>
+  <div class="moments">
+    <div class="card">
+      <h3>Seattle &rarr; Bainbridge</h3>
+      <div class="sub2">35 min crossing · tonight</div>
+      <div id="sailings"></div>
+    </div>
+    <div class="card alert">
+      <h3>Running behind</h3>
+      <div class="when">Seattle - Bainbridge · 2 min ago</div>
+      <p><b>Tacoma is running 30 to 35 minutes behind.</b> The 4:45 and 5:30 departures from Colman Dock are delayed. We will update as WSF posts new estimates.</p>
+    </div>
+    <div class="card stat">
+      <h3>On-time, last 14 days</h3>
+      <div class="big">92%</div>
+      <div class="cap">Seattle - Bainbridge departures within 10 minutes</div>
+      <div id="chart"></div>
+      <div class="chart-note">The dip is July 17, a rough tide day. Cancelled sailings are not counted against on-time.</div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="kicker">Honest cost</div>
+  <div class="cost">
+    <h3>What this direction demands</h3>
+    <ul>
+      <li>Six to eight reusable flat shapes to start; new surfaces mostly recombine them, so the asset budget grows slowly.</li>
+      <li>Paper shadows and grain are cheap CSS/SVG tricks, but color discipline is everything; three wrong hues and it turns generic flat-illustration.</li>
+      <li>Cut-paper reads charming at wall size and still crisp at phone size; the shadows need one tuning pass per breakpoint.</li>
+      <li>Payoff: 80% of the storybook's warmth at 40% of its asset budget, with the cleanest scaling story of the illustrated pair.</li>
+    </ul>
+  </div>
+</section>
+
+<footer><a href="index.html">&larr; Back to all three boards</a></footer>
+
+<script src="canned-data.js"></script>
+<script>
+(function () {
+  "use strict";
+  const svgNS = "http://www.w3.org/2000/svg";
+
+  const modes = document.getElementById("modes");
+  function autoMode() { const h = new Date().getHours(); return h >= 7 && h < 17 ? "day" : (h < 21 && h >= 17) || (h >= 5 && h < 7) ? "dusk" : "night"; }
+  function setMode(m) {
+    document.documentElement.dataset.mode = m === "auto" ? autoMode() : m;
+    modes.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.m === m));
+  }
+  modes.addEventListener("click", e => { const b = e.target.closest("button"); if (b) setMode(b.dataset.m); });
+  setMode("auto");
+
+  const clock = document.getElementById("clock");
+  setInterval(() => { clock.textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }, 1000);
+
+  /* terminals */
+  const T = document.getElementById("terminals");
+  const lblOff = { seattle: [26, 6], bainbridge: [-16, -18], bremerton: [4, 34], edmonds: [26, 8], kingston: [-14, -16], eagleHarbor: [-14, -12] };
+  const DOCK_OFF = { bremerton: [-58, -28], kingston: [-64, 18], seattle: [0, -14] };
+  const YARD_OFF = [30, 26];
+  for (const [id, p] of Object.entries(WSF.PLACES)) {
+    const g = document.createElementNS(svgNS, "g");
+    const sq = document.createElementNS(svgNS, "rect");
+    const r = id === "eagleHarbor" ? 5 : 7;
+    sq.setAttribute("x", p.x - r); sq.setAttribute("y", p.y - r);
+    sq.setAttribute("width", r * 2); sq.setAttribute("height", r * 2); sq.setAttribute("rx", 3);
+    sq.setAttribute("fill", "var(--lbl)"); sq.setAttribute("opacity", id === "eagleHarbor" ? ".5" : ".85");
+    const t = document.createElementNS(svgNS, "text");
+    const [dx, dy] = lblOff[id];
+    t.setAttribute("x", p.x + dx); t.setAttribute("y", p.y + dy);
+    t.setAttribute("class", id === "eagleHarbor" ? "lbl-soft" : "lbl");
+    if (dx < 0) t.setAttribute("text-anchor", "end");
+    t.textContent = p.label;
+    g.append(sq, t); T.append(g);
+  }
+
+  /* flat paper ferry */
+  function ferrySVG(scale, muted) {
+    const wrap = document.createElementNS(svgNS, "g");
+    const g = document.createElementNS(svgNS, "g");
+    g.innerHTML = `
+      <g class="bob${muted ? " muted-v" : ""}">
+        <g class="wake"><path d="M-48,8 h-22 M-46,14 h-16" stroke-width="4" stroke-linecap="round" fill="none"/></g>
+        <g class="papershadow-sm">
+          <rect class="hull" x="-42" y="-2" width="84" height="18" rx="9"/>
+          <rect class="cabin" x="-28" y="-12" width="56" height="13" rx="5"/>
+          <circle class="win" cx="-16" cy="-5.5" r="2.6"/><circle class="win" cx="-5" cy="-5.5" r="2.6"/>
+          <circle class="win" cx="6" cy="-5.5" r="2.6"/><circle class="win" cx="17" cy="-5.5" r="2.6"/>
+          <rect class="hull" x="-12" y="-20" width="24" height="9" rx="3.5"/>
+          <rect class="stack" x="2" y="-27" width="6" height="8" rx="2"/>
+        </g>
+      </g>`;
+    g.setAttribute("transform", `scale(${scale})`);
+    wrap.append(g);
+    return wrap;
+  }
+
+  const fleet = document.getElementById("fleet");
+  const sprites = [];
+  for (const v of WSF.VESSELS) {
+    const isYard = v.kind === "yard";
+    const node = ferrySVG(isYard ? 0.8 : 1, isYard);
+    const name = document.createElementNS(svgNS, "text");
+    name.setAttribute("class", "vname"); name.setAttribute("y", 38); name.textContent = v.name;
+    const state = document.createElementNS(svgNS, "text");
+    state.setAttribute("class", "vstate"); state.setAttribute("y", 55);
+    if (v.kind === "docked") state.textContent = "at dock";
+    if (isYard) state.textContent = "resting · back 2:05 pm";
+    node.append(name, state);
+    fleet.append(node);
+    sprites.push({ v, node, bob: node.querySelector(".bob"), wake: node.querySelector(".wake"), state });
+  }
+
+  function place(s, x, y, angle, moving, dir, ms) {
+    const bobY = WSF.REDUCED ? 0 : Math.sin(ms / 950 + x * 0.011) * 2;
+    s.node.setAttribute("transform", `translate(${x},${y + bobY})`);
+    s.wake.style.opacity = moving ? 1 : 0;
+    const facing = Math.abs(angle) > 90 ? -dir : dir;
+    s.wake.setAttribute("transform", facing === 1 ? "" : "scale(-1,1)");
+  }
+
+  function frame(ms) {
+    for (const s of sprites) {
+      const v = s.v;
+      if (v.kind === "underway") {
+        const { t, dir, moving } = WSF.tick(v, ms);
+        const p = WSF.posAt(v.route, t);
+        place(s, p.x, p.y, p.angle, moving && !WSF.REDUCED, dir, ms);
+      } else {
+        const at = WSF.PLACES[v.at];
+        const [ox, oy] = v.kind === "yard" ? YARD_OFF : (DOCK_OFF[v.at] || [0, -14]);
+        place(s, at.x + ox, at.y + oy, 0, false, 1, ms);
+      }
+    }
+    if (!WSF.REDUCED) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  /* swatches */
+  const DAY = [["Fog paper", "#e9e4d8"], ["Shallow band", "#7fb3ba"], ["Mid channel", "#699fa8"], ["Deep band", "#548b95"],
+               ["Cedar", "#8aa37b"], ["Card white", "#ffffff"], ["Ferry green", "#007b5f"], ["Ink", "#26333a"]];
+  const NIGHT = [["Night paper", "#16242e"], ["Band one", "#274753"], ["Band two", "#1f3a46"], ["Band three", "#182f39"],
+                 ["Forest shadow", "#22392f"], ["Dim hull", "#d9d3c2"], ["Window amber", "#ffcf7a"], ["Fog label", "#dbe6e2"]];
+  const mk = rows => rows.map(([n, c]) =>
+    `<div class="sw"><div class="chip" style="background:${c}"></div><div class="meta"><b>${n}</b>${c}</div></div>`).join("");
+  document.getElementById("sw-day").innerHTML = mk(DAY);
+  document.getElementById("sw-night").innerHTML = mk(NIGHT);
+
+  /* trip card */
+  const pills = { boarding: ["go", "Boarding"], ontime: ["ok", "On time"], late: ["warn", "12 min late"] };
+  document.getElementById("sailings").innerHTML = WSF.TRIP.sailings.map(s => {
+    const [cls, txt] = pills[s.status];
+    return `<div class="sailing"><span class="t">${s.time}</span><span class="v">M/V ${s.vessel}</span>
+            <span class="pill ${cls}">${txt}</span></div>`;
+  }).join("");
+
+  /* chart: single hue, thin bars, native titles, extremes labeled */
+  const data = WSF.ONTIME_14D, W = 300, H = 84, bw = Math.floor(W / data.length) - 2;
+  const max = Math.max(...data), min = Math.min(...data);
+  let bars = "";
+  data.forEach((d, i) => {
+    const h = Math.round((d / 100) * (H - 18)), x = i * (bw + 2), y = H - h;
+    const day = new Date(2026, 6, 10 + i).toLocaleDateString([], { month: "short", day: "numeric" });
+    bars += `<g><title>${day} · ${d}% on time</title>
+      <rect x="${x}" y="${y}" width="${bw}" height="${h}" rx="2" fill="#007b5f" opacity="${d === min ? 1 : 0.72}"/></g>`;
+    if (d === max || d === min)
+      bars += `<text x="${x + bw / 2}" y="${y - 4}" text-anchor="middle" font-size="10" font-weight="700" fill="#26333a">${d}</text>`;
+  });
+  document.getElementById("chart").innerHTML =
+    `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="On-time percentage, last 14 days">
+       ${bars}<line x1="0" y1="${H}" x2="${W}" y2="${H}" stroke="#e2ddd0" stroke-width="2"/></svg>`;
+})();
+</script>
+</body>
+</html>

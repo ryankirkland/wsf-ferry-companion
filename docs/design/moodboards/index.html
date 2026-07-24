@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase B — Mood Boards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Figtree:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Figtree',system-ui,sans-serif; background:#f6f2e8; color:#26332e; }
+  main { max-width:980px; margin:0 auto; padding:4rem 1.4rem 4rem; }
+  .kicker { font:800 .78rem 'Figtree'; letter-spacing:.26em; text-transform:uppercase; color:#0f7a5c; }
+  h1 { font-family:'Fraunces',Georgia,serif; font-size:clamp(2rem,5vw,3rem); font-weight:600; margin:.3rem 0 .6rem; }
+  .lede { color:#5c6d66; max-width:62ch; line-height:1.6; }
+  .boards { display:grid; gap:1.2rem; margin:2.2rem 0; }
+  a.board { display:block; text-decoration:none; color:inherit; background:#fff; border:1px solid #e4ddcb;
+            border-radius:18px; overflow:hidden; transition:transform .15s ease, box-shadow .15s ease; }
+  a.board:hover { transform:translateY(-3px); box-shadow:0 16px 40px -24px rgba(38,51,46,.4); }
+  .strip { height:14px; display:flex; }
+  .strip i { flex:1; }
+  .board .body { display:flex; gap:1rem; align-items:baseline; padding:1.1rem 1.4rem 1.2rem; flex-wrap:wrap; }
+  .board h2 { font-size:1.35rem; font-weight:800; }
+  .board h2 span { color:#0f7a5c; margin-right:.5rem; }
+  .board p { color:#5c6d66; font-size:.92rem; flex:1 1 32ch; line-height:1.5; }
+  .board .go { font-weight:800; color:#0f7a5c; white-space:nowrap; }
+  .tests { background:#fff; border:1px solid #e4ddcb; border-radius:18px; padding:1.5rem 1.7rem; margin-top:2.4rem; }
+  .tests h3 { font-family:'Fraunces',serif; font-size:1.3rem; font-weight:600; margin-bottom:.7rem; }
+  .tests ol { margin-left:1.2rem; line-height:1.8; }
+  .tests li b { color:#0f7a5c; }
+  .note { margin-top:1.4rem; color:#5c6d66; font-size:.9rem; line-height:1.6; }
+</style>
+</head>
+<body>
+<main>
+  <div class="kicker">WSF Ferry Companion · Phase B</div>
+  <h1>Three interpretations of illustrated warmth</h1>
+  <p class="lede">One family (whimsical, joyful, clean, celebrating Washington State Ferries), three illustration intensities.
+  Every board renders the same live scene and the same three product cards with real vessel names and honest states from the
+  WSF API sample, so only the character differs. Each has a day / dusk / night switch, top right.</p>
+
+  <div class="boards">
+    <a class="board" href="storybook.html">
+      <div class="strip"><i style="background:#cfe7ef"></i><i style="background:#86b7c5"></i><i style="background:#2e6f5e"></i><i style="background:#f8f4e9"></i><i style="background:#101a33"></i><i style="background:#ffd98a"></i></div>
+      <div class="body"><h2><span>A</span>Saltwater Storybook</h2>
+        <p>Maximum illustration. Painted water, mountains on the horizon, lantern windows after dark. The strongest wall presence, the largest asset budget.</p>
+        <span class="go">Open &rarr;</span></div>
+    </a>
+    <a class="board" href="paper-sound.html">
+      <div class="strip"><i style="background:#e9e4d8"></i><i style="background:#7fb3ba"></i><i style="background:#007b5f"></i><i style="background:#ffffff"></i><i style="background:#16242e"></i><i style="background:#ffcf7a"></i></div>
+      <div class="body"><h2><span>B</span>Paper Sound</h2>
+        <p>The cut-paper middle. Flat layered shapes, soft drop shadows, one confident green. Most of the warmth at a fraction of the asset cost.</p>
+        <span class="go">Open &rarr;</span></div>
+    </a>
+    <a class="board" href="evergreen.html">
+      <div class="strip"><i style="background:#faf6ee"></i><i style="background:#d9e9e6"></i><i style="background:#0f7a5c"></i><i style="background:#3c6b52"></i><i style="background:#0f221d"></i><i style="background:#7fd8b8"></i></div>
+      <div class="body"><h2><span>C</span>Evergreen Line</h2>
+        <p>Minimal and warm. Coastlines as single strokes, capsule markers with animated wakes, joy carried by motion and voice. Near-zero asset maintenance.</p>
+        <span class="go">Open &rarr;</span></div>
+    </a>
+  </div>
+
+  <div class="tests">
+    <h3>How to judge (four tests)</h3>
+    <ol>
+      <li><b>The 9pm wall test.</b> Flip each hero to Night. Would you leave it running on a living room screen?</li>
+      <li><b>The phone glance test.</b> Narrow your window. Is the next sailing readable in two seconds?</li>
+      <li><b>The celebration test.</b> Does it feel like Washington State Ferries, or like a generic tracker wearing green?</li>
+      <li><b>The maintenance test.</b> Read each board's "honest cost" section last, after your heart has picked.</li>
+    </ol>
+    <p class="note">Mix-and-match verdicts are welcome and expected: "Paper Sound water with Evergreen typography" is a
+    perfectly good answer. The winner becomes design tokens, a map visual language, and ADR-0002.</p>
+  </div>
+</main>
+</body>
+</html>

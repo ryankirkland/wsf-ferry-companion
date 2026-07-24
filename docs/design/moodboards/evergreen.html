@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en" data-mode="day">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Board C — Evergreen Line</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { --paper:#faf6ee; --ink:#22312c; --ink-soft:#5c6d66; --accent:#0f7a5c; --card:#ffffff; --line:#e6e0d2; }
+  body { font-family:'Figtree',system-ui,sans-serif; background:var(--paper); color:var(--ink); }
+  html[data-mode="day"] { --hdr:#22312c; }
+  html[data-mode="dusk"] { --hdr:#3a3a30; }
+  html[data-mode="night"] { --hdr:#e8efe9; }
+
+  .bar { position:fixed; inset:0 0 auto 0; z-index:50; display:flex; align-items:center; gap:1rem; padding:.6rem 1.1rem; }
+  .bar a { color:var(--hdr,#fff); text-decoration:none; font-weight:700; font-size:.85rem; opacity:.85; }
+  .bar .name { color:var(--hdr,#fff); font-weight:800; letter-spacing:.01em; }
+  .modes { margin-left:auto; display:flex; gap:.25rem; background:rgba(127,127,127,.22); backdrop-filter:blur(6px);
+           border-radius:10px; padding:.2rem; }
+  .modes button { border:0; background:transparent; color:var(--hdr,#fff); font:700 .78rem 'Figtree'; padding:.3rem .8rem;
+                  border-radius:8px; cursor:pointer; opacity:.75; }
+  .modes button.on { background:var(--paper); color:var(--ink); opacity:1; }
+
+  .hero { position:relative; height:100vh; min-height:560px; overflow:hidden; background:var(--hero-bg); }
+  .hero svg { position:absolute; inset:0; width:100%; height:100%; }
+  .hero-foot { position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:space-between; align-items:flex-end;
+               padding:1.1rem 1.4rem; z-index:5; pointer-events:none; color:var(--hero-ink); }
+  .hero-foot .clock { font:900 2.3rem 'Figtree'; letter-spacing:-.01em; }
+  .hero-foot .tag { font:600 .95rem 'Figtree'; opacity:.75; }
+  .hint { position:absolute; bottom:.4rem; left:50%; transform:translateX(-50%); opacity:.45; font-size:.72rem; z-index:5;
+          color:var(--hero-ink); }
+
+  /* evergreen palette per mode */
+  .hero { --hero-bg:#faf6ee; --hero-ink:#22312c; --hdr:#22312c;
+          --water:#d9e9e6; --water-edge:#9dbfb4; --land:#f1ead9; --coast:#b9ccb9;
+          --marker:#0f7a5c; --marker-text:#ffffff; --wake:#0f7a5c;
+          --route:rgba(34,49,44,.22); --lbl:#42544c; --fir:#3c6b52; --peak:#c9d4c6; --glow:0; }
+  html[data-mode="dusk"] .hero { --hero-bg:#f4e4cd; --hero-ink:#3a3a30; --hdr:#3a3a30;
+          --water:#d3d5d2; --water-edge:#a3ab9e; --land:#eeddc2; --coast:#b3ab8e;
+          --marker:#0d6b52; --marker-text:#fff7e6; --wake:#0d6b52;
+          --route:rgba(58,58,48,.24); --lbl:#5a5a48; --fir:#4a5f45; --peak:#d8c4ac; --glow:.35; }
+  html[data-mode="night"] .hero { --hero-bg:#0f221d; --hero-ink:#e8efe9; --hdr:#e8efe9;
+          --water:#16352d; --water-edge:#2d6a56; --land:#122822; --coast:#20443a;
+          --marker:#7fd8b8; --marker-text:#06231a; --wake:#7fd8b8;
+          --route:rgba(232,239,233,.16); --lbl:#9fbcae; --fir:#2f5c48; --peak:#24473b; --glow:1; }
+
+  .water { fill:var(--water); } .coast { stroke:var(--coast); } .land { fill:var(--land); }
+  .routeline { stroke:var(--route); }
+  .lbl { fill:var(--lbl); font:800 16px 'Figtree'; letter-spacing:.18em; text-transform:uppercase; }
+  .lbl-soft { fill:var(--lbl); opacity:.66; font:600 12.5px 'Figtree'; letter-spacing:.1em; }
+  .fir { fill:var(--fir); } .peak { stroke:var(--peak); }
+  .marker-body { fill:var(--marker); }
+  .marker-glow { fill:var(--marker); opacity:calc(.28 * var(--glow)); }
+  .marker-initials { fill:var(--marker-text); font:800 15px 'Figtree'; letter-spacing:.04em; text-anchor:middle; }
+  .vname { fill:var(--lbl); font:800 14.5px 'Figtree'; letter-spacing:.14em; text-transform:uppercase; text-anchor:middle; }
+  .vstate { fill:var(--lbl); opacity:.6; font:600 12px 'Figtree'; letter-spacing:.05em; text-anchor:middle; }
+  .wakeline { stroke:var(--wake); }
+  .muted-v { opacity:.45; }
+
+  @keyframes dashmove { to { stroke-dashoffset:-26; } }
+  .wakeline { animation:dashmove 1.2s linear infinite; }
+  @keyframes ripple { 0% { r:14; opacity:.5; } 100% { r:34; opacity:0; } }
+  @media (prefers-reduced-motion: reduce) { .wakeline { animation:none; } }
+
+  section.page { max-width:1120px; margin:0 auto; padding:4.5rem 1.4rem 1rem; }
+  section.page h2 { font-size:2rem; font-weight:800; letter-spacing:-.01em; margin-bottom:.4rem; }
+  .kicker { font:800 .76rem 'Figtree'; letter-spacing:.26em; text-transform:uppercase; color:var(--accent); }
+  .lede { color:var(--ink-soft); max-width:56ch; margin-bottom:2rem; }
+
+  .swatches { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:.7rem; margin:.8rem 0 1.6rem; }
+  .sw { border-radius:10px; overflow:hidden; background:var(--card); border:1px solid var(--line); }
+  .sw .chip { height:64px; }
+  .sw .meta { padding:.45rem .6rem; font-size:.72rem; }
+  .sw .meta b { display:block; font-size:.78rem; }
+  .rowlabel { font:800 .72rem 'Figtree'; letter-spacing:.2em; text-transform:uppercase; color:var(--ink-soft); margin-top:1.2rem; }
+
+  .spec { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:2rem; margin:1rem 0 2rem; }
+  .spec .display { font-size:clamp(2.2rem,5vw,3.4rem); font-weight:900; line-height:1.04; letter-spacing:-.02em; }
+  .spec .sub { font-size:1.12rem; color:var(--ink-soft); margin-top:.6rem; font-weight:500; }
+  .spec .body { margin-top:1rem; max-width:60ch; line-height:1.6; }
+  .spec .capt { margin-top:1rem; font:700 .74rem 'Figtree'; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-soft); }
+
+  .voice { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1rem; margin-bottom:2rem; }
+  .voice .v { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:1.1rem 1.2rem; }
+  .voice .v .k { font:800 .68rem 'Figtree'; letter-spacing:.22em; text-transform:uppercase; color:var(--accent); }
+  .voice .v p { font-size:1rem; margin-top:.45rem; line-height:1.5; font-weight:600; }
+
+  .moments { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:1.2rem; align-items:start; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:1.25rem 1.3rem; }
+  .card h3 { font-size:1.22rem; font-weight:800; }
+  .card .sub2 { color:var(--ink-soft); font-size:.85rem; margin-bottom:.9rem; }
+  .sailing { display:flex; align-items:baseline; gap:.75rem; padding:.7rem .2rem; border-top:1px solid var(--line); }
+  .sailing:first-of-type { border-top:0; }
+  .sailing .t { font:800 1.15rem 'Figtree'; min-width:5.2rem; }
+  .sailing .v { color:var(--ink-soft); font-size:.85rem; flex:1; }
+  .pill { font:800 .68rem 'Figtree'; letter-spacing:.05em; padding:.3rem .62rem; border-radius:999px; white-space:nowrap; }
+  .pill.ok { background:#e2f0e7; color:#0d6647; }
+  .pill.warn { background:#fdeacf; color:#93590c; }
+  .pill.go { background:#e2e9f8; color:#31508f; }
+  .alert { border-left:6px solid #eaa63c; }
+  .alert .when { font:700 .72rem 'Figtree'; color:var(--ink-soft); letter-spacing:.12em; text-transform:uppercase; }
+  .alert p { margin-top:.5rem; line-height:1.55; font-size:.95rem; }
+  .stat .big { font:900 2.6rem 'Figtree'; color:var(--accent); line-height:1; letter-spacing:-.02em; }
+  .stat .cap { color:var(--ink-soft); font-size:.82rem; margin:.2rem 0 1rem; }
+  .chart-note { font-size:.72rem; color:var(--ink-soft); margin-top:.5rem; }
+
+  .cost { background:#efe8d8; border:1px solid var(--line); border-radius:14px; padding:1.6rem 1.8rem; margin:2.5rem 0; }
+  .cost h3 { font-size:1.3rem; font-weight:800; margin-bottom:.5rem; }
+  .cost ul { margin:.6rem 0 0 1.1rem; line-height:1.65; font-size:.92rem; }
+  footer { text-align:center; padding:2rem 0 3rem; }
+  footer a { color:var(--accent); font-weight:800; text-decoration:none; }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <a href="index.html">&larr; boards</a>
+  <span class="name">C · Evergreen Line</span>
+  <div class="modes" id="modes">
+    <button data-m="auto">Auto</button><button data-m="day">Day</button>
+    <button data-m="dusk">Dusk</button><button data-m="night">Night</button>
+  </div>
+</header>
+
+<div class="hero">
+  <svg viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-label="Minimal live map of central Puget Sound">
+    <!-- water field -->
+    <path class="water" d="M300,1000 Q260,760 330,560 Q390,400 560,330 Q760,250 1030,210 Q1240,180 1600,170 L1600,1000 Z"
+          transform="translate(-40,-60) scale(1.05)"/>
+    <!-- coastline strokes (the entire land is negative space) -->
+    <g fill="none" stroke-width="3.5" stroke-linecap="round">
+      <path class="coast" d="M0,132 Q250,116 480,128 Q560,132 640,120"/>
+      <path class="coast" d="M1188,220 Q1300,196 1420,168 Q1510,148 1600,142"/>
+      <path class="coast" d="M330,400 Q420,346 540,356 Q640,366 656,432 Q670,472 642,522 Q662,542 642,586 Q602,642 482,646 Q372,650 330,586 Q292,522 306,460 Q314,422 330,400 Z"/>
+      <path class="coast" d="M0,660 Q122,640 232,668 Q332,692 362,742 Q300,760 258,754 Q140,744 58,782"/>
+      <path class="coast" d="M0,846 Q172,826 322,844 Q432,858 542,892 Q590,910 640,960"/>
+      <path class="coast" d="M1268,1000 Q1288,894 1314,824 Q1344,736 1342,636 Q1340,522 1372,428 Q1398,352 1518,318"/>
+    </g>
+    <!-- tiny accents: firs at terminals, Rainier as a line icon -->
+    <g id="accents">
+      <path class="peak" d="M1350,300 L1394,238 L1438,300 M1378,272 L1394,258 L1410,272" fill="none" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+      <g class="fir" id="firs"></g>
+    </g>
+
+    <g fill="none" stroke-width="3" stroke-dasharray="1 14" stroke-linecap="round">
+      <path class="routeline" d="M1150,585 C1020,545 860,505 585,470"/>
+      <path class="routeline" d="M1150,600 C960,690 700,770 415,795"/>
+      <path class="routeline" d="M1235,195 C1040,175 800,158 545,150"/>
+    </g>
+
+    <g id="terminals"></g>
+    <g id="fleet"></g>
+  </svg>
+
+  <div class="hero-foot">
+    <div>
+      <div class="clock" id="clock">4:52</div>
+      <div class="tag">Every boat on the Sound, one glance</div>
+    </div>
+    <div class="tag">Evergreen Line</div>
+  </div>
+  <div class="hint">day / dusk / night switch, top right · vessels and states from real WSF data</div>
+</div>
+
+<section class="page">
+  <div class="kicker">Identity</div>
+  <h2>Palette and voice</h2>
+  <p class="lede">Almost nothing on screen, and everything you need. Warm cream, one green, coastlines drawn with a single stroke. The joy lives in motion and in the words.</p>
+
+  <div class="rowlabel">Daylight</div>
+  <div class="swatches" id="sw-day"></div>
+  <div class="rowlabel">After sunset</div>
+  <div class="swatches" id="sw-night"></div>
+
+  <div class="spec">
+    <div class="display">12 min late. You have time.</div>
+    <div class="sub">Figtree everywhere, from wall display to caption. One family, six weights, zero fuss.</div>
+    <p class="body">Wenatchee departs Bainbridge at 5:30. She is on time, the car deck has room, and the walk from your office takes eleven minutes. Go at 5:10 and you will watch the water instead of running for the ramp.</p>
+    <div class="capt">Figtree 900 display · Figtree 400/600 text and numbers</div>
+  </div>
+
+  <div class="voice">
+    <div class="v"><div class="k">A delay</div><p>Wenatchee is 12 minutes behind. You have time.</p></div>
+    <div class="v"><div class="k">An empty state</div><p>Done for tonight. First boat out is 4:45 AM.</p></div>
+    <div class="v"><div class="k">Loading</div><p>One sec, checking the water.</p></div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="kicker">Product moments</div>
+  <h2>The same three cards, in this voice</h2>
+  <p class="lede">Identical content across boards: next sailings, a live delay, one honest statistic.</p>
+  <div class="moments">
+    <div class="card">
+      <h3>Seattle &rarr; Bainbridge</h3>
+      <div class="sub2">35 min crossing · tonight</div>
+      <div id="sailings"></div>
+    </div>
+    <div class="card alert">
+      <h3>Running behind</h3>
+      <div class="when">Seattle - Bainbridge · 2 min ago</div>
+      <p><b>Tacoma is running 30 to 35 minutes behind.</b> The 4:45 and 5:30 departures from Colman Dock are delayed. We will update as WSF posts new estimates.</p>
+    </div>
+    <div class="card stat">
+      <h3>On-time, last 14 days</h3>
+      <div class="big">92%</div>
+      <div class="cap">Seattle - Bainbridge departures within 10 minutes</div>
+      <div id="chart"></div>
+      <div class="chart-note">The dip is July 17, a rough tide day. Cancelled sailings are not counted against on-time.</div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="kicker">Honest cost</div>
+  <div class="cost">
+    <h3>What this direction demands</h3>
+    <ul>
+      <li>Two or three line icons and a marker system; everything else is geometry, tokens, and typography. Near-zero asset maintenance.</li>
+      <li>Scales perfectly from watch to wall; night mode is a token swap, not a repaint.</li>
+      <li>The risk is blandness: without disciplined motion (wakes, arrival ripples) and warm copy, this collapses into another clean dashboard. The whimsy budget moves entirely into interaction and voice.</li>
+      <li>Payoff: fastest to build, cheapest to extend, and the least likely to age; the brand rests on restraint.</li>
+    </ul>
+  </div>
+</section>
+
+<footer><a href="index.html">&larr; Back to all three boards</a></footer>
+
+<script src="canned-data.js"></script>
+<script>
+(function () {
+  "use strict";
+  const svgNS = "http://www.w3.org/2000/svg";
+
+  const modes = document.getElementById("modes");
+  function autoMode() { const h = new Date().getHours(); return h >= 7 && h < 17 ? "day" : (h < 21 && h >= 17) || (h >= 5 && h < 7) ? "dusk" : "night"; }
+  function setMode(m) {
+    document.documentElement.dataset.mode = m === "auto" ? autoMode() : m;
+    modes.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.m === m));
+  }
+  modes.addEventListener("click", e => { const b = e.target.closest("button"); if (b) setMode(b.dataset.m); });
+  setMode("auto");
+
+  const clock = document.getElementById("clock");
+  setInterval(() => { clock.textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }, 1000);
+
+  /* terminals: ring dots + labels + firs */
+  const T = document.getElementById("terminals");
+  const firs = document.getElementById("firs");
+  const lblOff = { seattle: [28, 6], bainbridge: [-18, -20], bremerton: [4, 36], edmonds: [28, 8], kingston: [-16, -18], eagleHarbor: [-16, -14] };
+  const DOCK_OFF = { bremerton: [-52, -30], kingston: [-60, 20], seattle: [0, -20] };
+  const YARD_OFF = [34, 26];
+  const firAt = { bainbridge: [-40, -34], kingston: [16, -38], bremerton: [-44, 26] };
+  for (const [id, p] of Object.entries(WSF.PLACES)) {
+    const g = document.createElementNS(svgNS, "g");
+    const ring = document.createElementNS(svgNS, "circle");
+    ring.setAttribute("cx", p.x); ring.setAttribute("cy", p.y); ring.setAttribute("r", id === "eagleHarbor" ? 6 : 9);
+    ring.setAttribute("fill", "none"); ring.setAttribute("stroke", "var(--lbl)"); ring.setAttribute("stroke-width", "3.5");
+    ring.setAttribute("opacity", id === "eagleHarbor" ? ".5" : ".9");
+    const t = document.createElementNS(svgNS, "text");
+    const [dx, dy] = lblOff[id];
+    t.setAttribute("x", p.x + dx); t.setAttribute("y", p.y + dy);
+    t.setAttribute("class", id === "eagleHarbor" ? "lbl-soft" : "lbl");
+    if (dx < 0) t.setAttribute("text-anchor", "end");
+    t.textContent = p.label;
+    g.append(ring, t); T.append(g);
+    if (firAt[id]) {
+      const [fx, fy] = firAt[id];
+      const fir = document.createElementNS(svgNS, "path");
+      fir.setAttribute("d", `M${p.x + fx},${p.y + fy} l7,-14 l7,14 h-4 l4,8 h-14 l4,-8 Z`);
+      fir.setAttribute("class", "fir");
+      firs.append(fir);
+    }
+  }
+
+  /* capsule marker with initials + wake */
+  const initials = n => n.slice(0, 2).toUpperCase();
+  function markerSVG(v, muted) {
+    const wrap = document.createElementNS(svgNS, "g");
+    const g = document.createElementNS(svgNS, "g");
+    g.setAttribute("class", muted ? "muted-v" : "");
+    g.innerHTML = `
+      <path class="wakeline" d="M-30,0 h-52" fill="none" stroke-width="4" stroke-linecap="round" stroke-dasharray="10 16"/>
+      <circle class="marker-glow" r="34"/>
+      <g class="capsule">
+        <rect class="marker-body" x="-30" y="-14" width="60" height="28" rx="14"/>
+        <text class="marker-initials" y="5.5">${initials(v.name)}</text>
+      </g>`;
+    wrap.append(g);
+    return wrap;
+  }
+
+  const fleet = document.getElementById("fleet");
+  const sprites = [];
+  for (const v of WSF.VESSELS) {
+    const isYard = v.kind === "yard";
+    const node = markerSVG(v, isYard);
+    const name = document.createElementNS(svgNS, "text");
+    name.setAttribute("class", "vname"); name.setAttribute("y", 40); name.textContent = v.name;
+    const state = document.createElementNS(svgNS, "text");
+    state.setAttribute("class", "vstate"); state.setAttribute("y", 57);
+    if (v.kind === "docked") state.textContent = "at dock";
+    if (isYard) state.textContent = "resting · back 2:05 pm";
+    node.append(name, state);
+    fleet.append(node);
+    sprites.push({ v, node, wake: node.querySelector(".wakeline") });
+  }
+
+  function frame(ms) {
+    for (const s of sprites) {
+      const v = s.v;
+      let x, y, moving = false, facing = 1;
+      if (v.kind === "underway") {
+        const k = WSF.tick(v, ms);
+        const p = WSF.posAt(v.route, k.t);
+        x = p.x; y = p.y; moving = k.moving && !WSF.REDUCED;
+        facing = Math.abs(p.angle) > 90 ? -k.dir : k.dir;
+      } else {
+        const at = WSF.PLACES[v.at];
+        const [ox, oy] = v.kind === "yard" ? YARD_OFF : (DOCK_OFF[v.at] || [0, -20]);
+        x = at.x + ox; y = at.y + oy;
+      }
+      s.node.setAttribute("transform", `translate(${x},${y})`);
+      s.wake.style.opacity = moving ? 0.75 : 0;
+      s.wake.setAttribute("transform", facing === 1 ? "" : "scale(-1,1)");
+    }
+    if (!WSF.REDUCED) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  /* swatches */
+  const DAY = [["Warm cream", "#faf6ee"], ["Still water", "#d9e9e6"], ["Coast stroke", "#9dbfb4"], ["Evergreen", "#0f7a5c"],
+               ["Fir", "#3c6b52"], ["Card white", "#ffffff"], ["Ink", "#22312c"], ["Soft ink", "#5c6d66"]];
+  const NIGHT = [["Deep spruce", "#0f221d"], ["Night water", "#143029"], ["Water edge", "#265848"], ["Luminous mint", "#7fd8b8"],
+                 ["Fir shadow", "#2f5c48"], ["Fog label", "#9fbcae"], ["Ink light", "#e8efe9"], ["Peak line", "#24473b"]];
+  const mk = rows => rows.map(([n, c]) =>
+    `<div class="sw"><div class="chip" style="background:${c}"></div><div class="meta"><b>${n}</b>${c}</div></div>`).join("");
+  document.getElementById("sw-day").innerHTML = mk(DAY);
+  document.getElementById("sw-night").innerHTML = mk(NIGHT);
+
+  /* trip card */
+  const pills = { boarding: ["go", "Boarding"], ontime: ["ok", "On time"], late: ["warn", "12 min late"] };
+  document.getElementById("sailings").innerHTML = WSF.TRIP.sailings.map(s => {
+    const [cls, txt] = pills[s.status];
+    return `<div class="sailing"><span class="t">${s.time}</span><span class="v">M/V ${s.vessel}</span>
+            <span class="pill ${cls}">${txt}</span></div>`;
+  }).join("");
+
+  /* chart */
+  const data = WSF.ONTIME_14D, W = 300, H = 84, bw = Math.floor(W / data.length) - 2;
+  const max = Math.max(...data), min = Math.min(...data);
+  let bars = "";
+  data.forEach((d, i) => {
+    const h = Math.round((d / 100) * (H - 18)), x = i * (bw + 2), y = H - h;
+    const day = new Date(2026, 6, 10 + i).toLocaleDateString([], { month: "short", day: "numeric" });
+    bars += `<g><title>${day} · ${d}% on time</title>
+      <rect x="${x}" y="${y}" width="${bw}" height="${h}" rx="2" fill="#0f7a5c" opacity="${d === min ? 1 : 0.72}"/></g>`;
+    if (d === max || d === min)
+      bars += `<text x="${x + bw / 2}" y="${y - 4}" text-anchor="middle" font-size="10" font-weight="700" fill="#22312c">${d}</text>`;
+  });
+  document.getElementById("chart").innerHTML =
+    `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="On-time percentage, last 14 days">
+       ${bars}<line x1="0" y1="${H}" x2="${W}" y2="${H}" stroke="#e6e0d2" stroke-width="2"/></svg>`;
+})();
+</script>
+</body>
+</html>
