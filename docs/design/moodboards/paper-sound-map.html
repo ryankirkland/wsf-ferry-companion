@@ -210,7 +210,6 @@
     // our own route lines + prototype layers
     try {
       if (map.getLayer("wsf-routes")) map.setPaintProperty("wsf-routes", "line-color", pal.text);
-      if (map.getLayer("ps-coast-shadow")) map.setPaintProperty("ps-coast-shadow", "line-color", pal.coastShadow);
       if (map.getLayer("ps-hillshade")) {
         map.setPaintProperty("ps-hillshade", "hillshade-shadow-color", pal.hillShadow);
         map.setPaintProperty("ps-hillshade", "hillshade-highlight-color", pal.hillLight);
@@ -258,11 +257,8 @@
     map.addLayer({ id: "ps-hillshade", type: "hillshade", source: "ps-dem",
       paint: { "hillshade-exaggeration": 0.28 } }, waterL.id);
 
-    // cut-paper coastline: soft offset shadow inside the water along every shore
-    map.addLayer({ id: "ps-coast-shadow", type: "line", source: srcId, "source-layer": srcLayer,
-      paint: { "line-color": "rgba(31,46,53,0.30)", "line-width": 7, "line-blur": 5,
-               "line-translate": [2, 4], "line-translate-anchor": "viewport" },
-      layout: { "line-cap": "round", "line-join": "round" } }, aboveWaterId);
+    // (cut-paper coastline shadow removed after review: rendered as dark
+    //  splotches on convoluted shorelines - revisit in design delights)
 
     // our branded terminal labels replace the basemap's for these towns
     const OURS = ["Seattle", "Bremerton", "Edmonds", "Kingston", "Bainbridge Island"];
