@@ -103,16 +103,22 @@
       land: "#efe9db", green: "#c9d5b5", water: "#74a8b0", waterway: "#8db8be",
       road: "#ddd5c2", roadMajor: "#d3c9b2", boundary: "#b9b0a0",
       text: "#26333a", halo: "#f2efe9", waterText: "#33606a",
+      coastShadow: "rgba(31,46,53,0.30)", hillShadow: "#a3947a", hillLight: "#fdf9ee",
+      hillAmt: 0.28, grain: "grain-dark",
     },
     dusk: {
       land: "#e8d7bd", green: "#bcc4a0", water: "#587b92", waterway: "#6f8ea2",
       road: "#d4c3a5", roadMajor: "#c8b696", boundary: "#a89a80",
       text: "#3a3a30", halo: "#eee0c6", waterText: "#3e5a6e",
+      coastShadow: "rgba(30,30,42,0.32)", hillShadow: "#87735c", hillLight: "#f8e8ca",
+      hillAmt: 0.30, grain: "grain-dark",
     },
     night: {
       land: "#131f26", green: "#17281f", water: "#1f3a46", waterway: "#27444f",
       road: "#20303a", roadMajor: "#273a45", boundary: "#2b3d47",
       text: "#dbe6e2", halo: "#131f26", waterText: "#6f98a2",
+      coastShadow: "rgba(0,0,0,0.45)", hillShadow: "#070e13", hillLight: "#1e3944",
+      hillAmt: 0.35, grain: "grain-light",
     },
   };
 
@@ -201,9 +207,70 @@
         }
       } catch (e) { /* some layers reject some props; fine */ }
     }
-    // our own route lines
-    if (map.getLayer("wsf-routes")) {
-      map.setPaintProperty("wsf-routes", "line-color", pal.text);
+    // our own route lines + prototype layers
+    try {
+      if (map.getLayer("wsf-routes")) map.setPaintProperty("wsf-routes", "line-color", pal.text);
+      if (map.getLayer("ps-coast-shadow")) map.setPaintProperty("ps-coast-shadow", "line-color", pal.coastShadow);
+      if (map.getLayer("ps-hillshade")) {
+        map.setPaintProperty("ps-hillshade", "hillshade-shadow-color", pal.hillShadow);
+        map.setPaintProperty("ps-hillshade", "hillshade-highlight-color", pal.hillLight);
+        map.setPaintProperty("ps-hillshade", "hillshade-exaggeration", pal.hillAmt);
+      }
+      if (map.getLayer("ps-grain")) map.setPaintProperty("ps-grain", "fill-pattern", pal.grain);
+    } catch (e) {}
+  }
+
+  /* ---------------- prototype: paper shadow, grain, real mountains ---------------- */
+  function grainImage(rgb, alphaMax) {
+    const s = 96, c = document.createElement("canvas");
+    c.width = c.height = s;
+    const ctx = c.getContext("2d"), img = ctx.createImageData(s, s);
+    for (let i = 0; i < img.data.length; i += 4) {
+      img.data[i] = rgb[0]; img.data[i + 1] = rgb[1]; img.data[i + 2] = rgb[2];
+      img.data[i + 3] = Math.random() < 0.55 ? 0 : Math.floor(Math.random() * alphaMax * 255);
+    }
+    ctx.putImageData(img, 0, 0);
+    return ctx.getImageData(0, 0, s, s);
+  }
+
+  function setupPrototypeLayers() {
+    const layers = map.getStyle().layers;
+    const waterL = layers.find(l => l.type === "fill" && /water/.test(l.id) && !/way/.test(l.id));
+    if (!waterL) return;
+    const srcId = waterL.source, srcLayer = waterL["source-layer"];
+    const waterIdx = layers.findIndex(l => l.id === waterL.id);
+    const aboveWaterId = layers[waterIdx + 1] ? layers[waterIdx + 1].id : undefined;
+    const firstSymbolId = (layers.find(l => l.type === "symbol") || {}).id;
+
+    // paper grain (two bakes: dark speckle for light modes, light for night)
+    map.addImage("grain-dark", grainImage([38, 51, 58], 0.06));
+    map.addImage("grain-light", grainImage([255, 255, 255], 0.05));
+    map.addSource("ps-world", { type: "geojson", data: { type: "Feature", properties: {},
+      geometry: { type: "Polygon", coordinates: [[[-179, -85], [179, -85], [179, 85], [-179, 85], [-179, -85]]] } } });
+    map.addLayer({ id: "ps-grain", type: "fill", source: "ps-world",
+      paint: { "fill-pattern": "grain-dark", "fill-opacity": 0.55 } }, firstSymbolId);
+
+    // real mountains: AWS Open Data terrain (terrarium), hillshade under the water fill
+    map.addSource("ps-dem", { type: "raster-dem",
+      tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
+      encoding: "terrarium", tileSize: 256, maxzoom: 13,
+      attribution: "Terrain: Mapzen via AWS Open Data" });
+    map.addLayer({ id: "ps-hillshade", type: "hillshade", source: "ps-dem",
+      paint: { "hillshade-exaggeration": 0.28 } }, waterL.id);
+
+    // cut-paper coastline: soft offset shadow inside the water along every shore
+    map.addLayer({ id: "ps-coast-shadow", type: "line", source: srcId, "source-layer": srcLayer,
+      paint: { "line-color": "rgba(31,46,53,0.30)", "line-width": 7, "line-blur": 5,
+               "line-translate": [2, 4], "line-translate-anchor": "viewport" },
+      layout: { "line-cap": "round", "line-join": "round" } }, aboveWaterId);
+
+    // our branded terminal labels replace the basemap's for these towns
+    const OURS = ["Seattle", "Bremerton", "Edmonds", "Kingston", "Bainbridge Island"];
+    const notOurs = ["!", ["in", ["coalesce", ["get", "name:latin"], ["get", "name"]], ["literal", OURS]]];
+    for (const l of layers) {
+      if (l.type === "symbol" && /place/.test(l.id)) {
+        try { const f = map.getFilter(l.id); map.setFilter(l.id, f ? ["all", f, notOurs] : notOurs); } catch (e) {}
+      }
     }
   }
 
@@ -291,6 +358,7 @@
     for (const s of sprites) s.marker.addTo(map);
     for (const m of termMarkers) m.addTo(map);
 
+    try { setupPrototypeLayers(); } catch (e) { console.warn("prototype layers:", e); }
     setMode("auto");
     document.getElementById("loading").classList.add("gone");
     if (!WSF.REDUCED) requestAnimationFrame(frame);
