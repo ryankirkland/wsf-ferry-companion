@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en" data-mode="day">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paper Sound — on the real Sound</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; }
+  body { font-family:'Inter',system-ui,sans-serif; overflow:hidden; }
+
+  /* mode-scoped UI vars */
+  html[data-mode="day"]   { --ink:#26333a; --chip:#ffffffee; --hull:#fffdf6; --cabin:#007b5f; --win:#eaf3ef;
+                            --stack:#e5674b; --lblink:#2c3f47; --halo:#ffffffcc; --wake:#26737b; }
+  html[data-mode="dusk"]  { --ink:#3a3a30; --chip:#f6ecd9ee; --hull:#f6ecd9; --cabin:#0a6b55; --win:#ffcf7a;
+                            --stack:#d05a40; --lblink:#453f2f; --halo:#f6ecd9cc; --wake:#4c6f84; }
+  html[data-mode="night"] { --ink:#dbe6e2; --chip:#152029ee; --hull:#d9d3c2; --cabin:#0e5544; --win:#ffcf7a;
+                            --stack:#8f4433; --lblink:#dbe6e2; --halo:#16242ecc; --wake:#7fd8b8; }
+
+  #map { position:absolute; inset:0; }
+  .maplibregl-ctrl-attrib { font-size:10px; opacity:.7; }
+
+  .bar { position:fixed; inset:0 0 auto 0; z-index:50; display:flex; align-items:center; gap:1rem; padding:.6rem 1.1rem; }
+  .bar a { color:var(--ink); text-decoration:none; font-weight:700; font-size:.85rem; opacity:.8; }
+  .bar .name { color:var(--ink); font-family:'Gabarito'; font-weight:700; }
+  .modes { margin-left:auto; display:flex; gap:.25rem; background:var(--chip); backdrop-filter:blur(6px);
+           border-radius:12px; padding:.2rem; box-shadow:0 2px 10px rgba(0,0,0,.12); }
+  .modes button { border:0; background:transparent; color:var(--ink); font:700 .78rem 'Inter'; padding:.3rem .8rem;
+                  border-radius:9px; cursor:pointer; opacity:.7; }
+  .modes button.on { background:var(--ink); color:var(--chip); opacity:1; }
+
+  .foot { position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:space-between; align-items:flex-end;
+          padding:1.1rem 1.4rem 1.6rem; z-index:40; pointer-events:none; color:var(--ink); }
+  .foot .clock { font:800 2.2rem 'Gabarito'; text-shadow:0 1px 10px var(--halo); }
+  .foot .tag { font:600 .95rem 'Inter'; opacity:.85; text-shadow:0 1px 8px var(--halo); }
+
+  /* vessel markers */
+  .vm { text-align:center; cursor:default; }
+  .vm svg { display:block; margin:0 auto; width:46px; height:25px; filter:drop-shadow(0 2px 0 rgba(20,30,40,.28)); }
+  .vm .hull { fill:var(--hull); } .vm .cabin { fill:var(--cabin); }
+  .vm .win { fill:var(--win); } .vm .stack { fill:var(--stack); }
+  .vm.flip svg { transform:scaleX(-1); }
+  .vm .nm { font:700 10.5px 'Gabarito'; letter-spacing:.1em; text-transform:uppercase; color:var(--lblink);
+            text-shadow:0 1px 6px var(--halo), 0 -1px 6px var(--halo); margin-top:1px; }
+  .vm .st { font:600 9px 'Inter'; letter-spacing:.04em; color:var(--lblink); opacity:.75;
+            text-shadow:0 1px 6px var(--halo); }
+  /* at low zoom, sprites carry the scene; labels declutter away */
+  body.z-lo .vm .nm, body.z-lo .vm .st, body.z-lo .term.soft { display:none; }
+  body.z-lo .term span { font-size:10.5px; }
+  .vm.muted { opacity:.62; }
+  .vm .wake { height:4px; width:34px; margin:2px auto 0; border-radius:2px; opacity:0;
+              background:repeating-linear-gradient(90deg, var(--wake) 0 8px, transparent 8px 14px); }
+  .vm.moving .wake { opacity:.8; }
+  html[data-mode="night"] .vm svg { filter:drop-shadow(0 3px 0 rgba(0,0,0,.5)) drop-shadow(0 0 10px rgba(255,207,122,.35)); }
+
+  /* terminal markers */
+  .term { display:flex; align-items:center; gap:.4rem; pointer-events:none; }
+  .term i { width:11px; height:11px; border-radius:3px; background:var(--lblink); opacity:.85; }
+  .term span { font:700 12.5px 'Gabarito'; letter-spacing:.16em; text-transform:uppercase; color:var(--lblink);
+               text-shadow:0 1px 6px var(--halo), 0 -1px 6px var(--halo); }
+  .term.soft span { opacity:.7; font-size:11px; }
+  .term.soft i { width:8px; height:8px; opacity:.55; }
+
+  .loading { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:60;
+             background:#e9e4d8; font:700 1rem 'Gabarito'; color:#26333a; transition:opacity .5s; }
+  .loading.gone { opacity:0; pointer-events:none; }
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading">Talking to the Sound...</div>
+<div id="map"></div>
+
+<header class="bar">
+  <a href="index.html">&larr; boards</a>
+  <span class="name">B2 · Paper Sound, real map</span>
+  <div class="modes" id="modes">
+    <button data-m="auto">Auto</button><button data-m="day">Day</button>
+    <button data-m="dusk">Dusk</button><button data-m="night">Night</button>
+  </div>
+</header>
+
+<div class="foot">
+  <div>
+    <div class="clock" id="clock">--:--</div>
+    <div class="tag">Real geography, paper palette · vessels from real WSF data</div>
+  </div>
+  <div class="tag">Paper Sound</div>
+</div>
+
+<script src="canned-data.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* ---------------- palettes: paper sound on a real basemap ---------------- */
+  const PAL = {
+    day: {
+      land: "#efe9db", green: "#c9d5b5", water: "#74a8b0", waterway: "#8db8be",
+      road: "#ddd5c2", roadMajor: "#d3c9b2", boundary: "#b9b0a0",
+      text: "#26333a", halo: "#f2efe9", waterText: "#33606a",
+    },
+    dusk: {
+      land: "#e8d7bd", green: "#bcc4a0", water: "#587b92", waterway: "#6f8ea2",
+      road: "#d4c3a5", roadMajor: "#c8b696", boundary: "#a89a80",
+      text: "#3a3a30", halo: "#eee0c6", waterText: "#3e5a6e",
+    },
+    night: {
+      land: "#131f26", green: "#17281f", water: "#1f3a46", waterway: "#27444f",
+      road: "#20303a", roadMajor: "#273a45", boundary: "#2b3d47",
+      text: "#dbe6e2", halo: "#131f26", waterText: "#6f98a2",
+    },
+  };
+
+  /* ---------------- real geography ---------------- */
+  const TERMS = {
+    seattle:    { ll: [-122.3396, 47.6023], label: "Seattle" },
+    bainbridge: { ll: [-122.5111, 47.6231], label: "Bainbridge", side: "right" },
+    bremerton:  { ll: [-122.6250, 47.5620], label: "Bremerton", side: "right" },
+    edmonds:    { ll: [-122.3850, 47.8130], label: "Edmonds" },
+    kingston:   { ll: [-122.4977, 47.7962], label: "Kingston", side: "right" },
+    eagleHarbor:{ ll: [-122.5180, 47.6200], label: "Eagle Harbor yard", soft: true, side: "right" },
+  };
+  // Routes as lon/lat polylines (Bremerton bends through Rich Passage).
+  const GEO_ROUTES = {
+    sea_bi: [[-122.3396, 47.6023], [-122.4110, 47.6125], [-122.4700, 47.6200], [-122.5111, 47.6231]],
+    sea_br: [[-122.3396, 47.6023], [-122.4380, 47.5850], [-122.4850, 47.5770], [-122.5280, 47.5788],
+             [-122.5460, 47.5860], [-122.5780, 47.5865], [-122.6060, 47.5720], [-122.6250, 47.5620]],
+    ed_king: [[-122.3850, 47.8130], [-122.4300, 47.8065], [-122.4977, 47.7962]],
+  };
+
+  // Arc-length tables (lat-corrected so speed is even on screen).
+  const K = Math.cos(47.65 * Math.PI / 180);
+  const tables = {};
+  for (const [id, pts] of Object.entries(GEO_ROUTES)) {
+    const seg = [0]; let total = 0;
+    for (let i = 1; i < pts.length; i++) {
+      total += Math.hypot((pts[i][0] - pts[i - 1][0]) * K, pts[i][1] - pts[i - 1][1]);
+      seg.push(total);
+    }
+    tables[id] = { seg, total };
+  }
+  function geoPosAt(routeId, t) {
+    const pts = GEO_ROUTES[routeId], tab = tables[routeId];
+    const target = Math.min(Math.max(t, 0), 1) * tab.total;
+    let i = 1;
+    while (i < tab.seg.length - 1 && tab.seg[i] < target) i++;
+    const a = pts[i - 1], b = pts[i], span = tab.seg[i] - tab.seg[i - 1] || 1;
+    const f = (target - tab.seg[i - 1]) / span;
+    return { lng: a[0] + (b[0] - a[0]) * f, lat: a[1] + (b[1] - a[1]) * f, east: b[0] >= a[0] };
+  }
+
+  /* ---------------- map ---------------- */
+  const map = new maplibregl.Map({
+    container: "map",
+    style: "https://tiles.openfreemap.org/styles/positron",
+    center: [-122.48, 47.685],
+    zoom: 10.35,
+    dragRotate: false,
+    pitchWithRotate: false,
+    attributionControl: { compact: true },
+  });
+  map.touchZoomRotate.disableRotation();
+
+  /* recolor the basemap to the paper palette via layer heuristics */
+  function recolor(pal) {
+    let layers;
+    try { layers = map.getStyle().layers; } catch (e) { layers = null; }
+    if (!layers || !layers.length) { map.once("idle", () => recolor(pal)); return; }
+    for (const l of layers) {
+      const id = l.id.toLowerCase();
+      try {
+        if (l.type === "background") { map.setPaintProperty(l.id, "background-color", pal.land); continue; }
+        if (l.type === "fill") {
+          if (id.includes("water")) { map.setPaintProperty(l.id, "fill-color", pal.water); map.setPaintProperty(l.id, "fill-outline-color", pal.water); }
+          else if (/(wood|grass|park|landcover|cemetery|golf|garden)/.test(id)) map.setPaintProperty(l.id, "fill-color", pal.green);
+          else if (/(residential|landuse|sand|school|hospital|industrial|commercial)/.test(id)) map.setPaintProperty(l.id, "fill-color", pal.land);
+          else if (id.includes("building")) map.setLayoutProperty(l.id, "visibility", "none");
+          continue;
+        }
+        if (l.type === "line") {
+          if (id.includes("waterway")) map.setPaintProperty(l.id, "line-color", pal.waterway);
+          else if (/(motorway|trunk|primary|major)/.test(id)) map.setPaintProperty(l.id, "line-color", pal.roadMajor);
+          else if (/(road|street|highway|minor|service|path|track|tunnel|bridge|rail|transit|ferry|aeroway)/.test(id)) {
+            if (/(path|track|rail|transit|ferry|aeroway)/.test(id)) map.setLayoutProperty(l.id, "visibility", "none");
+            else map.setPaintProperty(l.id, "line-color", pal.road);
+          }
+          else if (id.includes("boundary")) { map.setPaintProperty(l.id, "line-color", pal.boundary); map.setPaintProperty(l.id, "line-dasharray", [2, 3]); }
+          continue;
+        }
+        if (l.type === "symbol") {
+          if (/(poi|housenum|transit|shield|route|road|highway|airport|aerodrome)/.test(id)) { map.setLayoutProperty(l.id, "visibility", "none"); continue; }
+          if (id.includes("water")) { map.setPaintProperty(l.id, "text-color", pal.waterText); map.setPaintProperty(l.id, "text-halo-color", pal.halo); continue; }
+          map.setPaintProperty(l.id, "text-color", pal.text);
+          map.setPaintProperty(l.id, "text-halo-color", pal.halo);
+          map.setPaintProperty(l.id, "text-halo-width", 1.4);
+        }
+      } catch (e) { /* some layers reject some props; fine */ }
+    }
+    // our own route lines
+    if (map.getLayer("wsf-routes")) {
+      map.setPaintProperty("wsf-routes", "line-color", pal.text);
+    }
+  }
+
+  /* ---------------- modes (the display lives on Puget Sound time) ---------------- */
+  const modes = document.getElementById("modes");
+  function soundTime() {
+    return new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+  }
+  function autoMode() { const h = soundTime().getHours(); return h >= 7 && h < 17 ? "day" : (h < 21 && h >= 17) || (h >= 5 && h < 7) ? "dusk" : "night"; }
+  let currentEff = "day";
+  function setMode(m) {
+    const eff = m === "auto" ? autoMode() : m;
+    currentEff = eff;
+    document.documentElement.dataset.mode = eff;
+    modes.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.m === m));
+    recolor(PAL[eff]);
+    // style reloads (tiles settling, fitBounds churn) can wipe paints; re-apply once settled
+    map.once("idle", () => recolor(PAL[currentEff]));
+  }
+  window._psMap = map; // debugging handle
+  modes.addEventListener("click", e => { const b = e.target.closest("button"); if (b) setMode(b.dataset.m); });
+
+  const clock = document.getElementById("clock");
+  const soundClock = () => new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: "America/Los_Angeles" });
+  setInterval(() => { clock.textContent = soundClock(); }, 1000);
+  clock.textContent = soundClock();
+
+  /* ---------------- markers ---------------- */
+  const FERRY_SVG = `
+    <svg width="64" height="34" viewBox="-42 -30 84 52">
+      <rect class="stack" x="2" y="-25" width="6" height="8" rx="2"/>
+      <rect class="hull" x="-12" y="-18" width="24" height="9" rx="3.5"/>
+      <rect class="cabin" x="-28" y="-10" width="56" height="13" rx="5"/>
+      <circle class="win" cx="-16" cy="-3.5" r="2.6"/><circle class="win" cx="-5" cy="-3.5" r="2.6"/>
+      <circle class="win" cx="6" cy="-3.5" r="2.6"/><circle class="win" cx="17" cy="-3.5" r="2.6"/>
+      <rect class="hull" x="-42" y="0" width="84" height="18" rx="9"/>
+    </svg>`;
+
+  function vesselMarker(v) {
+    const el = document.createElement("div");
+    el.className = "vm" + (v.kind === "yard" ? " muted" : "");
+    el.innerHTML = `${FERRY_SVG}<div class="wake"></div><div class="nm">${v.name}</div>
+                    <div class="st">${v.kind === "yard" ? "resting · back 2:05 pm" : v.kind === "docked" ? "at dock" : ""}</div>`;
+    return { el, marker: new maplibregl.Marker({ element: el, anchor: "center" }) };
+  }
+
+  const sprites = [];
+  for (const v of WSF.VESSELS) {
+    const { el, marker } = vesselMarker(v);
+    if (v.kind === "underway") {
+      const p = geoPosAt(v.route, v.t0);
+      marker.setLngLat([p.lng, p.lat]);
+    } else {
+      const t = TERMS[v.at].ll;
+      const dy = v.kind === "yard" ? -0.004 : 0.0035;
+      marker.setLngLat([t[0] + (v.kind === "yard" ? -0.006 : 0), t[1] + dy]);
+    }
+    sprites.push({ v, el, marker });
+  }
+
+  const termMarkers = [];
+  for (const [id, t] of Object.entries(TERMS)) {
+    const el = document.createElement("div");
+    el.className = "term" + (t.soft ? " soft" : "");
+    const flip = t.side === "right"; // label extends left of the dot (west-shore terminals)
+    el.style.flexDirection = flip ? "row-reverse" : "row";
+    el.innerHTML = `<i></i><span>${t.label}</span>`;
+    termMarkers.push(new maplibregl.Marker({ element: el, anchor: flip ? "right" : "left", offset: [flip ? -8 : 8, 0] }).setLngLat(t.ll));
+  }
+  const declutter = () => document.body.classList.toggle("z-lo", map.getZoom() < 10.2);
+  map.on("zoom", declutter);
+  declutter();
+
+  map.on("load", () => {
+    map.fitBounds([[-122.72, 47.52], [-122.30, 47.85]], { padding: { top: 80, bottom: 110, left: 40, right: 40 }, duration: 0 });
+    // dotted route lines beneath markers
+    map.addSource("wsf-routes", { type: "geojson", data: {
+      type: "FeatureCollection",
+      features: Object.values(GEO_ROUTES).map(pts => ({ type: "Feature", geometry: { type: "LineString", coordinates: pts }, properties: {} })),
+    }});
+    map.addLayer({ id: "wsf-routes", type: "line", source: "wsf-routes",
+      paint: { "line-color": "#26333a", "line-width": 2, "line-opacity": .45, "line-dasharray": [0.1, 2.6] },
+      layout: { "line-cap": "round" } });
+
+    for (const s of sprites) s.marker.addTo(map);
+    for (const m of termMarkers) m.addTo(map);
+
+    setMode("auto");
+    document.getElementById("loading").classList.add("gone");
+    if (!WSF.REDUCED) requestAnimationFrame(frame);
+    else frame(0);
+  });
+  map.on("error", e => { /* keep console clean-ish for tile hiccups */ });
+
+  function frame(ms) {
+    for (const s of sprites) {
+      const v = s.v;
+      if (v.kind !== "underway") continue;
+      const k = WSF.tick(v, ms);
+      const p = geoPosAt(v.route, k.t);
+      s.marker.setLngLat([p.lng, p.lat]);
+      const movingEast = k.dir === 1 ? !p.east : p.east; // travelling toward t=1 means following segment direction
+      s.el.classList.toggle("flip", (k.dir === 1 && !p.east) || (k.dir === -1 && p.east));
+      s.el.classList.toggle("moving", k.moving && !WSF.REDUCED);
+    }
+    if (!WSF.REDUCED) requestAnimationFrame(frame);
+  }
+})();
+</script>
+</body>
+</html>
