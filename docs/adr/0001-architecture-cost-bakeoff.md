@@ -76,17 +76,64 @@ Tile hosting findings moved to [ADR-0003](0003-tile-hosting.md) (recommend:
 launch on OpenFreeMap, self-host glyphs/sprites now and a tested PMTiles
 fallback from M1).
 
-## Comparison at a glance (estimates until Phase C verifies)
+## Comparison at a glance (costs verified 2026-07-24; latency pending spikes)
 
 | | A: Lakehouse | B: Postgres core |
 |---|---|---|
-| Idle cost | ~$3-8/mo | ~$18-25/mo (+~$11 RDS Proxy if needed) |
+| Idle cost (verified) | **$2.02/mo** | **$14.97/mo** (+**$21.90/mo** if RDS Proxy needed) |
 | Spike behavior | Absorbs, pay-per-use | Pooling gymnastics, vertical scaling |
 | Integrity enforcement | Pipeline + tests + quarantine | Database constraints |
 | Ad-hoc exploration | Athena (seconds, per-query cost) | psql (instant, free) |
 | Ops burden | Wiring, IAM, compaction | Patching, backups, VPC, connections |
 | AWS skills exercised | DynamoDB, S3/Parquet, Glue, Athena, EventBridge, CloudFront | RDS, VPC networking, pooling |
 | Resume story | Store-per-workload lakehouse on primitives | Boring-tech discipline |
+
+## Verified pricing and scenario models (Stage 1, checked 2026-07-24)
+
+Every number below comes from the AWS Price List bulk API for us-west-2,
+cross-checked against the marketing pages, on 2026-07-24. Shared usage model:
+4 pollers x 43,200 invocations/mo at 2 s / 256 MB, ~1.53M ingest+history
+writes/mo, reads 1k/day idle -> 50k/day at 100 DAU -> one 2.5M-read spike day
+(CloudFront absorbing 85% on the spike), always-free tiers applied, 12-month
+promotional tiers NOT applied.
+
+**Option A - serverless lakehouse (Lambda, API GW HTTP, DynamoDB on-demand, S3 + Athena/Glue, CloudFront, Cognito, SES):**
+
+| Scenario | Verified monthly cost | Dominant lines |
+|---|---|---|
+| Idle | **$2.02** | DynamoDB writes $0.96 · S3 PUTs $0.95 |
+| 100 DAU | **$4.00** | + API GW $1.50 |
+| 100 DAU + 5k spike day | **$4.99** | + API GW/reads/SES |
+
+**Option B - Postgres core (same edges, RDS db.t4g.micro single-AZ + 20 GB gp3 instead of DynamoDB/Athena):**
+
+| Scenario | No Proxy | With RDS Proxy |
+|---|---|---|
+| Idle | **$14.97** | $36.87 |
+| 100 DAU | $16.86 | $38.76 |
+| 100 DAU + spike day | $17.82 | $39.72 |
+
+Cost verdicts against Gate 1 (<= $15 idle): **A passes with 7x headroom; B
+without Proxy grazes under at $14.97 and exceeds the ceiling at any real
+usage; B with Proxy is disqualified outright** - and the 04 spike's
+50-connection probe measures exactly whether B can live without the Proxy.
+
+**Corrections worth remembering** (full citations in the research appendix):
+- RDS t4g.micro is $0.016/hr = $11.68/mo (not the oft-quoted ~$12.3).
+- DynamoDB on-demand reflects the 2024 price cut: $0.625/M writes, $0.125/M reads.
+- RDS Proxy has a 2-vCPU minimum: the proxy costs 1.9x the t4g.micro it fronts.
+- Athena is exactly $5.00/TB; our nightly transforms compute to ~$0.07/mo.
+- DSQL's free tier is real and monthly-recurring (100k DPU + 1 GB-mo) - the
+  dismissal above rests on functionality, not price.
+- **US SMS reality check for M3:** ~$0.0120 per message part, and 10DLC carries
+  ~$11/mo fixed (campaign $10 + number $1) plus ~$67 one-time fees. A
+  **toll-free number is $2/mo** with the same per-message price - the M3
+  default should be toll-free unless volume dictates otherwise, or SMS alone
+  nearly doubles Option A's idle bill.
+- The AWS Free Tier program changed 2025-07-15; always-free allowances
+  (Lambda 1M/400k GB-s, DynamoDB 25 GB, CloudFront 1 TB, CloudWatch, Cognito
+  10k MAU) survive on both new-account plans; the CloudWatch line would be
+  $4.10/mo gross if free-tier assumptions ever break.
 
 ## Bake-off protocol (Phase C)
 
