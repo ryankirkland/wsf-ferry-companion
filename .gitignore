@@ -23,3 +23,8 @@ out/
 
 # OS / editor
 .DS_Store
+
+# Spike artifacts - measurements are captured into the ADR, data is regenerable
+spikes/data/
+spikes/results/
+spikes/.spend.json
