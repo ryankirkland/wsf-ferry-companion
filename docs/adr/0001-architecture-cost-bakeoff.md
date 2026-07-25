@@ -48,10 +48,33 @@ RDS Postgres db.t4g.micro single-AZ (~$13-15/mo incl. storage) as the one wareho
 - VPC networking care required; the classic failure (NAT gateway) costs more than the database.
 - Teaches RDS/VPC (valuable, conventional) but exercises less of the AWS-native data stack.
 
-## Wildcards to evaluate (not defaults)
+## Wildcards - verified findings (Stage 1, checked 2026-07-24)
 
-- **S3 Tables (managed Apache Iceberg):** strengthens Option A - AWS-managed Iceberg with automatic compaction, queryable from Athena; removes A's small-files chore and modernizes the story further. Evaluate cost overhead vs plain Parquet + self-managed compaction.
-- **Aurora DSQL (serverless Postgres-compatible, scale-to-zero):** the "tables AND scale-to-zero" middle path. Compatibility is a subset - notably no foreign keys, no extensions - which removes much of Option B's actual appeal. Include in the bake-off long enough to embrace or dismiss with verified pricing and limits.
+- **Aurora DSQL - leaning dismiss, spike confirms.** Docs verify: no foreign
+  keys ("implement validation in your application layer"), no triggers, no
+  extensions (including PostGIS), no PL/pgSQL, no temp tables, no TRUNCATE;
+  isolation fixed at Repeatable Read with optimistic concurrency (commit-time
+  retry logic required); IAM-token-only auth (15-min tokens) with 60-minute
+  max connection lifetime; transactions capped at 3,000 rows / 10 MiB / 5 min
+  (the history backfill would need chunked writes). Free tier: 100k DPUs +
+  1 GB-month ongoing; paid $8/1M DPUs + $0.33/GB-mo. It removes precisely the
+  things (FK integrity, conventional psql ergonomics) that made "tables"
+  attractive here. Sources: AWS DSQL docs (unsupported features, supported
+  SQL, quotas, auth, pricing pages).
+- **S3 Tables - dismiss at this scale.** At 0.2-2 GB with ~100 files/day,
+  total overhead is ~$0.10-0.20/mo vs ~$0.06-0.10 for plain Parquet plus a
+  free-tier nightly compaction Lambda - cost is noise below ~100 GB. The real
+  cost is architectural: table buckets forbid direct object access (Iceberg
+  interfaces only), which conflicts with this project's raw-archive-as-ground-
+  truth principle (the S3 archive doubles as the recovery path for the
+  undocumented vesselhistory endpoint and must stay trivially readable).
+  Plain S3 Parquet + DIY compaction wins; revisit only if the dataset grows
+  100x. Sources: S3 pricing page (table-bucket section), S3 Tables access-
+  model docs, 2025-07-01 compaction price-cut announcement.
+
+Tile hosting findings moved to [ADR-0003](0003-tile-hosting.md) (recommend:
+launch on OpenFreeMap, self-host glyphs/sprites now and a tested PMTiles
+fallback from M1).
 
 ## Comparison at a glance (estimates until Phase C verifies)
 
