@@ -1,0 +1,14 @@
+.stage {
+  position: relative;
+  height: 100svh;
+  overflow: hidden;
+  cursor: none;
+}
+
+.clockCorner {
+  position: absolute;
+  left: 1.5rem;
+  bottom: 1.25rem;
+  z-index: 20;
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+}

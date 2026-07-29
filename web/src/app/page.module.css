@@ -1,0 +1,19 @@
+.stage {
+  position: relative;
+  height: 100svh;
+  overflow: hidden;
+}
+
+.mapSlot {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.placeholder {
+  color: var(--ink-soft);
+  font-size: 1.05rem;
+  text-align: center;
+  padding: 0 2rem;
+}

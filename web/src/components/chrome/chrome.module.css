@@ -1,0 +1,101 @@
+.topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  row-gap: 0.5rem;
+  padding: 0.9rem 1.25rem;
+  pointer-events: none;
+}
+
+.topbar > * {
+  pointer-events: auto;
+}
+
+.wordmark {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 10px var(--halo);
+  white-space: nowrap;
+}
+
+.wordmark span {
+  color: var(--accent);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.clock {
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 10px var(--halo);
+  white-space: nowrap;
+}
+
+.modes {
+  display: flex;
+  gap: 0.15rem;
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+  border: 1px solid var(--card-line);
+  border-radius: 999px;
+  padding: 0.15rem;
+  backdrop-filter: blur(6px);
+}
+
+.modeBtn {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  color: var(--ink-soft);
+}
+
+.modeOn {
+  background: var(--accent);
+  color: var(--paper);
+}
+
+.veil {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  background: var(--paper);
+  transition: opacity 0.5s ease;
+  font-size: 1.05rem;
+  color: var(--ink-soft);
+}
+
+.veilGone {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.veilInner {
+  text-align: center;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.retry {
+  justify-self: center;
+  padding: 0.4rem 1.1rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--paper);
+  font-weight: 700;
+}
