@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 
 from wsf_core import parse_dotnet_time_of_day
 from wsf_core.fares import PairFares
+from wsf_core.quirks import FALSE_PASSENGER_ONLY_ROUTE_IDS
 from wsf_core.schedule import PairSchedule, TimeAdjustment
 
 SOUND_TZ = ZoneInfo("America/Los_Angeles")
@@ -67,7 +68,7 @@ def build_pairs_index(
                 if route
                 else False,
                 "passenger_only": bool(routes_by_id.get(route, {}).get("PassengerOnlyFlag"))
-                if route
+                if route and route not in FALSE_PASSENGER_ONLY_ROUTE_IDS
                 else False,
             }
         )

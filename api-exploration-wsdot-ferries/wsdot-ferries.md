@@ -74,6 +74,7 @@
 - ⚠️ vessellocations rows can be weeks stale for out-of-service boats - trust `TimeStamp`, not row presence.
 - ⚠️ alerts route ids exceed `routes/{TripDate}` (62%, n=21) - validate against the season-wide route set.
 - ⚠️ farelineitemsverbose: 38 combos share 27 jagged price lists - resolve via `LineItemLookup`; positional zips silently misprice 13/38 combos (incl. Mukilteo-Clinton: $11.35 shown vs $7.10 real) and IndexError on 11 more whose lookup index exceeds the 27-list array. (Corrected 2026-07-29 by recount; original note said 11 mispriced.)
+- ⚠️ routedetails.PassengerOnlyFlag can be upstream-false: RouteID 8 (pt-key, Port Townsend/Coupeville) reports `true` while its own farelineitemsverbose sells Vehicle Length-Based items and the route takes vehicle reservations (live probe 2026-07-29, n=1 route affected of 13 checked). Cross-check the flag against fare categories before surfacing it.
 - ⚠️ unknown query params pass silently (identical payload); bad path values return 200 `[]` - validate inputs client-side, alarm on unexpected emptiness.
 - ⚠️ server day boundary lags midnight: at 00:47 PDT on 07-24 the server called 7/23 "today's date" - both dates can be valid in the first hour(s).
 - ℹ️ access code optional today, 400 if present-but-wrong (absent, registered, and invalid-GUID probed separately) - always send it; enforcement can start anytime.

@@ -27,6 +27,15 @@ EAGLE_HARBOR_TERMINAL = TerminalLocation(
 # have carried stamps up to 45 days old.
 STALE_AFTER_S = 300
 
+# routedetails.PassengerOnlyFlag is upstream-false for these routes: WSF's
+# own fare tables sell vehicle line items on them, which self-contradicts
+# the flag. Verified live 2026-07-29: RouteID 8 (pt-key, Port Townsend /
+# Coupeville) has PassengerOnlyFlag=true while farelineitemsverbose for
+# 17<->11 returns "Vehicle Length-Based" categories and the route takes
+# vehicle reservations. Telling drivers a car ferry is passengers-only is
+# the worse failure, so the flag is suppressed here.
+FALSE_PASSENGER_ONLY_ROUTE_IDS = frozenset({8})
+
 
 def age_seconds(loc: VesselLocation, now: datetime | None = None) -> int:
     """Age of the vessel's source timestamp, clamped at zero."""

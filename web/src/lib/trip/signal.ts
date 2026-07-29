@@ -116,10 +116,14 @@ export function computeSignal({ sailing, cancelled, fix, depTerminalId, nowMs }:
 
     // Assigned boat still inbound on a previous leg: it cannot leave before
     // it arrives, so the effective departure is its ETA (max(depart, eta)).
-    if (!mine && live.arr === depTerminalId && live.eta !== null) {
+    // Two guards keep this honest: the sailing must not already be gone
+    // (a boat inbound NOW says nothing about this morning's 5:30), and the
+    // implied lateness must be plausible for one sailing - beyond the cap
+    // the inbound leg belongs to some later departure, not this one.
+    if (!mine && live.arr === depTerminalId && live.eta !== null && t >= -SIGNAL.goneAfterMin) {
       const etaMs = Date.parse(live.eta);
-      if (etaMs > departMs + SIGNAL.lateStartSlackMin * MIN) {
-        const behind = Math.round((etaMs - departMs) / MIN);
+      const behind = Math.round((etaMs - departMs) / MIN);
+      if (etaMs > departMs + SIGNAL.lateStartSlackMin * MIN && behind <= SIGNAL.maxDeltaMin) {
         return {
           state: "late-start",
           tone: "red",

@@ -156,3 +156,45 @@ def test_today_refresh_logs_divergence(aws, monkeypatch, fake, capsys):
     out = capsys.readouterr().out
     assert "ScheduleDivergence" in out
     assert "[999, 1]" in out  # the phantom shows up as removed
+
+
+def test_upstream_false_passenger_only_flag_is_suppressed():
+    # RouteID 8 (pt-key) carries vehicles - WSF's own fare tables prove it -
+    # yet upstream routedetails says PassengerOnlyFlag=true. The quirk
+    # override suppresses the flag for route 8 and honors it elsewhere.
+    from datetime import UTC, date, datetime
+
+    from wsf_ingest.pairs_builder import build_pairs_index
+
+    mates = [
+        {
+            "DepartingTerminalID": 17,
+            "DepartingDescription": "Port Townsend",
+            "ArrivingTerminalID": 11,
+            "ArrivingDescription": "Coupeville",
+        },
+        {
+            "DepartingTerminalID": 20,
+            "DepartingDescription": "Seattle",
+            "ArrivingTerminalID": 21,
+            "ArrivingDescription": "Genuine POF",
+        },
+    ]
+    route_details = [
+        {"RouteID": 8, "CrossingTime": "35", "ReservationFlag": True, "PassengerOnlyFlag": True},
+        {"RouteID": 99, "CrossingTime": "10", "ReservationFlag": False, "PassengerOnlyFlag": True},
+    ]
+    index = build_pairs_index(
+        mates=mates,
+        route_details=route_details,
+        pair_routes={(17, 11): 8, (20, 21): 99},
+        terminals=[],
+        schedule_meta={"ScheduleID": 1, "ScheduleName": "Test"},
+        horizon_from=date(2026, 7, 24),
+        horizon_days=2,
+        now=datetime(2026, 7, 24, tzinfo=UTC),
+    )
+    by_dep = {p["dep"]: p for p in index["pairs"]}
+    assert by_dep[17]["passenger_only"] is False  # suppressed: upstream-false
+    assert by_dep[17]["reservable"] is True
+    assert by_dep[20]["passenger_only"] is True  # any other route: honored

@@ -128,6 +128,33 @@ describe("late-start while inbound", () => {
     expect(s.detail).toBe("Wenatchee due 2:17 PM");
   });
 
+  it("a long-gone sailing never inherits the inbound boat's lateness", () => {
+    // The live bug this guards: 10 h after the 5:30 AM sailing, its vessel
+    // is inbound for an afternoon run - that ETA is not "640 min behind".
+    const f = fix({
+      state: "underway",
+      sched: new Date(D + 600 * MIN).toISOString(),
+      dep: 3,
+      arr: 7,
+      eta: new Date(D + 640 * MIN).toISOString(),
+    });
+    const s = run(D + 626 * MIN, f);
+    expect(s.state).toBe("gone");
+  });
+
+  it("implausibly large inbound lateness falls through to schedule truth", () => {
+    const f = fix({
+      state: "underway",
+      sched: new Date(D - 90 * MIN).toISOString(),
+      dep: 3,
+      arr: 7,
+      eta: new Date(D + 200 * MIN).toISOString(), // beyond the 120 min cap
+    });
+    const s = run(D - 20 * MIN, f);
+    expect(s.state).toBe("tight");
+    expect(s.live).toBe(false);
+  });
+
   it("inbound but on time falls through to schedule truth", () => {
     const f = fix({
       state: "underway",
