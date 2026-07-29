@@ -1,0 +1,81 @@
+.card {
+  position: absolute;
+  z-index: 26;
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  color: var(--ink);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  padding: 1.1rem 1.25rem 1.2rem;
+
+  /* Phone: bottom sheet. */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 18px 18px 0 0;
+}
+
+@media (min-width: 640px) {
+  /* Desktop/TV: floating card, bottom-left. */
+  .card {
+    left: 1.25rem;
+    right: auto;
+    bottom: 1.25rem;
+    width: 340px;
+    border-radius: 14px;
+  }
+}
+
+.close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--ink-soft);
+  padding: 0.25rem;
+}
+
+.name {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.klass {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.run {
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+
+.status {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.delay {
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  background: var(--st-ontime-bg);
+  color: var(--st-ontime-fg);
+  display: inline-block;
+}
+
+.delay.late {
+  background: var(--st-delay-bg);
+  color: var(--st-delay-fg);
+}
+
+.facts {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--card-line);
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
