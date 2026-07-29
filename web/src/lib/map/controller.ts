@@ -5,16 +5,20 @@ import maplibregl, { type Map as MLMap, type Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import { DECLUTTER_ZOOM, FIT_PADDING, SOUND_BOUNDS } from "@/config";
+import type { VesselFix } from "@/lib/data/types";
 import type { Mode } from "@/lib/time/sound-time";
 import { setupLayers } from "./layers";
 import { PAL } from "./palettes";
 import { dedupePlaceLabels, recolor } from "./recolor";
 import { addTerminalMarkers } from "./terminals";
+import { VesselMarkerPool } from "./vessels/markers";
 
 export interface ControllerOptions {
   styleUrl: string;
   ambient: boolean;
   terminalClassName: string;
+  vesselClassName: string;
+  onVesselClick?: (id: number) => void;
 }
 
 export type ControllerEvent = "ready" | "error";
@@ -26,6 +30,9 @@ export class PaperSoundMap {
   private resizeObserver: ResizeObserver;
   private resizeTimer: number | undefined;
   private terminalMarkers: Marker[] = [];
+  private vesselPool: VesselMarkerPool | null = null;
+  private pendingFleet: VesselFix[] | null = null;
+  private reducedMotion: MediaQueryList;
   private listeners: Record<string, Set<(detail?: unknown) => void>> = {};
   private destroyed = false;
   private tileErrorTimes: number[] = [];
@@ -55,6 +62,8 @@ export class PaperSoundMap {
       }
     }
 
+    this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
     this.map.on("load", () => {
       try {
         setupLayers(this.map);
@@ -63,6 +72,15 @@ export class PaperSoundMap {
           console.warn("place-label dedup matched 0 layers - style fork changed?");
         }
         this.terminalMarkers = addTerminalMarkers(this.map, opts.terminalClassName);
+        this.vesselPool = new VesselMarkerPool(this.map, {
+          vesselClassName: opts.vesselClassName,
+          reducedMotion: () => this.reducedMotion.matches,
+          onClick: opts.ambient ? undefined : opts.onVesselClick,
+        });
+        if (this.pendingFleet) {
+          this.vesselPool.applySnapshot(this.pendingFleet);
+          this.pendingFleet = null;
+        }
         recolor(this.map, PAL[this.mode]);
         this.fitSound();
         this.emit("ready");
@@ -121,10 +139,16 @@ export class PaperSoundMap {
 
   private onVisibility = () => {
     if (!document.hidden && !this.destroyed) {
+      this.vesselPool?.snapAll(); // rAF was suspended; resync instantly
       this.map.resize();
       this.fitSound();
     }
   };
+
+  applySnapshot(vessels: VesselFix[]): void {
+    if (this.vesselPool) this.vesselPool.applySnapshot(vessels);
+    else this.pendingFleet = vessels;
+  }
 
   fitSound(): void {
     this.map.fitBounds(SOUND_BOUNDS, { padding: FIT_PADDING, duration: 0 });
@@ -155,6 +179,7 @@ export class PaperSoundMap {
     document.removeEventListener("visibilitychange", this.onVisibility);
     this.resizeObserver.disconnect();
     window.clearTimeout(this.resizeTimer);
+    this.vesselPool?.destroy();
     this.terminalMarkers.forEach((m) => m.remove());
     this.listeners = {};
     this.map.remove();

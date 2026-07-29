@@ -19,6 +19,8 @@ export function useMapController(
   mode: Mode,
   ambient: boolean,
   terminalClassName: string,
+  vesselClassName: string,
+  onVesselClick?: (id: number) => void,
 ) {
   const controllerRef = useRef<PaperSoundMap | null>(null);
   const [state, setState] = useState<MapState>({ ready: false, failed: false, degraded: false });
@@ -30,6 +32,8 @@ export function useMapController(
       styleUrl: STYLE_URL,
       ambient,
       terminalClassName,
+      vesselClassName,
+      onVesselClick,
     });
     controllerRef.current = controller;
     const offs = [
@@ -46,7 +50,7 @@ export function useMapController(
       setState({ ready: false, failed: false, degraded: false });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [retryToken, ambient, terminalClassName]);
+  }, [retryToken, ambient, terminalClassName, vesselClassName]);
 
   useEffect(() => {
     controllerRef.current?.setMode(mode);

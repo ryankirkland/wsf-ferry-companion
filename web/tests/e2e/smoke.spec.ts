@@ -1,0 +1,59 @@
+import { expect, test, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+// Playwright runs with cwd = the config directory (web/).
+const fixture = (name: string) =>
+  readFileSync(path.resolve(process.cwd(), "public/dev-fixtures", name), "utf8");
+
+/** Serve fixture fleet data on the live-data paths; the exported site runs
+ * with DATA_MODE=live in CI builds' production env semantics. */
+async function interceptData(page: Page) {
+  const fleet = JSON.parse(fixture("fleet-frame-0.json"));
+  fleet.generated_at = new Date().toISOString();
+  await page.route("**/data/fleet.json", (route) =>
+    route.fulfill({ json: fleet, headers: { "access-control-allow-origin": "*" } }),
+  );
+  await page.route("**/data/vessels.json", (route) =>
+    route.fulfill({
+      body: fixture("vessels.json"),
+      contentType: "application/json",
+      headers: { "access-control-allow-origin": "*" },
+    }),
+  );
+}
+
+test("the map page loads, draws the fleet, and switches modes", async ({ page }) => {
+  await interceptData(page);
+  await page.goto("/");
+
+  await expect(page.locator("canvas.maplibregl-canvas")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText("Talking to the Sound...")).toBeHidden({ timeout: 20_000 });
+
+  // The full 21-vessel roster renders as markers.
+  await expect(page.locator("[data-vessel]")).toHaveCount(21, { timeout: 15_000 });
+
+  // The real quirk cases carry their states.
+  await expect(page.locator("[data-vessel].stale").first()).toBeAttached();
+  await expect(page.locator("[data-vessel].muted").first()).toBeAttached(); // yard
+
+  // Mode switch flips the document attribute and a probed token.
+  await page.getByRole("button", { name: "night" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-mode", "night");
+  const accent = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue("--accent").trim(),
+  );
+  expect(accent).toBe("#2fae8a");
+});
+
+test("ambient renders chromeless with a clock", async ({ page }) => {
+  await interceptData(page);
+  await page.goto("/ambient/");
+  await expect(page.getByRole("button", { name: "auto" })).toHaveCount(0);
+  await expect(page.getByLabel("Current time on Puget Sound")).toBeVisible();
+});
+
+test("the honest 404 page exists for CloudFront's error mapping", async ({ page }) => {
+  await page.goto("/404.html", { waitUntil: "load" });
+  await expect(page.getByText("This slip is empty.")).toBeVisible();
+});
