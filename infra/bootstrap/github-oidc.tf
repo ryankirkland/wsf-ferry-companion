@@ -9,7 +9,9 @@ resource "aws_iam_openid_connect_provider" "github" {
 
 data "aws_iam_policy_document" "github_plan_trust" {
   statement {
-    actions = ["sts:AssumeRoleWithWebIdentity"]
+    # sts:TagSession is required because configure-aws-credentials v6.2+
+    # passes session tags by default (useful CloudTrail attribution).
+    actions = ["sts:AssumeRoleWithWebIdentity", "sts:TagSession"]
 
     principals {
       type        = "Federated"
@@ -44,7 +46,8 @@ resource "aws_iam_role_policy_attachment" "github_plan_readonly" {
 
 data "aws_iam_policy_document" "github_apply_trust" {
   statement {
-    actions = ["sts:AssumeRoleWithWebIdentity"]
+    # sts:TagSession: see github_plan_trust.
+    actions = ["sts:AssumeRoleWithWebIdentity", "sts:TagSession"]
 
     principals {
       type        = "Federated"
