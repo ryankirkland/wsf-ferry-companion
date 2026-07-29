@@ -46,6 +46,8 @@
 - `alerts.AffectedRouteIDs`: int list; validate against season-wide schedroutes, not `routes/{TripDate}` (62% match there, n=21 ids).
 
 ## Joins (verified 2026-07-24)
+
+- **Addendum (live probe 2026-07-29, mid-service):** `vessellocations.ScheduledDeparture == schedule Times.DepartingTime` to the exact epoch millisecond - 6/6 vessels across 5 routes; join key (VesselID, epoch-ms). Also probed: `/schedule/{date}` `Annotations` elements are plain strings ("Via Southworth, crossing time 45 minutes."), positionally indexed by `Times[].AnnotationIndexes`.
 - `vessellocations.VesselID` -> `vesselbasics.VesselID` (1:1) 100%, n=21.
 - `vesselhistory.Vessel` -> `vesselbasics.VesselName` (N:1) 100%, n=148; via `VesselId` 0%.
 - `vesselhistory.Departing` -> `terminalbasics.TerminalName` 0%, n=148 (slip vocabulary; needs alias map).
@@ -71,7 +73,7 @@
 - ⚠️ terminalwaittimes looks live but is boilerplate: exactly two `WaitTimeLastUpdated` values fleet-wide (2020-08-18, 2025-08-18; n=21 rows).
 - ⚠️ vessellocations rows can be weeks stale for out-of-service boats - trust `TimeStamp`, not row presence.
 - ⚠️ alerts route ids exceed `routes/{TripDate}` (62%, n=21) - validate against the season-wide route set.
-- ⚠️ farelineitemsverbose: 38 combos share 27 jagged price lists - resolve via `LineItemLookup`; positional zips misprice 11/38 combos.
+- ⚠️ farelineitemsverbose: 38 combos share 27 jagged price lists - resolve via `LineItemLookup`; positional zips silently misprice 13/38 combos (incl. Mukilteo-Clinton: $11.35 shown vs $7.10 real) and IndexError on 11 more whose lookup index exceeds the 27-list array. (Corrected 2026-07-29 by recount; original note said 11 mispriced.)
 - ⚠️ unknown query params pass silently (identical payload); bad path values return 200 `[]` - validate inputs client-side, alarm on unexpected emptiness.
 - ⚠️ server day boundary lags midnight: at 00:47 PDT on 07-24 the server called 7/23 "today's date" - both dates can be valid in the first hour(s).
 - ℹ️ access code optional today, 400 if present-but-wrong (absent, registered, and invalid-GUID probed separately) - always send it; enforcement can start anytime.

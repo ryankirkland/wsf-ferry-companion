@@ -1,7 +1,7 @@
 import json
 
 import pytest
-from wsf_core.client import WsfApiError, WsfAuthError, WsfClient
+from wsf_core.client import WsfApiError, WsfAuthError, WsfBadRequestError, WsfClient
 
 
 class FakeResponse:
@@ -70,3 +70,20 @@ def test_cache_flush_date_validates_sub_api():
     assert client.cache_flush_date("vessels") == "/Date(0)/"
     with pytest.raises(ValueError):
         client.cache_flush_date("nope")
+
+
+def test_400_discrimination_auth_vs_bad_request():
+    """The two verified 400+Message signatures must classify differently -
+    a bad fare pair must never trip the auth canary."""
+    auth, _ = _client(FakeResponse(400, {"Message": "please register for an access code"}))
+    with pytest.raises(WsfAuthError):
+        auth.vessel_locations()
+
+    bad, _ = _client(
+        FakeResponse(
+            400,
+            {"Message": "valid range begins with today's date (7/23/2026) and extends..."},
+        )
+    )
+    with pytest.raises(WsfBadRequestError):
+        bad.vessel_locations()

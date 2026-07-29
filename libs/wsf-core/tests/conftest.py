@@ -25,3 +25,23 @@ def vesselverbose_rows():
 @pytest.fixture(scope="session")
 def terminallocations_rows():
     return _load("terminals_terminallocations.json")
+
+
+@pytest.fixture(scope="session")
+def schedule_pair_envelope():
+    return _load("schedule_schedule_terminalcombo.json")
+
+
+@pytest.fixture(scope="session")
+def fares_verbose():
+    return _load("fares_farelineitemsverbose.json")
+
+
+@pytest.fixture(scope="session")
+def timeadj_rows():
+    return _load("schedule_timeadj.json")
+
+
+@pytest.fixture(scope="session")
+def alerts_rows():
+    return _load("schedule_alerts.json")
