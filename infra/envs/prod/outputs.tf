@@ -27,3 +27,13 @@ output "map_assets_bucket" {
   description = "Bucket for glyphs/sprites/style JSON (ADR-0003)."
   value       = module.static_site.map_assets_bucket
 }
+
+output "fleet_snapshot_url" {
+  description = "The map's data contract (ADR-0005)."
+  value       = "https://${var.domain_name}/data/fleet.json"
+}
+
+output "raw_bucket" {
+  description = "Raw archive bucket."
+  value       = module.ingest.raw_bucket
+}
