@@ -122,5 +122,11 @@ grammar (`%%MS±n%%`), so every signal band renders at once in dev and in
 
 ## Status
 
-- D1 (wsf-core modules, 400-fix, sentinel parser, resolver, corrections):
-  in progress 2026-07-29.
+- Backend live since 2026-07-29 (PRs #22-#25): all four /data contracts
+  serving, 8 alarms OK, PAIR# items queryable, ~+$0.16/mo.
+- Frontend built + E2E-tested 2026-07-29 (PR #26): 38 pair pages + picker,
+  signal engine, fares, alerts, date browsing. Two live-caught fixes in
+  the same PR (late-start window guard, PassengerOnlyFlag quirk).
+- Remaining for M2 exit: <10 s answer measured on a phone against
+  production; LoadingRule and schedule-drops-cancellation probes settle
+  on their own instruments.
