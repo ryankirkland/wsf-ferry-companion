@@ -23,7 +23,10 @@ curl -LO https://github.com/onthegomap/planetiler/releases/latest/download/plane
 java -Xmx4g -jar planetiler.jar --download --area=washington \
   --output=wa.pmtiles
 # Output ~1-1.5 GB, z0-14, OpenMapTiles schema, Geofabrik WA extract.
-aws s3 cp wa.pmtiles s3://wsf-prod-tiles-654654574183/wa.pmtiles --profile ryan
+# Key MUST be tiles/wa.pmtiles: CloudFront forwards the full /tiles/wa/...
+# path and the Lambda's greedy name parse resolves the archive as
+# "tiles/wa" (verified live 2026-07-29).
+aws s3 cp wa.pmtiles s3://wsf-prod-tiles-654654574183/tiles/wa.pmtiles --profile ryan
 ```
 
 ## Vendor the Protomaps Lambda (once per upstream release)
@@ -60,7 +63,7 @@ NEXT_PUBLIC_STYLE_URL=https://ferrysound.com/assets/style/positron-selfhost-v1.j
 
 | Date | Result | Tile p50 | Notes |
 |---|---|---|---|
-| (pending first run) | | | |
+| 2026-07-29 | PASS - visual parity in night mode, boats + labels + declutter identical | 0.16 s warm / 0.89 s cold (z10-z12 probes) | Archive 0.29 GB; first probe 404ed until the tiles/ key prefix fix |
 
 Promotion, if ever needed: set `NEXT_PUBLIC_STYLE_URL` in web-deploy.yml,
 rebuild, done.
