@@ -80,7 +80,10 @@
 
 /* Vessel markers - sprite themed by mode tokens; the windows are the brand. */
 .vm {
-  position: relative;
+  /* NEVER set `position` here: MapLibre's own .maplibregl-marker rule
+   * (position:absolute) has equal specificity, so whichever stylesheet
+   * loads last wins - dev and prod disagreed, and boats rendered in
+   * document flow, stacked progressively off their true positions. */
   width: 44px;
   z-index: 5;
   pointer-events: none;
