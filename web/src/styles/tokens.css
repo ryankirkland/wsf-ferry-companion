@@ -1,0 +1,90 @@
+/*
+ * Paper Sound design tokens - hand-maintained mirror of
+ * docs/design/direction.md (locked by ADR-0002; changes require an ADR).
+ * The map-facing subset is duplicated as typed constants in
+ * src/lib/map/palettes.ts; a vitest drift check keeps the two in sync.
+ */
+
+html[data-mode="day"] {
+  --land: #efe9db;
+  --green: #c9d5b5;
+  --water: #74a8b0;
+  --waterway: #8db8be;
+  --road: #ddd5c2;
+  --road-major: #d3c9b2;
+  --ink: #26333a;
+  --ink-soft: #5d6d75;
+  --halo: #f2efe9;
+  --water-text: #33606a;
+  --paper: #f6f3ec;
+  --card: #ffffff;
+  --card-line: #e2ddd0;
+  --accent: #007b5f;
+  --hill-shadow: #a3947a;
+  --hill-light: #fdf9ee;
+  --hull: #fffdf6;
+  --cabin: #007b5f;
+  --win: #eaf3ef;
+  --stack: #e5674b;
+  --wake: #26737b;
+}
+
+html[data-mode="dusk"] {
+  --land: #e8d7bd;
+  --green: #bcc4a0;
+  --water: #587b92;
+  --waterway: #6f8ea2;
+  --road: #d4c3a5;
+  --road-major: #c8b696;
+  --ink: #3a3a30;
+  --ink-soft: #5d5d4d;
+  --halo: #eee0c6;
+  --water-text: #3e5a6e;
+  --paper: #f0e4cf;
+  --card: #f9f1e2;
+  --card-line: #d9cbb2;
+  --accent: #0a6b55;
+  --hill-shadow: #87735c;
+  --hill-light: #f8e8ca;
+  --hull: #f6ecd9;
+  --cabin: #0a6b55;
+  /* The lantern moment: windows go amber the moment dusk begins. */
+  --win: #ffcf7a;
+  --stack: #d05a40;
+  --wake: #4c6f84;
+}
+
+html[data-mode="night"] {
+  --land: #131f26;
+  --green: #17281f;
+  --water: #1f3a46;
+  --waterway: #27444f;
+  --road: #20303a;
+  --road-major: #273a45;
+  --ink: #dbe6e2;
+  --ink-soft: #9fb3ad;
+  --halo: #131f26;
+  --water-text: #6f98a2;
+  --paper: #101a21;
+  --card: #1a2830;
+  --card-line: #26363f;
+  --accent: #2fae8a;
+  --hill-shadow: #070e13;
+  --hill-light: #1e3944;
+  --hull: #d9d3c2;
+  --cabin: #0e5544;
+  --win: #ffcf7a;
+  --stack: #8f4433;
+  --wake: #7fd8b8;
+}
+
+:root {
+  /* Status colors - reserved for status meaning, never decorative. */
+  --st-ontime-bg: #dff0e6;
+  --st-ontime-fg: #106648;
+  --st-delay-bg: #fce8cf;
+  --st-delay-fg: #8a5310;
+  --st-boarding-bg: #e3eaf9;
+  --st-boarding-fg: #33508f;
+  --alert-edge: #e8a13c;
+}
