@@ -180,3 +180,9 @@ html[data-mode="night"] .vm :global(svg) {
 :global(.z-lo) .vm :global(.wake) {
   width: 26px;
 }
+
+/* Moored-cluster declutter: companions render sprite-only (see cluster.ts). */
+.vm:global(.lbl-off) :global(.nm),
+.vm:global(.lbl-off) :global(.st) {
+  display: none;
+}

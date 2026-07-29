@@ -8,6 +8,7 @@ import maplibregl, { type Map as MLMap, type Marker } from "maplibre-gl";
 import { STALE_S } from "@/config";
 import type { VesselFix, VesselState } from "@/lib/data/types";
 import { asOf, soundClock } from "@/lib/time/sound-time";
+import { planMooredLabels } from "./cluster";
 import { FERRY_SVG } from "./ferry-svg";
 import { GlideLoop } from "./interpolate";
 
@@ -56,6 +57,7 @@ export class VesselMarkerPool {
     const gap = this.lastSnapshotAt ? Math.min(now - this.lastSnapshotAt, 20_000) : 0;
     this.lastSnapshotAt = now;
     const seen = new Set<number>();
+    const labels = planMooredLabels(vessels);
 
     for (const fix of vessels) {
       seen.add(fix.id);
@@ -66,7 +68,7 @@ export class VesselMarkerPool {
         this.handles.set(fix.id, handle);
       }
       handle.missedSnapshots = 0;
-      this.updateState(handle, fix, state);
+      this.updateState(handle, fix, state, labels.hidden.has(fix.id), labels.companions.get(fix.id) ?? 0);
 
       if (state === "stale") {
         this.glides.cancel(fix.id); // frozen at last position, never live
@@ -139,7 +141,17 @@ export class VesselMarkerPool {
     return { marker, el, nameEl, statusEl, flip: false, lat: fix.lat, lon: fix.lon, missedSnapshots: 0 };
   }
 
-  private updateState(handle: Handle, fix: VesselFix, state: VesselState): void {
+  private updateState(
+    handle: Handle,
+    fix: VesselFix,
+    state: VesselState,
+    labelHidden: boolean,
+    companions: number,
+  ): void {
+    handle.el.classList.toggle("lbl-off", labelHidden);
+    const nameText = companions > 0 ? `${fix.name} +${companions}` : fix.name;
+    if (nameText !== handle.nameEl.textContent) handle.nameEl.textContent = nameText;
+
     if (handle.lastState !== state) {
       handle.el.classList.toggle("moving", state === "underway" && fix.speed >= MOVING_KN);
       handle.el.classList.toggle("muted", state === "yard");
