@@ -128,6 +128,22 @@ resource "aws_cloudfront_distribution" "site" {
     origin_access_control_id = aws_cloudfront_origin_access_control.site.id
   }
 
+  dynamic "origin" {
+    for_each = var.tiles_origin_domain == null ? [] : [var.tiles_origin_domain]
+
+    content {
+      origin_id   = "tiles-fallback"
+      domain_name = origin.value
+
+      custom_origin_config {
+        http_port              = 80
+        https_port             = 443
+        origin_protocol_policy = "https-only"
+        origin_ssl_protocols   = ["TLSv1.2"]
+      }
+    }
+  }
+
   default_cache_behavior {
     target_origin_id           = "web"
     viewer_protocol_policy     = "redirect-to-https"
@@ -165,6 +181,21 @@ resource "aws_cloudfront_distribution" "site" {
     compress                   = true
     cache_policy_id            = aws_cloudfront_cache_policy.data_short.id
     response_headers_policy_id = aws_cloudfront_response_headers_policy.data_cors.id
+  }
+
+  dynamic "ordered_cache_behavior" {
+    for_each = var.tiles_origin_domain == null ? [] : [1]
+
+    content {
+      path_pattern               = "/tiles/*"
+      target_origin_id           = "tiles-fallback"
+      viewer_protocol_policy     = "redirect-to-https"
+      allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+      cached_methods             = ["GET", "HEAD"]
+      compress                   = true
+      cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
+      response_headers_policy_id = aws_cloudfront_response_headers_policy.data_cors.id
+    }
   }
 
   ordered_cache_behavior {
