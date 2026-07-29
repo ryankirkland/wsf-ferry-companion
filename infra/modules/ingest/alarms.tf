@@ -1,0 +1,88 @@
+# Five alarms, all inside the 10-free tier; every one notifies the shared
+# SNS topic. Handled upstream failures surface through custom EMF metrics;
+# Lambda Errors is reserved for actual bugs.
+
+# THE SLO alarm: no successful poll for 5 consecutive minutes. Missing data
+# breaches, so a dead Lambda, a broken schedule, and an upstream outage all
+# look identical - which is the point.
+resource "aws_cloudwatch_metric_alarm" "poller_gap" {
+  alarm_name          = "wsf-prod-poller-gap"
+  alarm_description   = "No successful vessellocations poll in 5 minutes (SLO: no realtime gap > 5 min)."
+  namespace           = "WSF/Ingest"
+  metric_name         = "PollSuccess"
+  statistic           = "Sum"
+  period              = 60
+  evaluation_periods  = 5
+  threshold           = 1
+  comparison_operator = "LessThanThreshold"
+  treat_missing_data  = "breaching"
+  alarm_actions       = [var.alarms_topic_arn]
+  ok_actions          = [var.alarms_topic_arn]
+}
+
+# The auth canary: HTTP 400 + Message is this API's only auth-failure
+# signature (no 401/403 exists - verified 2026-07-24).
+resource "aws_cloudwatch_metric_alarm" "auth_failure" {
+  alarm_name          = "wsf-prod-auth-failure"
+  alarm_description   = "Upstream returned the 400+Message auth-failure signature."
+  namespace           = "WSF/Ingest"
+  metric_name         = "AuthFailure"
+  statistic           = "Sum"
+  period              = 60
+  evaluation_periods  = 1
+  threshold           = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [var.alarms_topic_arn]
+}
+
+# 200 + [] is a failure signature to alarm on, never to retry-storm.
+resource "aws_cloudwatch_metric_alarm" "empty_fleet" {
+  alarm_name          = "wsf-prod-empty-fleet"
+  alarm_description   = "Upstream served an empty vessel list for 3 consecutive minutes."
+  namespace           = "WSF/Ingest"
+  metric_name         = "EmptyFleet"
+  statistic           = "Sum"
+  period              = 60
+  evaluation_periods  = 3
+  threshold           = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [var.alarms_topic_arn]
+}
+
+resource "aws_cloudwatch_metric_alarm" "poller_errors" {
+  alarm_name          = "wsf-prod-poller-errors"
+  alarm_description   = "Unhandled exception in the poller (bugs only - handled failures use WSF/Ingest metrics)."
+  namespace           = "AWS/Lambda"
+  metric_name         = "Errors"
+  statistic           = "Sum"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [var.alarms_topic_arn]
+
+  dimensions = {
+    FunctionName = aws_lambda_function.poller.function_name
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "dims_errors" {
+  alarm_name          = "wsf-prod-dims-errors"
+  alarm_description   = "Unhandled exception in the dims refresher."
+  namespace           = "AWS/Lambda"
+  metric_name         = "Errors"
+  statistic           = "Sum"
+  period              = 3600
+  evaluation_periods  = 1
+  threshold           = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [var.alarms_topic_arn]
+
+  dimensions = {
+    FunctionName = aws_lambda_function.dims.function_name
+  }
+}

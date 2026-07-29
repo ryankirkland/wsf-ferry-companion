@@ -9,3 +9,9 @@ variable "domain_name" {
   type        = string
   default     = "ferrysound.com"
 }
+
+variable "alarm_email" {
+  description = "Email receiving operational alarms (SNS subscription needs one-time confirmation)."
+  type        = string
+  default     = "ryankirkland.py@gmail.com"
+}
