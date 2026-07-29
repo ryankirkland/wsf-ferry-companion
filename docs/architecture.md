@@ -5,7 +5,7 @@ Living document - updated every time deployed infrastructure changes
 (serverless lakehouse), [ADR-0003](adr/0003-tile-hosting.md) (tiles),
 [ADR-0004](adr/0004-state-backend-and-ci.md) (state + CI).
 
-## Deployed today (M0 skeleton + M1 data path + M1 web)
+## Deployed today (M0 skeleton + M1 map + M2 trip planner)
 
 ```mermaid
 flowchart LR
@@ -15,6 +15,9 @@ flowchart LR
     subgraph ingest [Ingestion - live]
         EB[EventBridge Scheduler<br/>1 min + 15 min] --> POLL[Lambda poller<br/>4x15s loop]
         EB --> DIMS[Lambda dims refresher<br/>cacheflushdate-gated]
+        EB --> SCHED[Lambda schedule refresher<br/>token + horizon gated, 15 min]
+        EB --> AL[Lambda alerts poller<br/>watermark-gated, 1 min]
+        AL -- "on change: today-refresh" --> SCHED
     end
 
     subgraph usw2 [AWS us-west-2]
@@ -35,10 +38,17 @@ flowchart LR
 
     WSF --> POLL
     WSF --> DIMS
+    WSF --> SCHED
+    WSF --> AL
     POLL --> DDB
     POLL --> RAW
     POLL -- every poll --> DATA
     DIMS --> DATA
+    SCHED --> DDB
+    SCHED --> RAW
+    SCHED -- "pairs index + 532 day files + fares" --> DATA
+    AL --> RAW
+    AL -- alerts.json --> DATA
     U -- HTTPS --> CF
     CF -- default --> WEB
     CF -- "/data/* (5s TTL)" --> DATA
@@ -51,16 +61,20 @@ flowchart LR
 The web app (ferrysound.com): Next.js static export, MapLibre GL on the
 forked positron style (self-hosted at `/assets/style/positron-v1.json`),
 fleet polled from `/data/fleet.json` every ~12 s, four vessel states,
-`/ambient` wall mode with wake lock + daily reload. Deploys via
-`web-deploy.yml` two-pass sync + invalidation. Tiles come from the
-OpenFreeMap public instance; the PMTiles fallback behind `/tiles/*` is the
-tested escape hatch (ADR-0003 as amended).
+`/ambient` wall mode with wake lock + daily reload, and the M2 trip
+planner: `/trip` picker + 38 pre-rendered pair pages joining the fleet
+snapshot to pair-day files client-side (ADR-0005 - no API in the hot
+path). Deploys via `web-deploy.yml` two-pass sync + invalidation. Tiles
+come from the OpenFreeMap public instance; the PMTiles fallback behind
+`/tiles/*` is the tested escape hatch (ADR-0003 as amended).
 
-Alarms: poller-gap (the SLO alarm), auth-failure (400+Message canary),
-empty-fleet, two Lambda-error alarms - all to the `wsf-prod-alarms` SNS
-topic. Account-level (bootstrap stack): Terraform state bucket with native
-lockfile, GitHub OIDC provider, plan/apply CI roles, $15 budget with three
-email notifications.
+Alarms (8 of 10 free): poller-gap (the SLO alarm), auth-failure
+(400+Message canary), empty-fleet, three Lambda-error alarms,
+schedule-refresh-errors, pairs-stale (PairDatesPublished, 24 hourly
+buckets) - all to the `wsf-prod-alarms` SNS topic. Account-level
+(bootstrap stack): Terraform state bucket with native lockfile, GitHub
+OIDC provider, plan/apply CI roles, $15 budget with three email
+notifications.
 
 ## Product data model (ERD start - grows with each milestone)
 
@@ -70,14 +84,24 @@ email notifications.
 |---|---|---|---|
 | Fleet position (21) | `FLEET` | `VESSEL#0038` (zero-padded VesselID) | name, lat/lon/speed/heading (N), at_dock, in_service, state, terminals, eta/left/sched ISO strings, source_ts, fetched_at |
 | Poll health | `META` | `POLLER#vessellocations` | last_success/attempt, polls ok/failed, last_error |
-| Dim refresh tokens | `META` | `CACHEFLUSH#vessels\|terminals` | opaque cacheflushdate token |
-| M2 departures (planned) | `PAIR#0007#0003` | `DEP#<iso>` | TTL via `expires_at` |
+| Refresh tokens | `META` | `CACHEFLUSH#vessels\|terminals\|schedule\|fares` | opaque cacheflushdate token |
+| Pairs horizon | `META` | `HORIZON#pairs` | last published horizon window |
+| Alerts watermark | `META` | `ALERTS#watermark` | `maxid:maxms` change gate |
+| Departures, today+tomorrow (M2) | `PAIR#0007#0003` | `DEP#<iso>` | vessel, depart_ms; TTL `expires_at` = depart + 6 h; M3's alert-evaluator Query substrate |
 | M3 alerts (planned) | `ALERTS` / `USER#<sub>` | `BULLETIN#` / `SUB#<route>` | Streams fan-out |
 
 **Public snapshot contract** (`/data/fleet.json`, versioned `"v": 1`, ADR-0005):
 `generated_at` + per vessel `{id, name, lat, lon, speed, heading, state[underway|docked|yard|stale], insvc, age_s, dep, arr, left, eta, eta_basis, sched, routes, pos}`.
 Dims: `/data/vessels.json` (class/capacity/years), `/data/terminals.json`
 (20 real + synthetic Eagle Harbor 122).
+
+**M2 trip contracts** (all `"v": 1`, ADR-0005 extension; details in
+[trip-planner.md](features/trip-planner.md)): `/data/pairs/index.json`
+(38 pairs + horizon), `/data/pairs/{dep}-{arr}/{date}.json` (14-day
+window, `depart_ms` = the verified fleet join key),
+`/data/fares/{dep}-{arr}.json` (LineItemLookup-resolved),
+`/data/alerts.json` (watermarked). Pair-day files expire from the bucket
+after 30 days.
 
 **Raw archive** (`wsf-prod-raw-*`): `raw/<dataset>/dt=YYYY-MM-DD/HHMM.ndjson.gz`
 partitioned by fetch-time UTC; the replayable ground truth for M4.

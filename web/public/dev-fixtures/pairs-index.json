@@ -1,0 +1,527 @@
+{
+ "v": 1,
+ "generated_at": "2026-07-29T19:19:32.628460Z",
+ "schedule_id": 196,
+ "schedule_name": "Summer 2026",
+ "horizon": {
+  "from": "2026-07-29",
+  "to": "2026-08-11"
+ },
+ "terminals": [
+  {
+   "id": 1,
+   "name": "Anacortes",
+   "slug": "anacortes"
+  },
+  {
+   "id": 3,
+   "name": "Bainbridge Island",
+   "slug": "bainbridge-island"
+  },
+  {
+   "id": 4,
+   "name": "Bremerton",
+   "slug": "bremerton"
+  },
+  {
+   "id": 5,
+   "name": "Clinton",
+   "slug": "clinton"
+  },
+  {
+   "id": 7,
+   "name": "Seattle",
+   "slug": "seattle"
+  },
+  {
+   "id": 8,
+   "name": "Edmonds",
+   "slug": "edmonds"
+  },
+  {
+   "id": 9,
+   "name": "Fauntleroy",
+   "slug": "fauntleroy"
+  },
+  {
+   "id": 10,
+   "name": "Friday Harbor",
+   "slug": "friday-harbor"
+  },
+  {
+   "id": 11,
+   "name": "Coupeville",
+   "slug": "coupeville"
+  },
+  {
+   "id": 12,
+   "name": "Kingston",
+   "slug": "kingston"
+  },
+  {
+   "id": 13,
+   "name": "Lopez Island",
+   "slug": "lopez-island"
+  },
+  {
+   "id": 14,
+   "name": "Mukilteo",
+   "slug": "mukilteo"
+  },
+  {
+   "id": 15,
+   "name": "Orcas Island",
+   "slug": "orcas-island"
+  },
+  {
+   "id": 16,
+   "name": "Point Defiance",
+   "slug": "point-defiance"
+  },
+  {
+   "id": 17,
+   "name": "Port Townsend",
+   "slug": "port-townsend"
+  },
+  {
+   "id": 18,
+   "name": "Shaw Island",
+   "slug": "shaw-island"
+  },
+  {
+   "id": 20,
+   "name": "Southworth",
+   "slug": "southworth"
+  },
+  {
+   "id": 21,
+   "name": "Tahlequah",
+   "slug": "tahlequah"
+  },
+  {
+   "id": 22,
+   "name": "Vashon Island",
+   "slug": "vashon-island"
+  }
+ ],
+ "pairs": [
+  {
+   "dep": 1,
+   "arr": 10,
+   "dep_name": "Anacortes",
+   "arr_name": "Friday Harbor",
+   "slug": "anacortes-friday-harbor",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 1,
+   "arr": 13,
+   "dep_name": "Anacortes",
+   "arr_name": "Lopez Island",
+   "slug": "anacortes-lopez-island",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 1,
+   "arr": 15,
+   "dep_name": "Anacortes",
+   "arr_name": "Orcas Island",
+   "slug": "anacortes-orcas-island",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 1,
+   "arr": 18,
+   "dep_name": "Anacortes",
+   "arr_name": "Shaw Island",
+   "slug": "anacortes-shaw-island",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 3,
+   "arr": 7,
+   "dep_name": "Bainbridge Island",
+   "arr_name": "Seattle",
+   "slug": "bainbridge-island-seattle",
+   "route_id": 5,
+   "crossing_min": 35,
+   "reservable": false,
+   "passenger_only": false
+  },
+  {
+   "dep": 4,
+   "arr": 7,
+   "dep_name": "Bremerton",
+   "arr_name": "Seattle",
+   "slug": "bremerton-seattle",
+   "route_id": 3,
+   "crossing_min": 60,
+   "reservable": false,
+   "passenger_only": false
+  },
+  {
+   "dep": 5,
+   "arr": 14,
+   "dep_name": "Clinton",
+   "arr_name": "Mukilteo",
+   "slug": "clinton-mukilteo",
+   "route_id": 7,
+   "crossing_min": 20,
+   "reservable": false,
+   "passenger_only": false
+  },
+  {
+   "dep": 11,
+   "arr": 17,
+   "dep_name": "Coupeville",
+   "arr_name": "Port Townsend",
+   "slug": "coupeville-port-townsend",
+   "route_id": 8,
+   "crossing_min": 35,
+   "reservable": true,
+   "passenger_only": true
+  },
+  {
+   "dep": 8,
+   "arr": 12,
+   "dep_name": "Edmonds",
+   "arr_name": "Kingston",
+   "slug": "edmonds-kingston",
+   "route_id": 6,
+   "crossing_min": 30,
+   "reservable": false,
+   "passenger_only": false
+  },
+  {
+   "dep": 9,
+   "arr": 20,
+   "dep_name": "Fauntleroy",
+   "arr_name": "Southworth",
+   "slug": "fauntleroy-southworth",
+   "route_id": 13,
+   "crossing_min": 40,
+   "reservable": false,
+   "passenger_only": false
+  },
+  {
+   "dep": 9,
+   "arr": 22,
+   "dep_name": "Fauntleroy",
+   "arr_name": "Vashon Island",
+   "slug": "fauntleroy-vashon-island",
+   "route_id": 14,
+   "crossing_min": 20,
+   "reservable": false,
+   "passenger_only": false
+  },
+  {
+   "dep": 10,
+   "arr": 1,
+   "dep_name": "Friday Harbor",
+   "arr_name": "Anacortes",
+   "slug": "friday-harbor-anacortes",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 10,
+   "arr": 13,
+   "dep_name": "Friday Harbor",
+   "arr_name": "Lopez Island",
+   "slug": "friday-harbor-lopez-island",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 10,
+   "arr": 15,
+   "dep_name": "Friday Harbor",
+   "arr_name": "Orcas Island",
+   "slug": "friday-harbor-orcas-island",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 10,
+   "arr": 18,
+   "dep_name": "Friday Harbor",
+   "arr_name": "Shaw Island",
+   "slug": "friday-harbor-shaw-island",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 12,
+   "arr": 8,
+   "dep_name": "Kingston",
+   "arr_name": "Edmonds",
+   "slug": "kingston-edmonds",
+   "route_id": 6,
+   "crossing_min": 30,
+   "reservable": false,
+   "passenger_only": false
+  },
+  {
+   "dep": 13,
+   "arr": 1,
+   "dep_name": "Lopez Island",
+   "arr_name": "Anacortes",
+   "slug": "lopez-island-anacortes",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 13,
+   "arr": 10,
+   "dep_name": "Lopez Island",
+   "arr_name": "Friday Harbor",
+   "slug": "lopez-island-friday-harbor",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 13,
+   "arr": 15,
+   "dep_name": "Lopez Island",
+   "arr_name": "Orcas Island",
+   "slug": "lopez-island-orcas-island",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 13,
+   "arr": 18,
+   "dep_name": "Lopez Island",
+   "arr_name": "Shaw Island",
+   "slug": "lopez-island-shaw-island",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 14,
+   "arr": 5,
+   "dep_name": "Mukilteo",
+   "arr_name": "Clinton",
+   "slug": "mukilteo-clinton",
+   "route_id": 7,
+   "crossing_min": 20,
+   "reservable": false,
+   "passenger_only": false
+  },
+  {
+   "dep": 15,
+   "arr": 1,
+   "dep_name": "Orcas Island",
+   "arr_name": "Anacortes",
+   "slug": "orcas-island-anacortes",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 15,
+   "arr": 10,
+   "dep_name": "Orcas Island",
+   "arr_name": "Friday Harbor",
+   "slug": "orcas-island-friday-harbor",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 15,
+   "arr": 13,
+   "dep_name": "Orcas Island",
+   "arr_name": "Lopez Island",
+   "slug": "orcas-island-lopez-island",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 15,
+   "arr": 18,
+   "dep_name": "Orcas Island",
+   "arr_name": "Shaw Island",
+   "slug": "orcas-island-shaw-island",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 16,
+   "arr": 21,
+   "dep_name": "Point Defiance",
+   "arr_name": "Tahlequah",
+   "slug": "point-defiance-tahlequah",
+   "route_id": 1,
+   "crossing_min": 15,
+   "reservable": false,
+   "passenger_only": false
+  },
+  {
+   "dep": 17,
+   "arr": 11,
+   "dep_name": "Port Townsend",
+   "arr_name": "Coupeville",
+   "slug": "port-townsend-coupeville",
+   "route_id": 8,
+   "crossing_min": 35,
+   "reservable": true,
+   "passenger_only": true
+  },
+  {
+   "dep": 7,
+   "arr": 3,
+   "dep_name": "Seattle",
+   "arr_name": "Bainbridge Island",
+   "slug": "seattle-bainbridge-island",
+   "route_id": 5,
+   "crossing_min": 35,
+   "reservable": false,
+   "passenger_only": false
+  },
+  {
+   "dep": 7,
+   "arr": 4,
+   "dep_name": "Seattle",
+   "arr_name": "Bremerton",
+   "slug": "seattle-bremerton",
+   "route_id": 3,
+   "crossing_min": 60,
+   "reservable": false,
+   "passenger_only": false
+  },
+  {
+   "dep": 18,
+   "arr": 1,
+   "dep_name": "Shaw Island",
+   "arr_name": "Anacortes",
+   "slug": "shaw-island-anacortes",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 18,
+   "arr": 10,
+   "dep_name": "Shaw Island",
+   "arr_name": "Friday Harbor",
+   "slug": "shaw-island-friday-harbor",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 18,
+   "arr": 13,
+   "dep_name": "Shaw Island",
+   "arr_name": "Lopez Island",
+   "slug": "shaw-island-lopez-island",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 18,
+   "arr": 15,
+   "dep_name": "Shaw Island",
+   "arr_name": "Orcas Island",
+   "slug": "shaw-island-orcas-island",
+   "route_id": 9,
+   "crossing_min": null,
+   "reservable": true,
+   "passenger_only": false
+  },
+  {
+   "dep": 20,
+   "arr": 9,
+   "dep_name": "Southworth",
+   "arr_name": "Fauntleroy",
+   "slug": "southworth-fauntleroy",
+   "route_id": 13,
+   "crossing_min": 40,
+   "reservable": false,
+   "passenger_only": false
+  },
+  {
+   "dep": 20,
+   "arr": 22,
+   "dep_name": "Southworth",
+   "arr_name": "Vashon Island",
+   "slug": "southworth-vashon-island",
+   "route_id": 15,
+   "crossing_min": 10,
+   "reservable": false,
+   "passenger_only": false
+  },
+  {
+   "dep": 21,
+   "arr": 16,
+   "dep_name": "Tahlequah",
+   "arr_name": "Point Defiance",
+   "slug": "tahlequah-point-defiance",
+   "route_id": 1,
+   "crossing_min": 15,
+   "reservable": false,
+   "passenger_only": false
+  },
+  {
+   "dep": 22,
+   "arr": 9,
+   "dep_name": "Vashon Island",
+   "arr_name": "Fauntleroy",
+   "slug": "vashon-island-fauntleroy",
+   "route_id": 14,
+   "crossing_min": 20,
+   "reservable": false,
+   "passenger_only": false
+  },
+  {
+   "dep": 22,
+   "arr": 20,
+   "dep_name": "Vashon Island",
+   "arr_name": "Southworth",
+   "slug": "vashon-island-southworth",
+   "route_id": 15,
+   "crossing_min": 10,
+   "reservable": false,
+   "passenger_only": false
+  }
+ ]
+}

@@ -66,16 +66,67 @@ drops same-day-cancelled sailings). `wsf-prod-ingest-alerts` (1 min,
 watermark-gated, triggers today-refresh). PAIR# DynamoDB items for
 today+tomorrow (M3's evaluator substrate; expires_at = depart+6h).
 
+## Frontend (M2)
+
+38 pre-rendered pages `/trip/{dep-slug}-{arr-slug}` (generateStaticParams +
+`dynamicParams=false`; junk slugs are real 404s) plus a `/trip` picker whose
+To-list only offers real mates. The slug map `web/src/lib/trip/pairs.ts` is
+GENERATED from the live index by `tools/fixtures/build-trip-fixture.mjs`;
+a vitest drift test compares it against the checked-in index fixture - WSF
+adding/dropping a pair fails CI and the regeneration script is the fix.
+
+Page anatomy: pair header (swap link, crossing badge) -> route-matched
+alert banner (the same-day-truth surface) -> answer line ("Next boat:
+5:30 PM - leaves in 42 min · Wenatchee is at the dock") -> departures with
+signal pills (earlier sailings collapsed) -> 14-chip date strip (`?date=`
+bounded today..+13, out-of-range clamps with an honest note) -> collapsible
+fares panel (basic 13 default, honest effective label).
+
+Signal engine (`lib/trip/signal.ts`, pure, exhaustively table-tested):
+states cancelled / departed / gone / boarding / late-start / leaving-now /
+tight / comfortable / no-signal, joined to the fleet snapshot on
+`Date.parse(fix.sched) === sailing.depart_ms`. Honesty rules baked in:
+stale fixes are discarded, never dressed as live; the -3..0 min window
+with no fix reads "no live signal" rather than guessing; departure deltas
+render only within 1-120 min plausibility; countdowns beyond 120 min
+switch to clock time. Thresholds (green >25, amber 10-25, red <=10) live
+in `web/src/config.ts`.
+
+Day view (`lib/trip/day.ts`): before 3 AM Sound time yesterday's
+`after_midnight` tail merges in (dedup on vessel_id+depart_ms), covering
+the ~1 h upstream server-day lag when today's file may not exist yet.
+Matched cancels strike rows with a reason; unpinnable ones surface as
+day-level notes. Empty/exhausted days show tomorrow's first sailings.
+
+Dev fixtures re-time a real pair-day around load time via a placeholder
+grammar (`%%MS±n%%`), so every signal band renders at once in dev and in
+`tests/e2e/trip.spec.ts` without waiting for real boats.
+
 ## Probe results
 
 - Annotations elements: **plain strings**, positionally indexed
   (fauntleroy-vashon live probe 2026-07-29: "Via Southworth, crossing time
   45 minutes."). Defensive resolver retained.
+- routedetails.PassengerOnlyFlag is upstream-false for RouteID 8
+  (pt-key): the route sells vehicle fares. Suppressed via
+  `wsf_core.quirks.FALSE_PASSENGER_ONLY_ROUTE_IDS` (found 2026-07-29 when
+  the live trip page badged a car ferry "Passengers only").
+- Advance-published tidal cancels are ALREADY dropped from
+  `/schedule/{date}` Times (Aug-10 pt-coupeville, observed live
+  2026-07-29): the matched cancel can't pin a row, so it surfaces as the
+  day-level note - both the strike-through path (row present) and the
+  note path (row absent) are real, and both are E2E-tested.
 - LoadingRule 1/2: pending first production sweep of 532 pair-dates.
 - Schedule-drops-cancellations: pending the next real disruption (the
   today-refresh diff auto-archives evidence).
 
 ## Status
 
-- D1 (wsf-core modules, 400-fix, sentinel parser, resolver, corrections):
-  in progress 2026-07-29.
+- Backend live since 2026-07-29 (PRs #22-#25): all four /data contracts
+  serving, 8 alarms OK, PAIR# items queryable, ~+$0.16/mo.
+- Frontend built + E2E-tested 2026-07-29 (PR #26): 38 pair pages + picker,
+  signal engine, fares, alerts, date browsing. Two live-caught fixes in
+  the same PR (late-start window guard, PassengerOnlyFlag quirk).
+- Remaining for M2 exit: <10 s answer measured on a phone against
+  production; LoadingRule and schedule-drops-cancellation probes settle
+  on their own instruments.

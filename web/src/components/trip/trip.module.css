@@ -1,0 +1,521 @@
+/* Trip planner surfaces - Paper Sound on a reading column. Every color
+ * rides the mode tokens; signal tones get their own trio tuned to sit on
+ * --card in all three modes. */
+
+.page {
+  min-height: 100dvh;
+  background: var(--paper);
+  color: var(--ink);
+  padding-bottom: 4rem;
+}
+
+.column {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* ---- header ---- */
+
+.masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 0;
+}
+
+.wordmark {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.wordmark span {
+  color: var(--accent);
+}
+
+.pairTitle {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.15;
+  margin: 0.2rem 0 0.15rem;
+}
+
+.pairMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  margin-bottom: 0.9rem;
+}
+
+.swap {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+  border: 1px solid var(--card-line);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  background: var(--card);
+}
+
+.badge {
+  border: 1px solid var(--card-line);
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  background: var(--card);
+  font-size: 0.75rem;
+}
+
+/* ---- alert banner ---- */
+
+.alertBanner {
+  border: 1px solid color-mix(in srgb, var(--stack) 45%, var(--card-line));
+  border-left: 4px solid var(--stack);
+  background: color-mix(in srgb, var(--stack) 7%, var(--card));
+  border-radius: 0.6rem;
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.alertSummary {
+  cursor: pointer;
+  font-weight: 650;
+  list-style: none;
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.alertSummary::-webkit-details-marker {
+  display: none;
+}
+
+.alertCount {
+  color: var(--ink-soft);
+  font-weight: 400;
+  font-size: 0.8rem;
+}
+
+.alertBody {
+  margin-top: 0.55rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.alertItem h4 {
+  margin: 0 0 0.2rem;
+  font-size: 0.88rem;
+}
+
+.alertItem p {
+  margin: 0;
+  color: var(--ink-soft);
+  white-space: pre-line;
+  font-size: 0.84rem;
+}
+
+/* ---- answer line ---- */
+
+.answer {
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 0.8rem;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.1rem;
+  box-shadow: 0 1px 6px color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.answerKicker {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  margin-bottom: 0.15rem;
+}
+
+.answerMain {
+  font-size: 1.45rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.answerDetail {
+  margin-top: 0.25rem;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+}
+
+/* ---- departures ---- */
+
+.dayNotes {
+  margin: 0 0 0.8rem;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.dayNotes li {
+  font-size: 0.84rem;
+  color: var(--ink-soft);
+  border-left: 3px solid var(--stack);
+  padding-left: 0.6rem;
+}
+
+.list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.earlier {
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.2rem 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.35rem 0.9rem;
+  align-items: baseline;
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 0.7rem;
+  padding: 0.6rem 0.85rem;
+}
+
+.rowPast {
+  opacity: 0.62;
+}
+
+.rowCancelled .time,
+.rowCancelled .vessel {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--stack);
+}
+
+.time {
+  font-size: 1.15rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.vesselCell {
+  min-width: 0;
+}
+
+.vessel {
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.vessel:hover {
+  color: var(--accent);
+}
+
+.liveDot {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-right: 0.3rem;
+  vertical-align: 0.05rem;
+}
+
+.rowMeta {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+}
+
+.arrives {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
+.reason {
+  color: var(--stack);
+  font-weight: 600;
+}
+
+/* ---- signal pill ---- */
+
+.pill {
+  border-radius: 999px;
+  padding: 0.18rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  white-space: nowrap;
+  justify-self: end;
+}
+
+.pillGreen {
+  background: color-mix(in srgb, var(--accent) 14%, var(--card));
+  color: var(--accent);
+}
+
+.pillAmber {
+  background: color-mix(in srgb, #b07d2a 16%, var(--card));
+  color: #96691f;
+}
+
+.pillRed {
+  background: color-mix(in srgb, var(--stack) 16%, var(--card));
+  color: color-mix(in srgb, var(--stack) 80%, var(--ink));
+}
+
+.pillMuted {
+  background: color-mix(in srgb, var(--ink-soft) 12%, var(--card));
+  color: var(--ink-soft);
+}
+
+.pillNeutral {
+  border: 1px dashed var(--card-line);
+  color: var(--ink-soft);
+}
+
+/* ---- empty day ---- */
+
+.emptyDay {
+  background: var(--card);
+  border: 1px dashed var(--card-line);
+  border-radius: 0.8rem;
+  padding: 1.1rem;
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.emptyDay h3 {
+  margin: 0 0 0.3rem;
+  color: var(--ink);
+}
+
+.tomorrowPeek {
+  margin-top: 0.7rem;
+  display: grid;
+  gap: 0.3rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- date strip ---- */
+
+.dateStrip {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding: 1rem 0 0.4rem;
+  scrollbar-width: none;
+}
+
+.dateStrip::-webkit-scrollbar {
+  display: none;
+}
+
+.dateChip {
+  flex: 0 0 auto;
+  border: 1px solid var(--card-line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0.3rem 0.75rem;
+  cursor: pointer;
+}
+
+.dateChipActive {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--card);
+  font-weight: 700;
+}
+
+.rangeNote {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  margin: 0.3rem 0 0;
+}
+
+/* ---- fares ---- */
+
+.fares {
+  margin-top: 1.2rem;
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 0.8rem;
+  padding: 0.75rem 0.9rem;
+}
+
+.faresSummary {
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.faresSummary::-webkit-details-marker {
+  display: none;
+}
+
+.faresHint {
+  color: var(--ink-soft);
+  font-weight: 400;
+  font-size: 0.85rem;
+}
+
+.faresToggle {
+  display: inline-flex;
+  border: 1px solid var(--card-line);
+  border-radius: 999px;
+  margin: 0.7rem 0 0.5rem;
+  overflow: hidden;
+}
+
+.faresToggle button {
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.8rem;
+  cursor: pointer;
+}
+
+.faresToggle .toggleActive {
+  background: var(--accent);
+  color: var(--card);
+  font-weight: 650;
+}
+
+.fareTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.fareTable td {
+  padding: 0.32rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--card-line) 55%, transparent);
+}
+
+.fareTable td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.fareCategory {
+  color: var(--ink-soft);
+  font-size: 0.74rem;
+  display: block;
+}
+
+.allFares {
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  padding: 0.4rem 0 0.1rem;
+  cursor: pointer;
+}
+
+.faresFooter {
+  margin-top: 0.6rem;
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+/* ---- picker (/trip) ---- */
+
+.picker {
+  display: grid;
+  gap: 0.9rem;
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 0.9rem;
+  padding: 1.2rem;
+  margin-top: 1rem;
+}
+
+.picker label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--ink-soft);
+}
+
+.picker select {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--card-line);
+  border-radius: 0.55rem;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.go {
+  border: none;
+  border-radius: 0.6rem;
+  background: var(--accent);
+  color: var(--card);
+  font: inherit;
+  font-weight: 750;
+  font-size: 1rem;
+  padding: 0.7rem;
+  cursor: pointer;
+}
+
+.go:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.yourRun {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 1rem;
+  border: 1px solid var(--card-line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.4rem 0.9rem;
+}
+
+.footNote {
+  margin-top: 1.6rem;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}

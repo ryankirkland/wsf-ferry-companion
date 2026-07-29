@@ -1,0 +1,118 @@
+{
+ "v": 1,
+ "generated_at": "2026-07-29T19:19:32.628460Z",
+ "pair": {
+  "dep": 7,
+  "arr": 3
+ },
+ "service_date": "%%TODAY%%",
+ "schedule_id": 196,
+ "crossing_min": 35,
+ "sailings": [
+  {
+   "depart": "%%ISO-95%%",
+   "depart_ms": "%%MS-95%%",
+   "vessel_id": 37,
+   "vessel": "Wenatchee",
+   "pos_num": 1,
+   "accessible": true,
+   "loading_rule": 3,
+   "after_midnight": false,
+   "added": false,
+   "notes": []
+  },
+  {
+   "depart": "%%ISO-40%%",
+   "depart_ms": "%%MS-40%%",
+   "vessel_id": 32,
+   "vessel": "Tacoma",
+   "pos_num": 2,
+   "accessible": true,
+   "loading_rule": 3,
+   "after_midnight": false,
+   "added": false,
+   "notes": []
+  },
+  {
+   "depart": "%%ISO-8%%",
+   "depart_ms": "%%MS-8%%",
+   "vessel_id": 37,
+   "vessel": "Wenatchee",
+   "pos_num": 1,
+   "accessible": true,
+   "loading_rule": 3,
+   "after_midnight": false,
+   "added": false,
+   "notes": []
+  },
+  {
+   "depart": "%%ISO6%%",
+   "depart_ms": "%%MS6%%",
+   "vessel_id": 32,
+   "vessel": "Tacoma",
+   "pos_num": 2,
+   "accessible": true,
+   "loading_rule": 3,
+   "after_midnight": false,
+   "added": false,
+   "notes": []
+  },
+  {
+   "depart": "%%ISO18%%",
+   "depart_ms": "%%MS18%%",
+   "vessel_id": 37,
+   "vessel": "Wenatchee",
+   "pos_num": 1,
+   "accessible": true,
+   "loading_rule": 3,
+   "after_midnight": false,
+   "added": false,
+   "notes": []
+  },
+  {
+   "depart": "%%ISO55%%",
+   "depart_ms": "%%MS55%%",
+   "vessel_id": 32,
+   "vessel": "Tacoma",
+   "pos_num": 2,
+   "accessible": true,
+   "loading_rule": 3,
+   "after_midnight": false,
+   "added": false,
+   "notes": []
+  },
+  {
+   "depart": "%%ISO130%%",
+   "depart_ms": "%%MS130%%",
+   "vessel_id": 37,
+   "vessel": "Wenatchee",
+   "pos_num": 1,
+   "accessible": true,
+   "loading_rule": 3,
+   "after_midnight": false,
+   "added": false,
+   "notes": []
+  },
+  {
+   "depart": "%%ISO210%%",
+   "depart_ms": "%%MS210%%",
+   "vessel_id": 32,
+   "vessel": "Tacoma",
+   "pos_num": 2,
+   "accessible": true,
+   "loading_rule": 3,
+   "after_midnight": false,
+   "added": false,
+   "notes": []
+  }
+ ],
+ "adjustments": [
+  {
+   "type": "cancel",
+   "time_local": "14:05",
+   "terminal_id": 7,
+   "tidal": true,
+   "matched": true
+  }
+ ]
+}

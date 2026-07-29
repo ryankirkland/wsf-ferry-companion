@@ -1,6 +1,10 @@
 # ADR-0005: Snapshot-on-S3 serving for the realtime map
 
 - **Status:** Accepted (2026-07-29)
+- **Amended (2026-07-29):** Extended by M2 to the trip planner - the same
+  pattern serves `/data/pairs/*`, `/data/fares/*`, and `/data/alerts.json`;
+  the make-it-or-miss-it join stays client-side. Contracts and rationale in
+  [trip-planner.md](../features/trip-planner.md).
 - **Context:** M1 needs a serving path for fleet positions. The defining load
   is the ambient wall display: one tab polling every ~12 s for 8-24 h/day is
   ~144k requests/month - per tab. The PRD requires freshness p95 <= 30 s
