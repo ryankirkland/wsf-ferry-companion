@@ -126,17 +126,24 @@ resource "aws_cloudwatch_metric_alarm" "alerts_poller_errors" {
 }
 
 # The trip-data equivalent of poller-gap: nothing published for a full day
-# means the token gating or the upstream feed is broken.
+# means the token gating or the upstream feed is broken. Expressed as 24
+# hourly buckets ALL empty (datapoints_to_alarm = 24): a normal day has one
+# bucket with data and 23 harmlessly missing; a single 86400 s period with
+# treat-missing-breaching fires spuriously on alarm creation and flaps on
+# sparse metrics (fired 2026-07-29 within minutes of being created, while
+# 532 freshly published files sat on S3).
 resource "aws_cloudwatch_metric_alarm" "pairs_stale" {
   alarm_name          = "wsf-prod-pairs-stale"
   alarm_description   = "No pair-date files published in 24 h (horizon should roll daily)."
   namespace           = "WSF/Ingest"
   metric_name         = "PairDatesPublished"
   statistic           = "Sum"
-  period              = 86400
-  evaluation_periods  = 1
+  period              = 3600
+  evaluation_periods  = 24
+  datapoints_to_alarm = 24
   threshold           = 1
   comparison_operator = "LessThanThreshold"
   treat_missing_data  = "breaching"
   alarm_actions       = [var.alarms_topic_arn]
+  ok_actions          = [var.alarms_topic_arn]
 }
