@@ -65,6 +65,21 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+
+      # The ingest Lambda artifact must exist before terraform evaluates
+      # filebase64sha256(): workspace packages as wheels, third-party deps as
+      # binary-only cross-compiled for the arm64 Lambda runtime, zipped
+      # deterministically so identical sources yield identical hashes.
+      - name: build ingest lambda artifact
+        run: |
+          uv build --wheel --package wsf-core --out-dir .build/wheels
+          uv build --wheel --package wsf-ingest --out-dir .build/wheels
+          uv pip install .build/wheels/*.whl --target .build/ingest-src \
+            --python-platform aarch64-manylinux2014 --python-version 3.12 \
+            --only-binary :all: --no-cache
+          python3 tools/build_lambda_zip.py .build/ingest-src infra/envs/prod/.build/ingest.zip
+
       - uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
         with:
           role-to-assume: arn:aws:iam::654654574183:role/wsf-github-plan
