@@ -35,4 +35,16 @@ resource "aws_budgets_budget" "monthly_ceiling" {
     threshold_type             = "PERCENTAGE"
     subscriber_email_addresses = [var.budget_email]
   }
+
+  # TEMPORARY delivery canary (M0 verification): current month spend already
+  # exceeds 0.1% of the limit, so this fires on the next budget evaluation
+  # (budgets evaluate several times daily) and proves the email path end to
+  # end. Removed in the day-2 close-out once the email arrives.
+  notification {
+    notification_type          = "ACTUAL"
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 0.1
+    threshold_type             = "PERCENTAGE"
+    subscriber_email_addresses = [var.budget_email]
+  }
 }
