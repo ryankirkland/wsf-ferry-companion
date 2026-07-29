@@ -29,11 +29,11 @@ This is also a portfolio flagship: pure-play AWS, infrastructure as code, and a 
 - No native iOS/Android apps (responsive web + PWA installability instead).
 - No coverage beyond Washington State Ferries (no BC Ferries, no water taxis).
 - No user-generated content (comments, reports, photos).
-- SMS alerts do not gate launch: they ship when US sender registration completes (started at M0).
+- No SMS alerts in v1 (deferred to v2): US carrier sender registration adds weeks of lead time, a compliance surface (opt-in proof, carrier-mandated privacy language), and fixed monthly cost for a channel email already covers. Revisit when real subscribers ask for it.
 
 ## 3. Personas
 
-1. **The commuter (primary).** Rides Seattle-Bainbridge or Mukilteo-Clinton daily. Wants: "next sailings for MY run, right now, with live make-it-or-miss-it truth" and a push/email/SMS nudge when the run degrades. Zero patience for stale data.
+1. **The commuter (primary).** Rides Seattle-Bainbridge or Mukilteo-Clinton daily. Wants: "next sailings for MY run, right now, with live make-it-or-miss-it truth" and an email or push nudge when the run degrades. Zero patience for stale data.
 2. **The ferry enthusiast / wall-display owner.** Loves the system, runs the ambient map on a spare monitor or wall tablet all day. Wants: beauty, motion, calm; glanceable state of the whole fleet; zero chrome.
 3. **The data-curious rider.** Asks "is the 4:40 always late?" and "which boat is the most reliable?" Wants: honest historical stats with real denominators (cancellations excluded), not vibes.
 
@@ -60,12 +60,12 @@ Live fleet positions on a map of Puget Sound: vessel markers with heading/speed,
 - Terminal pairs with no remaining sailings today say so plainly and show tomorrow's first sailings.
 
 ### F3. Delay and cancellation alerts
-Users subscribe to routes (or specific terminal pairs + time windows). When WSF signals a delay/cancellation affecting a subscription, we notify: **email (SES) and web push at launch; SMS (SNS) when sender registration completes.** Alert content is plain language: what happened, which sailings affected, current best estimate.
+Users subscribe to routes (or specific terminal pairs + time windows). When WSF signals a delay/cancellation affecting a subscription, we notify: **email (SES) at launch, web push next; SMS is v2** (see non-goals). Alert content is plain language: what happened, which sailings affected, current best estimate.
 
 *Acceptance criteria*
 - Delivery within the alert SLO from the time WSF's feed shows the alert.
 - No duplicate notifications for the same underlying event (updates to one event thread, not spam); per-user daily caps enforced.
-- Users manage subscriptions and channels themselves (verified email, push permission, SMS opt-in with STOP handling).
+- Users manage subscriptions and channels themselves (verified email, push permission).
 - Alert precision is measurable: every sent alert links to the source WSF bulletin.
 
 ### F4. On-time performance statistics
@@ -119,17 +119,16 @@ Single upstream: the **WSDOT/WSF Traveler Information API** (four REST sub-APIs:
 | Realtime feeds are current-state only | Poller downtime permanently loses positions/capacity history | Poller continuity SLO, gap monitoring, boring-reliable ingestion path |
 | Access code unenforced today, required by ToS | Silent enforcement change breaks ingestion | Always send code; canary alert on any 401/403 |
 | Source identity quirks (name-only joins, 1900-sentinel times, phantom terminal 122) | Silent data corruption if unhandled | Encode in one shared library with tests; quarantine unknown identities |
-| SMS sender registration lead time (weeks) | SMS channel delayed | Start 10DLC/toll-free registration at M0; launch email+push first |
 | Single maintainer | Ops burden, bus factor | Scale-to-zero architecture, alarms over dashboards, runbooks in docs/ |
 
 ## 9. Roadmap
 
 | Milestone | Delivers | Exit criteria |
 |---|---|---|
-| **M0 Foundations** | Repo/CI, exploration artifacts, ADR-0001 decided, Terraform skeleton + billing alarms, domain, SMS registration filed | `terraform apply` produces the walking skeleton; cost alarms live |
+| **M0 Foundations** | Repo/CI, exploration artifacts, ADR-0001 decided, Terraform skeleton + billing alarms, domain | `terraform apply` produces the walking skeleton; cost alarms live |
 | **M1 The Map** | F1 incl. ambient mode, on the real domain | A stranger calls it beautiful; ambient runs 24 h on a wall tablet |
 | **M2 Trip planner** | F2 schedules + fares | Commuter answers run-or-relax in <10 s |
-| **M3 Alerts** | F3 email+push (SMS when registration clears), Cognito auth | Real subscribers receive a real disruption within SLO |
+| **M3 Alerts** | F3 email+push, Cognito auth | Real subscribers receive a real disruption within SLO |
 | **M4 The Numbers** | F4 stats with 2012+ backfill, F5 capacity | Route pages answer "is my sailing usually late?" |
 
 Order rationale: the map first because it is the soul of the product and the design phase's proving ground; alerts before stats because real users rely on them; stats last because the backfill is valuable but nobody is waiting on it.
