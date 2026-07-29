@@ -7,6 +7,11 @@ from moto import mock_aws
 
 SAMPLES = Path(__file__).resolve().parents[3] / "api-exploration-wsdot-ferries" / "samples"
 
+
+def _load(name: str):
+    return json.loads((SAMPLES / name).read_text())
+
+
 TABLE = "wsf-test-hot"
 DATA_BUCKET = "wsf-test-data"
 RAW_BUCKET = "wsf-test-raw"
@@ -59,3 +64,24 @@ def aws(monkeypatch):
                 CreateBucketConfiguration={"LocationConstraint": "us-west-2"},
             )
         yield {"table": ddb.Table(TABLE), "s3": s3}
+
+
+@pytest.fixture(scope="session")
+def schedule_route_envelope():
+    """Both directions of sea-bi in one envelope (schedule/{date}/{routeid})."""
+    return _load("schedule_schedule_route.json")
+
+
+@pytest.fixture(scope="session")
+def timeadj_rows_ingest():
+    return _load("schedule_timeadj.json")
+
+
+@pytest.fixture(scope="session")
+def fares_verbose_ingest():
+    return _load("fares_farelineitemsverbose.json")
+
+
+@pytest.fixture(scope="session")
+def alerts_rows_ingest():
+    return _load("schedule_alerts.json")
