@@ -22,3 +22,10 @@ milestones, never as blockers.
 - **Brand glyphs on the basemap.** Convert Gabarito to PBF glyphs,
   self-host, so map-rendered labels match the brand type.
 - **Arrival ripple.** A soft pulse when a vessel reaches dock.
+
+## Docked-cluster label decluttering
+When several boats moor within a few hundred meters (the Eagle Harbor yard
+trio, paired slips at Edmonds), their name/status labels overlap into an
+ink pile. Ideas: collision-aware label offsets, cluster into a single
+"3 resting" chip at low zoom, or per-slip label sides. Surfaced by Ryan's
+2026-07-29 mobile screenshot.
