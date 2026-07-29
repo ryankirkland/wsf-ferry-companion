@@ -11,6 +11,9 @@ const OUT = path.join(ROOT, "web/public/dev-fixtures");
 
 const rows = JSON.parse(await readFile(path.join(SAMPLES, "vessels_vessellocations.json"), "utf8"));
 const verbose = JSON.parse(await readFile(path.join(SAMPLES, "vessels_vesselverbose.json"), "utf8"));
+const termRows = JSON.parse(
+  await readFile(path.join(SAMPLES, "terminals_terminallocations.json"), "utf8"),
+);
 
 const parseDotnet = (s) => (s ? Number(s.match(/\/Date\((-?\d+)/)[1]) : null);
 const iso = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, "Z");
@@ -81,4 +84,22 @@ const dims = {
   })),
 };
 await writeFile(path.join(OUT, "vessels.json"), JSON.stringify(dims, null, 1));
-console.log(`fixtures: 3 fleet frames + ${dims.vessels.length} vessel dims -> ${OUT}`);
+
+const terminals = {
+  v: 1,
+  terminals: [
+    ...termRows.map((t) => ({
+      id: t.TerminalID,
+      name: t.TerminalName.trim(),
+      abbrev: t.TerminalAbbrev,
+      lat: t.Latitude,
+      lon: t.Longitude,
+      synthetic: false,
+    })),
+    { id: 122, name: "Eagle Harbor", abbrev: "EAH", lat: 47.6205, lon: -122.5145, synthetic: true },
+  ].sort((a, b) => a.id - b.id),
+};
+await writeFile(path.join(OUT, "terminals.json"), JSON.stringify(terminals, null, 1));
+console.log(
+  `fixtures: 3 fleet frames + ${dims.vessels.length} vessel dims + ${terminals.terminals.length} terminals -> ${OUT}`,
+);

@@ -1,0 +1,173 @@
+{
+ "v": 1,
+ "terminals": [
+  {
+   "id": 1,
+   "name": "Anacortes",
+   "abbrev": "ANA",
+   "lat": 48.507351,
+   "lon": -122.677,
+   "synthetic": false
+  },
+  {
+   "id": 3,
+   "name": "Bainbridge Island",
+   "abbrev": "BBI",
+   "lat": 47.622339,
+   "lon": -122.509617,
+   "synthetic": false
+  },
+  {
+   "id": 4,
+   "name": "Bremerton",
+   "abbrev": "BRE",
+   "lat": 47.561847,
+   "lon": -122.624089,
+   "synthetic": false
+  },
+  {
+   "id": 5,
+   "name": "Clinton",
+   "abbrev": "CLI",
+   "lat": 47.9754,
+   "lon": -122.349581,
+   "synthetic": false
+  },
+  {
+   "id": 7,
+   "name": "Seattle",
+   "abbrev": "P52",
+   "lat": 47.602501,
+   "lon": -122.340472,
+   "synthetic": false
+  },
+  {
+   "id": 8,
+   "name": "Edmonds",
+   "abbrev": "EDM",
+   "lat": 47.813378,
+   "lon": -122.385378,
+   "synthetic": false
+  },
+  {
+   "id": 9,
+   "name": "Fauntleroy",
+   "abbrev": "FAU",
+   "lat": 47.5232,
+   "lon": -122.3967,
+   "synthetic": false
+  },
+  {
+   "id": 10,
+   "name": "Friday Harbor",
+   "abbrev": "FRH",
+   "lat": 48.535783,
+   "lon": -123.013844,
+   "synthetic": false
+  },
+  {
+   "id": 11,
+   "name": "Coupeville",
+   "abbrev": "COU",
+   "lat": 48.159008,
+   "lon": -122.672603,
+   "synthetic": false
+  },
+  {
+   "id": 12,
+   "name": "Kingston",
+   "abbrev": "KIN",
+   "lat": 47.794606,
+   "lon": -122.494328,
+   "synthetic": false
+  },
+  {
+   "id": 13,
+   "name": "Lopez Island",
+   "abbrev": "LOP",
+   "lat": 48.570928,
+   "lon": -122.882764,
+   "synthetic": false
+  },
+  {
+   "id": 14,
+   "name": "Mukilteo",
+   "abbrev": "MUK",
+   "lat": 47.9506,
+   "lon": -122.297,
+   "synthetic": false
+  },
+  {
+   "id": 15,
+   "name": "Orcas Island",
+   "abbrev": "ORI",
+   "lat": 48.597333,
+   "lon": -122.943494,
+   "synthetic": false
+  },
+  {
+   "id": 16,
+   "name": "Point Defiance",
+   "abbrev": "PTD",
+   "lat": 47.306519,
+   "lon": -122.514053,
+   "synthetic": false
+  },
+  {
+   "id": 17,
+   "name": "Port Townsend",
+   "abbrev": "POT",
+   "lat": 48.110847,
+   "lon": -122.759039,
+   "synthetic": false
+  },
+  {
+   "id": 18,
+   "name": "Shaw Island",
+   "abbrev": "SHI",
+   "lat": 48.584792,
+   "lon": -122.92965,
+   "synthetic": false
+  },
+  {
+   "id": 19,
+   "name": "Sidney B.C.",
+   "abbrev": "SID",
+   "lat": 48.643114,
+   "lon": -123.396739,
+   "synthetic": false
+  },
+  {
+   "id": 20,
+   "name": "Southworth",
+   "abbrev": "SOU",
+   "lat": 47.513064,
+   "lon": -122.495742,
+   "synthetic": false
+  },
+  {
+   "id": 21,
+   "name": "Tahlequah",
+   "abbrev": "TAH",
+   "lat": 47.331961,
+   "lon": -122.507786,
+   "synthetic": false
+  },
+  {
+   "id": 22,
+   "name": "Vashon Island",
+   "abbrev": "VAI",
+   "lat": 47.51095,
+   "lon": -122.463639,
+   "synthetic": false
+  },
+  {
+   "id": 122,
+   "name": "Eagle Harbor",
+   "abbrev": "EAH",
+   "lat": 47.6205,
+   "lon": -122.5145,
+   "synthetic": true
+  }
+ ]
+}

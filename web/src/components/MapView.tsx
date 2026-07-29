@@ -3,17 +3,19 @@
 import { useEffect, useRef } from "react";
 import { LoadingVeil } from "@/components/chrome/LoadingVeil";
 import { StalenessBanner } from "@/components/chrome/StalenessBanner";
-import { useFleet } from "@/hooks/use-fleet";
 import { useMapController } from "@/hooks/use-map-controller";
+import type { FleetUpdate } from "@/lib/data/fleet-poller";
 import type { Mode } from "@/lib/time/sound-time";
 import styles from "./map.module.css";
 
 export function MapView({
   mode,
+  fleet,
   ambient = false,
   onVesselClick,
 }: {
   mode: Mode;
+  fleet: FleetUpdate;
   ambient?: boolean;
   onVesselClick?: (id: number) => void;
 }) {
@@ -26,7 +28,6 @@ export function MapView({
     styles.vm!,
     onVesselClick,
   );
-  const fleet = useFleet();
 
   useEffect(() => {
     if (fleet.snapshot) controllerRef.current?.applySnapshot(fleet.snapshot.vessels);
