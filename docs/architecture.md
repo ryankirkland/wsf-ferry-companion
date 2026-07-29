@@ -5,35 +5,70 @@ Living document - updated every time deployed infrastructure changes
 (serverless lakehouse), [ADR-0003](adr/0003-tile-hosting.md) (tiles),
 [ADR-0004](adr/0004-state-backend-and-ci.md) (state + CI).
 
-## Deployed today (M0 walking skeleton)
+## Deployed today (M0 skeleton + M1 data path)
 
 ```mermaid
 flowchart LR
+    WSF[WSDOT Ferries API]
     U([Rider's browser])
 
-    subgraph edge [Global edge]
-        R53[Route53<br/>ferrysound.com zone]
-        CF[CloudFront]
+    subgraph ingest [Ingestion - live]
+        EB[EventBridge Scheduler<br/>1 min + 15 min] --> POLL[Lambda poller<br/>4x15s loop]
+        EB --> DIMS[Lambda dims refresher<br/>cacheflushdate-gated]
     end
 
     subgraph usw2 [AWS us-west-2]
+        DDB[(DynamoDB wsf-prod-hot<br/>FLEET + META items)]
+        RAW[(S3 raw archive<br/>gzipped NDJSON by fetch-time)]
+        DATA[(S3 data bucket<br/>fleet.json + dims)]
         WEB[(S3 web bucket<br/>coming-soon page)]
-        ASSETS[(S3 map-assets bucket<br/>glyphs and sprites, M1)]
+        ASSETS[(S3 map-assets bucket<br/>glyphs and sprites)]
         AGW[API Gateway HTTP<br/>api.ferrysound.com]
-        HELLO[Lambda hello<br/>python3.12 arm64]
+        HELLO[Lambda hello]
     end
 
+    subgraph edge [Global edge]
+        CF[CloudFront ferrysound.com]
+    end
+
+    WSF --> POLL
+    WSF --> DIMS
+    POLL --> DDB
+    POLL --> RAW
+    POLL -- every poll --> DATA
+    DIMS --> DATA
     U -- HTTPS --> CF
     CF -- default --> WEB
+    CF -- "/data/* (5s TTL)" --> DATA
     CF -- "/assets/*" --> ASSETS
     U -- HTTPS --> AGW --> HELLO
-    R53 -.aliases.-> CF
-    R53 -.aliases.-> AGW
 ```
 
-Account-level (bootstrap stack): Terraform state bucket with native lockfile,
-GitHub OIDC provider, plan/apply CI roles, $15 budget with three email
-notifications.
+Alarms: poller-gap (the SLO alarm), auth-failure (400+Message canary),
+empty-fleet, two Lambda-error alarms - all to the `wsf-prod-alarms` SNS
+topic. Account-level (bootstrap stack): Terraform state bucket with native
+lockfile, GitHub OIDC provider, plan/apply CI roles, $15 budget with three
+email notifications.
+
+## Product data model (ERD start - grows with each milestone)
+
+**DynamoDB `wsf-prod-hot`** (single table, generic PK/SK, on-demand):
+
+| Item | PK | SK | Content |
+|---|---|---|---|
+| Fleet position (21) | `FLEET` | `VESSEL#0038` (zero-padded VesselID) | name, lat/lon/speed/heading (N), at_dock, in_service, state, terminals, eta/left/sched ISO strings, source_ts, fetched_at |
+| Poll health | `META` | `POLLER#vessellocations` | last_success/attempt, polls ok/failed, last_error |
+| Dim refresh tokens | `META` | `CACHEFLUSH#vessels\|terminals` | opaque cacheflushdate token |
+| M2 departures (planned) | `PAIR#0007#0003` | `DEP#<iso>` | TTL via `expires_at` |
+| M3 alerts (planned) | `ALERTS` / `USER#<sub>` | `BULLETIN#` / `SUB#<route>` | Streams fan-out |
+
+**Public snapshot contract** (`/data/fleet.json`, versioned `"v": 1`, ADR-0005):
+`generated_at` + per vessel `{id, name, lat, lon, speed, heading, state[underway|docked|yard|stale], insvc, age_s, dep, arr, left, eta, eta_basis, sched, routes, pos}`.
+Dims: `/data/vessels.json` (class/capacity/years), `/data/terminals.json`
+(20 real + synthetic Eagle Harbor 122).
+
+**Raw archive** (`wsf-prod-raw-*`): `raw/<dataset>/dt=YYYY-MM-DD/HHMM.ndjson.gz`
+partitioned by fetch-time UTC; the replayable ground truth for M4.
 
 ## Deploy pipeline
 

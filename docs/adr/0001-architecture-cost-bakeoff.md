@@ -162,6 +162,8 @@ Dataset: the synthetic 5,113,360-row sailing history (2002-2026), year-partition
 
 **DynamoDB** (single-table hot state; 1,000 GetItem + 500 Query, measured from a laptop over the public internet - WAN round trip included; in-region will be lower): GetItem p50/p95 = 30.8/47.3 ms; Query p50/p95 = 30.7/46.9 ms.
 
+**Gate-2 in-region confirmation (M1, 2026-07-29):** the same read patterns re-run from a Lambda in us-west-2 against the production `wsf-prod-hot` table (`wsf-prod-ingest-dims`, event `{"mode": "gate2-bench"}`): GetItem p50/p95 = 17.0/20.1 ms; Query p50/p95 = 20.0/20.2 ms (n = 1,000/500). The 200 ms gate holds with 10x margin; the consequence recorded at acceptance is closed.
+
 **RDS db.t4g.micro** (same 5.1M rows, COPY load 112 s; no secondary indexes built - the point-lookup row is therefore unfair to Postgres, the analytical rows are structural): same six queries p50 = 2,650 / 10,018 / 2,238 / 2,675 / 1,764 / 1,873 ms. **Concurrency probe: 50 parallel connections, 0 errors, p50 42.7 s, p95 42.8 s** - the instance queues Lambda-style fan-out into unusability rather than failing loudly.
 
 **Aurora DSQL probe** (live confirmation of the Stage 1 dismissal): FK DDL rejected verbatim - `FeatureNotSupported: FOREIGN KEY constraint not supported` - and the first 100k-row bulk insert tripped `ProgramLimitExceeded: transaction row limit exceeded` (the 3,000-row cap), which alone rules out our backfill pattern. Cluster created and deleted cleanly within the timebox.
