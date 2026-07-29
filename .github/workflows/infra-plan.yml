@@ -8,6 +8,10 @@ on:
   pull_request:
     paths:
       - "infra/**"
+      - "services/**"
+      - "libs/**"
+      - "tools/build_lambda_zip.py"
+      - "uv.lock"
       - ".github/workflows/infra-plan.yml"
       - ".github/workflows/infra-apply.yml"
 

@@ -10,8 +10,15 @@ name: infra apply
 on:
   push:
     branches: [main]
+    # The Lambda zip is built here from workspace sources, so source-only
+    # merges must trigger an apply too - source_code_hash changes the plan.
+    # (Gap found 2026-07-29: a services/libs-only merge shipped no Lambda.)
     paths:
       - "infra/**"
+      - "services/**"
+      - "libs/**"
+      - "tools/build_lambda_zip.py"
+      - "uv.lock"
       - ".github/workflows/infra-apply.yml"
   workflow_dispatch:
 
