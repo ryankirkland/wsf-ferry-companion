@@ -111,13 +111,13 @@ Live drive-up space per upcoming departure for the terminals that report it (Sea
 
 ## 8. Data source and risks
 
-Single upstream: the **WSDOT/WSF Traveler Information API** (four REST sub-APIs: vessels, terminals, schedule, fares). Free, no rate limits documented. Authoritative reference: `api-exploration-wsf/` (regenerated 2026-07-24 with the four sub-APIs; see CLAUDE.md Data Sources for the pointer and the feature-coverage verdict).
+Single upstream: the **WSDOT/WSF Traveler Information API** (four REST sub-APIs: vessels, terminals, schedule, fares). Free, no rate limits documented. Authoritative reference: `api-exploration-wsdot-ferries/` (regenerated 2026-07-24 with the four sub-APIs; see CLAUDE.md Data Sources for the pointer and the feature-coverage verdict).
 
 | Risk | Impact | Mitigation |
 |---|---|---|
 | `vesselhistory` (powers F4) is undocumented upstream | Stats backfill/refresh could vanish without notice | Archive every raw pull to S3; design actuals to be re-derivable from position snapshots |
 | Realtime feeds are current-state only | Poller downtime permanently loses positions/capacity history | Poller continuity SLO, gap monitoring, boring-reliable ingestion path |
-| Access code unenforced today, required by ToS | Silent enforcement change breaks ingestion | Always send code; canary alert on any 401/403 |
+| Access code unenforced today, required by ToS | Silent enforcement change breaks ingestion | Always send code; canary alert on the API's actual auth-failure signature: HTTP 400 + JSON `Message` (no 401/403 exists in this API) |
 | Source identity quirks (name-only joins, 1900-sentinel times, phantom terminal 122) | Silent data corruption if unhandled | Encode in one shared library with tests; quarantine unknown identities |
 | Single maintainer | Ops burden, bus factor | Scale-to-zero architecture, alarms over dashboards, runbooks in docs/ |
 

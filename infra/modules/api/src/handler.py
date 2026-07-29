@@ -2,7 +2,7 @@
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def lambda_handler(event, context):
@@ -14,7 +14,7 @@ def lambda_handler(event, context):
                 "service": "wsf",
                 "version": "m0",
                 "region": os.environ.get("AWS_REGION", "unknown"),
-                "time": datetime.now(timezone.utc).isoformat(),
+                "time": datetime.now(UTC).isoformat(),
             }
         ),
     }
