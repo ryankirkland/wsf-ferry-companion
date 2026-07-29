@@ -5,7 +5,6 @@
 import type { Feature } from "geojson";
 import type { Map as MLMap } from "maplibre-gl";
 import { GRAIN_BAKES } from "./grain";
-import { routesGeoJSON } from "./routes-geo";
 
 const WORLD: Feature = {
   type: "Feature",
@@ -65,18 +64,27 @@ export function setupLayers(map: MLMap): void {
     waterLayer?.id,
   );
 
-  // Dotted ink route lines - texture, not information.
-  map.addSource("wsf-routes", { type: "geojson", data: routesGeoJSON() });
-  map.addLayer({
-    id: "wsf-routes",
-    type: "line",
-    source: "wsf-routes",
-    layout: { "line-cap": "round" },
-    paint: {
-      "line-color": "#26333a",
-      "line-width": 2,
-      "line-opacity": 0.45,
-      "line-dasharray": [0.1, 2.6],
+  // Dotted ink route lines - texture, not information. Geometry comes from
+  // OSM's real ferry crossings in the basemap's own vector tiles (positron
+  // renders no ferry layer, but the OpenMapTiles transportation layer
+  // carries class=ferry): accurate at every zoom, covers every route, and
+  // vessels sit ON the line. Hand-sketched polylines shipped once and cut
+  // through land at phone zoom - never again.
+  map.addLayer(
+    {
+      id: "wsf-routes",
+      type: "line",
+      source: "openmaptiles",
+      "source-layer": "transportation",
+      filter: ["==", ["get", "class"], "ferry"],
+      layout: { "line-cap": "round" },
+      paint: {
+        "line-color": "#26333a",
+        "line-width": 2,
+        "line-opacity": 0.45,
+        "line-dasharray": [0.1, 2.6],
+      },
     },
-  });
+    firstSymbolId,
+  );
 }
