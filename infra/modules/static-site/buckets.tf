@@ -124,3 +124,22 @@ resource "aws_s3_bucket_policy" "map_assets" {
 
   depends_on = [aws_s3_bucket_public_access_block.map_assets]
 }
+
+# Rolled-off pair-date files linger harmlessly; the raw archive is the real
+# history. Sweep them after 30 days.
+resource "aws_s3_bucket_lifecycle_configuration" "data" {
+  bucket = aws_s3_bucket.data.id
+
+  rule {
+    id     = "expire-rolled-off-pair-dates"
+    status = "Enabled"
+
+    filter {
+      prefix = "data/pairs/"
+    }
+
+    expiration {
+      days = 30
+    }
+  }
+}

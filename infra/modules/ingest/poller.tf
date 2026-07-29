@@ -107,6 +107,8 @@ data "aws_iam_policy_document" "scheduler_invoke" {
     resources = [
       aws_lambda_function.poller.arn,
       aws_lambda_function.dims.arn,
+      aws_lambda_function.schedule_refresh.arn,
+      aws_lambda_function.alerts_poller.arn,
     ]
   }
 }
