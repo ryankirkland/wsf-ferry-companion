@@ -1,3 +1,18 @@
+# Both sub-claim spellings are accepted, each pinned to exactly this repo:
+# the ID-stamped form GitHub sends today (owner/repo names qualified with
+# their immutable numeric ids - verified live 2026-07-29) and the classic
+# name-only form, in case the format reverts or varies. OR semantics, no
+# widening: every entry names this repository and this event.
+locals {
+  gh_owner     = split("/", var.github_repo)[0]
+  gh_repo_name = split("/", var.github_repo)[1]
+
+  gh_sub_prefixes = [
+    "repo:${var.github_repo}",
+    "repo:${local.gh_owner}@${var.github_owner_id}/${local.gh_repo_name}@${var.github_repo_id}",
+  ]
+}
+
 # AWS validates GitHub's OIDC issuer through its trusted CA chain and has
 # ignored thumbprints for this provider since 2023, but the API still requires
 # the field; the value below is the conventional placeholder.
@@ -27,7 +42,7 @@ data "aws_iam_policy_document" "github_plan_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:pull_request"]
+      values   = [for p in local.gh_sub_prefixes : "${p}:pull_request"]
     }
   }
 }
@@ -63,7 +78,7 @@ data "aws_iam_policy_document" "github_apply_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:ref:refs/heads/main"]
+      values   = [for p in local.gh_sub_prefixes : "${p}:ref:refs/heads/main"]
     }
   }
 }
