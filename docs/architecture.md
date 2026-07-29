@@ -5,7 +5,7 @@ Living document - updated every time deployed infrastructure changes
 (serverless lakehouse), [ADR-0003](adr/0003-tile-hosting.md) (tiles),
 [ADR-0004](adr/0004-state-backend-and-ci.md) (state + CI).
 
-## Deployed today (M0 skeleton + M1 data path)
+## Deployed today (M0 skeleton + M1 data path + M1 web)
 
 ```mermaid
 flowchart LR
@@ -21,8 +21,10 @@ flowchart LR
         DDB[(DynamoDB wsf-prod-hot<br/>FLEET + META items)]
         RAW[(S3 raw archive<br/>gzipped NDJSON by fetch-time)]
         DATA[(S3 data bucket<br/>fleet.json + dims)]
-        WEB[(S3 web bucket<br/>coming-soon page)]
-        ASSETS[(S3 map-assets bucket<br/>glyphs and sprites)]
+        WEB[(S3 web bucket<br/>Next.js static export)]
+        ASSETS[(S3 map-assets bucket<br/>style + glyphs + sprites)]
+        TILES[(S3 tiles bucket<br/>wa.pmtiles)]
+        TLAMBDA[Protomaps Lambda<br/>tiles fallback]
         AGW[API Gateway HTTP<br/>api.ferrysound.com]
         HELLO[Lambda hello]
     end
@@ -41,8 +43,18 @@ flowchart LR
     CF -- default --> WEB
     CF -- "/data/* (5s TTL)" --> DATA
     CF -- "/assets/*" --> ASSETS
+    CF -. "/tiles/* (fallback)" .-> TLAMBDA --> TILES
     U -- HTTPS --> AGW --> HELLO
+    OFM[OpenFreeMap tiles] -.-> U
 ```
+
+The web app (ferrysound.com): Next.js static export, MapLibre GL on the
+forked positron style (self-hosted at `/assets/style/positron-v1.json`),
+fleet polled from `/data/fleet.json` every ~12 s, four vessel states,
+`/ambient` wall mode with wake lock + daily reload. Deploys via
+`web-deploy.yml` two-pass sync + invalidation. Tiles come from the
+OpenFreeMap public instance; the PMTiles fallback behind `/tiles/*` is the
+tested escape hatch (ADR-0003 as amended).
 
 Alarms: poller-gap (the SLO alarm), auth-failure (400+Message canary),
 empty-fleet, two Lambda-error alarms - all to the `wsf-prod-alarms` SNS

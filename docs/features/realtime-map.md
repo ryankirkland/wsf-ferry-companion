@@ -47,6 +47,15 @@ ambient "frame on a wall" mode (`/ambient`) that runs unattended for days.
 
 - Data path: **live** (2026-07-29). `https://ferrysound.com/data/fleet.json`
   + dims; alarms tested end to end (auth canary fired on the deploy-time
-  placeholder and cleared when the real code landed).
-- Frontend: in progress - shell merged; map controller, vessels, deploy,
-  ambient, and the PMTiles fallback follow per the M1 plan.
+  placeholder and cleared when the real code landed). Gate-2 in-region
+  p95 ~20 ms recorded in ADR-0001.
+- Frontend: **live** (2026-07-29). The full map with all four vessel states,
+  vessel detail card (honest delay rules with plausibility caps), and
+  `/ambient` with the 24 h guarantees (wake lock, 04:10 reload,
+  outage-recovery reload).
+- Freshness SLO measured at the edge 2026-07-29: rendered-position age
+  p95 ~= 29 s vs the 30 s SLO (10 samples over 2 min + client interval;
+  ADR-0005 predicted 28.2 s).
+- Outstanding: the 24 h ambient soak on a physical tablet, and the
+  "stranger calls it beautiful" gate - both Ryan-side; the PMTiles switch
+  test records into tools/pmtiles/RUNBOOK.md.
