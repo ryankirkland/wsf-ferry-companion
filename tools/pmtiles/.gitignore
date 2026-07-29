@@ -1,0 +1,5 @@
+planetiler.jar
+wa.pmtiles
+data/
+dist/*
+!dist/lambda.zip

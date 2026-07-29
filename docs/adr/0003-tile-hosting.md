@@ -51,3 +51,15 @@ Gabarito map-glyph delight anyway.
 - One more M1 deliverable (the fallback deployment + switch test).
 - The dependency risk is explicitly owned and time-boxed rather than
   discovered during an outage.
+
+## Amendment (2026-07-29, during M1 build-out)
+
+The fallback archive is generated with **Planetiler** (`--area=washington`,
+Geofabrik extract), not `pmtiles extract` against the Protomaps daily planet
+build as originally written. Discovery during implementation planning: the
+Protomaps planet build uses the Protomaps basemap **schema**, which is
+incompatible with our positron-derived style and the recolor heuristics
+proven against it; Planetiler emits **OpenMapTiles-schema** tiles - the same
+toolchain OpenFreeMap runs - so the style fork works unchanged. The S3 +
+Lambda + CloudFront serving pattern, internal posture, and cost envelope are
+unchanged. Build/refresh/switch-test procedure: `tools/pmtiles/RUNBOOK.md`.

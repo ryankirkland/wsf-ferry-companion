@@ -1,13 +1,23 @@
 module "static_site" {
   source = "../../modules/static-site"
 
-  domain_name = var.domain_name
-  zone_id     = aws_route53_zone.main.zone_id
+  domain_name         = var.domain_name
+  zone_id             = aws_route53_zone.main.zone_id
+  tiles_origin_domain = module.tiles_fallback.function_url_domain
 
   providers = {
     aws           = aws
     aws.us_east_1 = aws.us_east_1
   }
+}
+
+# ADR-0003 tested fallback: PMTiles + Protomaps Lambda behind /tiles/*.
+# Internal posture - nothing links to it until promotion.
+module "tiles_fallback" {
+  source = "../../modules/tiles-fallback"
+
+  lambda_zip_path = "${path.root}/../../../tools/pmtiles/dist/lambda.zip"
+  public_hostname = var.domain_name
 }
 
 module "api" {
