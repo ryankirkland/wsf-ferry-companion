@@ -33,6 +33,21 @@ test("the map page loads, draws the fleet, and switches modes", async ({ page })
   // The full 21-vessel roster renders as markers.
   await expect(page.locator("[data-vessel]")).toHaveCount(21, { timeout: 15_000 });
 
+  // Markers must be absolutely positioned by MapLibre - if any stylesheet
+  // out-orders .maplibregl-marker, boats render in document flow and stack
+  // off their true positions (shipped once; never again).
+  const positions = await page
+    .locator("[data-vessel]")
+    .evaluateAll((els) => els.map((el) => getComputedStyle(el).position));
+  expect(positions.every((p) => p === "absolute")).toBe(true);
+
+  // And two markers must never share the exact same translate (flow-stacking
+  // symptom): transforms should be dominated by distinct map positions.
+  const transforms = await page
+    .locator("[data-vessel]")
+    .evaluateAll((els) => els.map((el) => el.style.transform));
+  expect(new Set(transforms).size).toBeGreaterThan(transforms.length / 2);
+
   // The real quirk cases carry their states.
   await expect(page.locator("[data-vessel].stale").first()).toBeAttached();
   await expect(page.locator("[data-vessel].muted").first()).toBeAttached(); // yard
