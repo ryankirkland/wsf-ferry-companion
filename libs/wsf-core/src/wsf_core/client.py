@@ -71,17 +71,24 @@ class WsfClient:
         except ValueError as exc:
             raise WsfApiError(f"{path}: non-JSON 200 response") from exc
 
+    def vessel_locations_raw(self) -> list[dict]:
+        """Unparsed rows - what the raw archive preserves (every field, junk included)."""
+        return self._get("/vessels/rest/vessellocations")
+
     def vessel_locations(self) -> list[VesselLocation]:
-        rows = self._get("/vessels/rest/vessellocations")
-        return [VesselLocation.model_validate(r) for r in rows]
+        return [VesselLocation.model_validate(r) for r in self.vessel_locations_raw()]
+
+    def vessel_dims_raw(self) -> list[dict]:
+        return self._get("/vessels/rest/vesselverbose")
 
     def vessel_dims(self) -> list[VesselDim]:
-        rows = self._get("/vessels/rest/vesselverbose")
-        return [VesselDim.from_verbose(r) for r in rows]
+        return [VesselDim.from_verbose(r) for r in self.vessel_dims_raw()]
+
+    def terminal_locations_raw(self) -> list[dict]:
+        return self._get("/terminals/rest/terminallocations")
 
     def terminal_locations(self) -> list[TerminalLocation]:
-        rows = self._get("/terminals/rest/terminallocations")
-        return [TerminalLocation.model_validate(r) for r in rows]
+        return [TerminalLocation.model_validate(r) for r in self.terminal_locations_raw()]
 
     def cache_flush_date(self, sub_api: str) -> str:
         """Raw .NET date string; compared as an opaque token for dim refresh."""
