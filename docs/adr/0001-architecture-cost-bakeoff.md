@@ -1,6 +1,6 @@
 # ADR-0001: Backend architecture under the $15 idle ceiling
 
-- **Status:** Proposed (bake-off to be completed in Phase C - do not build against any option yet)
+- **Status:** Accepted (2026-07-28) - Option A, the serverless lakehouse; see Decision below
 - **Context:** The PRD binds idle cost to <$15/month while demanding public-launch robustness and pure-play AWS. Those constraints already eliminate ALB-fronted always-on compute (~$16-18/mo fixed), NAT gateways (~$32/mo), and Aurora Serverless v2 (~$44/mo floor at 0.5 ACU). This ADR decides the data/compute shape with verified pricing and thin proofs of each critical path.
 
 ## Constraints (from PRD section 7)
@@ -145,6 +145,65 @@ usage; B with Proxy is disqualified outright** - and the 04 spike's
 3. Model three load points: idle, 100 DAU, 5k DAU spike day; produce the cost table for each.
 4. Decide; record consequences (including the integrity-testing obligations if A wins, or the PRD ceiling exception if B wins); supersede this stub.
 
+## Measurements (Stage 2, run 2026-07-28; scripts in `spikes/`, raw JSON in `spikes/results/`)
+
+Dataset: the synthetic 5,113,360-row sailing history (2002-2026), year-partitioned zstd Parquet, 62.3 MB, partition projection enabled.
+
+**Athena** (6 canonical queries x3 runs):
+
+| Query | Engine p50 | Total p95 | Scanned | $ per run |
+|---|---|---|---|---|
+| daily on-time, 14d window | 614 ms | 844 ms | 0.27 MB | $0.000001 |
+| full-history route percentiles | 1,154 ms | 1,400 ms | 6.72 MB | $0.000034 |
+| per-vessel season rollup | 841 ms | 1,155 ms | 6.75 MB | $0.000034 |
+| monthly cancellation rates | 1,253 ms | 1,720 ms | 27.82 MB | $0.000139 |
+| worst-100 delays all-time | 1,285 ms | 1,585 ms | 6.84 MB | $0.000034 |
+| point lookup (route+date) | 452 ms | 1,179 ms | 2.49 MB | $0.000012 |
+
+**DynamoDB** (single-table hot state; 1,000 GetItem + 500 Query, measured from a laptop over the public internet - WAN round trip included; in-region will be lower): GetItem p50/p95 = 30.8/47.3 ms; Query p50/p95 = 30.7/46.9 ms.
+
+**RDS db.t4g.micro** (same 5.1M rows, COPY load 112 s; no secondary indexes built - the point-lookup row is therefore unfair to Postgres, the analytical rows are structural): same six queries p50 = 2,650 / 10,018 / 2,238 / 2,675 / 1,764 / 1,873 ms. **Concurrency probe: 50 parallel connections, 0 errors, p50 42.7 s, p95 42.8 s** - the instance queues Lambda-style fan-out into unusability rather than failing loudly.
+
+**Aurora DSQL probe** (live confirmation of the Stage 1 dismissal): FK DDL rejected verbatim - `FeatureNotSupported: FOREIGN KEY constraint not supported` - and the first 100k-row bulk insert tripped `ProgramLimitExceeded: transaction row limit exceeded` (the 3,000-row cap), which alone rules out our backfill pattern. Cluster created and deleted cleanly within the timebox.
+
+## Gates applied (mechanically, per the pre-registration)
+
+| Gate | Option A | Option B |
+|---|---|---|
+| 1. Idle <= $15/mo | **PASS** ($2.02, 7x headroom) | Marginal at $14.97; **FAIL** with the Proxy ($36.87) its fan-out problem requires |
+| 2. Serving reads p95 <= 200 ms | **PASS** (47 ms incl. WAN; in-region lower) | **FAIL** (42,787 ms under 50-way fan-out) |
+| 3. Ad-hoc analytics p95 <= 10 s | **PASS** (worst 1.72 s) | **FAIL** (marginal: 10.0 s p50 on full-history percentiles) |
+| 4. Transforms <= $1/mo | **PASS** (nightly suite ~$0.01/mo) | PASS (in-database) |
+| 5. Zero always-on; absorbs spike day | **PASS** | FAIL (always-on instance; fan-out queues) |
+| 6. Tie-break | not needed | - |
+
 ## Decision
 
-Pending Phase C.
+**Option A - the serverless lakehouse - is adopted.** Lambda + EventBridge for ingestion, DynamoDB (single-table, on-demand) for hot state, S3 raw JSON archive as source of truth, year-partitioned Parquet + Glue catalog + Athena for the analytical layer, nightly materialization of aggregates into DynamoDB/static JSON, API Gateway HTTP API + CloudFront serving, Cognito/SES for auth and email.
+
+Wildcards, closed with live evidence: **Aurora DSQL dismissed** (FK rejection and transaction-cap errors captured above; IAM-token auth and 60-minute connections additionally break conventional ergonomics). **S3 Tables dismissed at this scale** (cost delta is noise; losing direct object access conflicts with the raw-archive-as-ground-truth principle). Plain Parquet + a free-tier nightly compaction Lambda instead.
+
+Consequences accepted:
+- Referential integrity lives in pipeline code: seed mapping tables, quarantine with alarmed review + replay, idempotent writes on natural keys, and data-quality expectation checks (M4) for confident-wrongness detection.
+- DynamoDB table designs are access-pattern-first and get documented per feature (the M3 alerts design is already sketched: alerts by route+time, subscriptions by route, DynamoDB Streams for notification fan-out).
+- In-region latency confirmation for Gate 2 runs from the first deployed Lambda in M0 (expected to only improve on the WAN numbers).
+- The ~$13/month of ceiling headroom funds SMS (toll-free), growth, and the self-hosted tile fallback (ADR-0003) without renegotiation.
+
+## Appendix: run evidence
+
+- Total estimated spike spend: **$0.26** of the $5 cap (tracker: `spikes/.spend.json`); next-day billing sanity check to confirm.
+- Environment notes: the account had no default VPC (fresh account); a standard default VPC was recreated to host the RDS spike - free, persists, and becomes Terraform-managed context in M0. `aws login` produces a named profile (`ryan`) requiring `AWS_PROFILE` and `botocore[crt]` for SDK use.
+- Teardown VERIFY EMPTY output:
+
+```
+=== VERIFY EMPTY (2026-07-28) ===
+  s3 buckets wsf-spike*: EMPTY
+  dynamo tables: EMPTY
+  rds instances: EMPTY
+  athena workgroups: EMPTY
+  dsql clusters (tagged): EMPTY
+TEARDOWN COMPLETE
+```
+(The lone teardown warning, `rds: InvalidDBInstanceStateFault`, was the delete
+request finding the instance already mid-deletion from the bench script's own
+cleanup; the verify listing above confirms it finished.)

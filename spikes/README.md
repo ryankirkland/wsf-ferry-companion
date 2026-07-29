@@ -11,6 +11,9 @@ tagged `project=wsf-spike`, and destroyed by `99_teardown.py` the same day.
 ## Prerequisites
 
 - `aws login` (or otherwise configured credentials) on this machine - one time.
+  Note: `aws login` creates a named profile (ours: `ryan`), not a default one,
+  and its credential provider needs `botocore[crt]` - hence the env var and
+  extra dep in every command below.
 - `uv` (runs everything with ephemeral deps; nothing to install).
 
 ## Run order
@@ -26,12 +29,13 @@ tagged `project=wsf-spike`, and destroyed by `99_teardown.py` the same day.
 
 ```bash
 cd spikes
+export AWS_PROFILE=ryan
 uv run --with pyarrow python 01_gen_history.py
-uv run --with boto3 python 02_athena_bench.py
-uv run --with boto3 python 03_dynamo_bench.py
-uv run --with "boto3,psycopg[binary],pyarrow,requests" python 04_rds_bench.py
-uv run --with "boto3,psycopg[binary],pyarrow" python 05_dsql_probe.py
-uv run --with boto3 python 99_teardown.py
+uv run --with boto3 --with "botocore[crt]" python 02_athena_bench.py
+uv run --with boto3 --with "botocore[crt]" python 03_dynamo_bench.py
+uv run --with boto3 --with "botocore[crt]" --with "psycopg[binary]" --with pyarrow --with requests python 04_rds_bench.py
+uv run --with boto3 --with "botocore[crt]" --with "psycopg[binary]" --with pyarrow python 05_dsql_probe.py
+uv run --with boto3 --with "botocore[crt]" python 99_teardown.py
 ```
 
 Measurements land in `results/*.json` (gitignored); the ADR gets the numbers

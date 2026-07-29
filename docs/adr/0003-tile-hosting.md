@@ -1,6 +1,6 @@
 # ADR-0003: Vector tile hosting for the map
 
-- **Status:** Proposed (recommendation complete; accept alongside ADR-0001)
+- **Status:** Accepted (2026-07-28, alongside ADR-0001)
 - **Context:** Phase B validated MapLibre GL + OpenMapTiles-schema vector tiles
   restyled at runtime (ADR-0002). The remaining question is who serves the
   tiles. Research checked 2026-07-24; citations inline.
