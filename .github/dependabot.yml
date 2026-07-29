@@ -1,0 +1,14 @@
+# Keeps the SHA-pinned actions and terraform provider constraints fresh.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: terraform
+    directories:
+      - "/infra/bootstrap"
+      - "/infra/envs/prod"
+    schedule:
+      interval: weekly

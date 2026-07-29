@@ -1,0 +1,29 @@
+output "site_url" {
+  description = "The product."
+  value       = "https://${var.domain_name}"
+}
+
+output "api_url" {
+  description = "The API."
+  value       = "https://${module.api.api_domain}"
+}
+
+output "cloudfront_domain_name" {
+  description = "CloudFront hostname (pre-DNS smoke tests)."
+  value       = module.static_site.cloudfront_domain_name
+}
+
+output "api_endpoint" {
+  description = "Raw API Gateway endpoint (pre-DNS smoke tests)."
+  value       = module.api.api_endpoint
+}
+
+output "zone_name_servers" {
+  description = "Zone name servers (should match the registration's)."
+  value       = aws_route53_zone.main.name_servers
+}
+
+output "map_assets_bucket" {
+  description = "Bucket for glyphs/sprites/style JSON (ADR-0003)."
+  value       = module.static_site.map_assets_bucket
+}
