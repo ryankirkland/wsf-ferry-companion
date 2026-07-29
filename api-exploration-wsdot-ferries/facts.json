@@ -7006,7 +7006,7 @@
    "title": "farelineitemsverbose is index-linked, not row-shaped",
    "endpoints": "fares /farelineitemsverbose",
    "tested": "Flattened the {TripDate} payload: TerminalComboVerbose[38], LineItemLookup[38], LineItems (27 inner lists), RoundTripLineItems (27) (2026-07-24).",
-   "result": "Combos share price lists: 38 lookups point into 27 unique inner arrays; resolving through LineItemLookup yields 770 one-way rows. Zipping the outer arrays by position would misprice 11 of 38 combos.",
+   "result": "Combos share price lists: 38 lookups point into 27 unique inner arrays; resolving through LineItemLookup yields 770 one-way rows. Positional zip silently misprices 13 of 38 combos (incl. Mukilteo-Clinton 14->5: adult $11.35 shown vs $7.10 real) and raises IndexError on 11 more whose LineItemIndex exceeds the 27-element array. (Recounted 2026-07-29; the original 11 was the IndexError count mislabelled.)",
    "so_what": "Always resolve combos to items through LineItemLookup indices; positional joins silently attach wrong fare tables."
   },
   {

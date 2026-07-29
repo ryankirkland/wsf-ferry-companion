@@ -8,6 +8,7 @@ to alarm on, never to retry-storm).
 """
 
 import json
+import re
 from typing import Any
 
 import urllib3
@@ -29,7 +30,16 @@ class WsfApiError(Exception):
 
 
 class WsfAuthError(WsfApiError):
-    """HTTP 400 + JSON Message - the API's only auth-failure signature."""
+    """400 + Message matching the auth signature ("access code" / "register")."""
+
+
+class WsfBadRequestError(WsfApiError):
+    """400 + Message that is NOT auth: non-adjacent fare pair, out-of-range
+    TripDate ("valid range begins..."). Discriminated so a bad request can
+    never trip the auth canary."""
+
+
+_AUTH_MESSAGE_RE = re.compile(r"access\s*code|register", re.IGNORECASE)
 
 
 class WsfClient:
@@ -62,7 +72,10 @@ class WsfClient:
             except (ValueError, TypeError):
                 body = {}
             if isinstance(body, dict) and "Message" in body:
-                raise WsfAuthError(f"{path}: {body['Message']}", status=400)
+                message = str(body["Message"])
+                if _AUTH_MESSAGE_RE.search(message):
+                    raise WsfAuthError(f"{path}: {message}", status=400)
+                raise WsfBadRequestError(f"{path}: {message}", status=400)
             raise WsfApiError(f"{path}: HTTP 400 without Message body", status=400)
         if resp.status != 200:
             raise WsfApiError(f"{path}: HTTP {resp.status}", status=resp.status)
@@ -95,3 +108,33 @@ class WsfClient:
         if sub_api not in SUB_APIS:
             raise ValueError(f"unknown sub-api: {sub_api}")
         return self._get(f"/{sub_api}/rest/cacheflushdate")
+
+    # --- M2 raw accessors (schedule + fares + alerts). Raw dicts by design:
+    # the archive preserves them verbatim; typed parsing lives in
+    # schedule.py / fares.py / alerts.py.
+
+    def valid_date_range(self, sub_api: str) -> dict:
+        if sub_api not in ("schedule", "fares"):
+            raise ValueError(f"validdaterange not offered by: {sub_api}")
+        return self._get(f"/{sub_api}/rest/validdaterange")
+
+    def schedule_pair_raw(self, trip_date: str, dep: int, arr: int) -> dict:
+        return self._get(f"/schedule/rest/schedule/{trip_date}/{dep}/{arr}")
+
+    def terminals_and_mates_raw(self, trip_date: str) -> list[dict]:
+        return self._get(f"/schedule/rest/terminalsandmates/{trip_date}")
+
+    def route_details_raw(self, trip_date: str) -> list[dict]:
+        return self._get(f"/schedule/rest/routedetails/{trip_date}")
+
+    def timeadj_raw(self) -> list[dict]:
+        return self._get("/schedule/rest/timeadj")
+
+    def alerts_raw(self) -> list[dict]:
+        return self._get("/schedule/rest/alerts")
+
+    def fare_line_items_verbose_raw(self, trip_date: str) -> dict:
+        return self._get(f"/fares/rest/farelineitemsverbose/{trip_date}")
+
+    def terminal_combo_verbose_raw(self, trip_date: str) -> list[dict]:
+        return self._get(f"/fares/rest/terminalcomboverbose/{trip_date}")
