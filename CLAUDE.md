@@ -2,6 +2,9 @@
 - **WSF Traveler Information API (WSDOT Ferries)** (REST/JSON): Read `api-exploration-wsdot-ferries/wsdot-ferries.md` before writing code against this API; full column definitions in `api-exploration-wsdot-ferries/facts.json`, raw payloads in `api-exploration-wsdot-ferries/samples/`, human reference in `api-exploration-wsdot-ferries/report.html`.
   - Coverage for the five v1 features: supports realtime vessel map + ambient wall display (vessellocations, ~5 s refresh, 100% join to vessel dim, n=21; filter stale TimeStamp and handle yard terminal 122); supports on-time statistics with multi-year backfill (undocumented vesselhistory, data verified back to 2002-03, departures only - no actual-arrival field); supports trip-focused schedules + fares (schedule/{date} pairs match fares pairs 38/38; faretotals basket math verified); partial delay/cancellation alerts (alerts + timeadj + bulletins cover the signal but are poll-only and cancellations are free text - no push channel, parsing required); partial terminal drive-up capacity (terminalsailingspace covers only a subset of terminals, current-state only, empty overnight - history requires self-built snapshots; terminalwaittimes is static boilerplate, unusable for live waits).
 
+## Features
+- **F1 Realtime vessel map**: see `docs/features/realtime-map.md` for goals, dependencies, and why it is shaped this way (snapshot serving, staleness rules, dedup). Update that file whenever the feature changes.
+
 ## General Guidelines
 - Never use the em dash. Use the plain dash "-" instead.
 - When writing commit messages, NEVER auto-add your agent name as co-author.
