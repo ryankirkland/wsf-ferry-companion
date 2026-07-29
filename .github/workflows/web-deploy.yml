@@ -1,0 +1,70 @@
+# Deploys the static export to the web bucket on merge to main.
+# Two-pass sync: hashed assets first with immutable caching (HTML must never
+# reference missing chunks), then everything else with --delete sweeping
+# stale files. One wildcard invalidation = one of 1,000 free monthly paths.
+name: web deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/web-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-prod-deploy
+  cancel-in-progress: false
+
+env:
+  WEB_BUCKET: wsf-prod-web-654654574183
+  DISTRIBUTION_ID: E1ZEOCBXLOJE3Z
+
+jobs:
+  deploy:
+    name: build + sync + invalidate
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - run: corepack enable
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: build (live data)
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_DATA_MODE: live
+
+      - uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        with:
+          role-to-assume: arn:aws:iam::654654574183:role/wsf-github-apply
+          aws-region: us-west-2
+
+      - name: sync hashed assets (immutable)
+        run: |
+          aws s3 sync out/ "s3://$WEB_BUCKET/" --exclude "*" --include "_next/static/*" \
+            --cache-control "public,max-age=31536000,immutable" --only-show-errors
+
+      - name: sync site (delete stale)
+        run: |
+          aws s3 sync out/ "s3://$WEB_BUCKET/" --exclude "_next/static/*" --delete \
+            --cache-control "public,max-age=0,must-revalidate" --only-show-errors
+
+      - name: invalidate
+        run: |
+          aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" \
+            --paths "/*" --query Invalidation.Status --output text
