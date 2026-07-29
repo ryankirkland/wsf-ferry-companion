@@ -1,0 +1,22 @@
+# Virtual workspace root - all Python packages live in libs/ and services/.
+[tool.uv.workspace]
+members = ["libs/*", "services/*"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# spikes/ is frozen evidence: the exact scripts that produced ADR-0001's
+# recorded measurements. Never reformatted, never maintained.
+exclude = ["spikes"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["libs", "services"]
+addopts = "-q"
