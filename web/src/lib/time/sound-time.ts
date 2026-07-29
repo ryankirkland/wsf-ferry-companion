@@ -56,3 +56,31 @@ export function msToNextModeBoundary(date: Date = new Date()): number {
 export function asOf(date: Date): string {
   return `as of ${soundClock(date)}`;
 }
+
+/** "5:30 PM" for an epoch-ms instant, always in Sound time. The narrow
+ * no-break space some ICU builds emit is normalized so copy renders (and
+ * compares) identically everywhere. */
+export function soundTimeShort(ms: number): string {
+  return new Date(ms)
+    .toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: SOUND_TZ })
+    .replace(/ /g, " ");
+}
+
+const YMD = new Intl.DateTimeFormat("en-CA", {
+  timeZone: SOUND_TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** "YYYY-MM-DD" of an instant in Sound time - the service-date axis. */
+export function soundDate(date: Date = new Date()): string {
+  return YMD.format(date);
+}
+
+/** Shift a YYYY-MM-DD calendar date by whole days (date math, no tz drift). */
+export function shiftDate(ymd: string, days: number): string {
+  const d = new Date(`${ymd}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}

@@ -1,0 +1,17 @@
+{
+ "v": 1,
+ "generated_at": "%%NOW%%",
+ "watermark": "999:0",
+ "alerts": [
+  {
+   "id": 999,
+   "title": "Seattle / Bainbridge - sample service notice",
+   "text": "This is a fixture alert for development.",
+   "published": "%%NOW%%",
+   "route_ids": [
+    5
+   ],
+   "all_routes": false
+  }
+ ]
+}

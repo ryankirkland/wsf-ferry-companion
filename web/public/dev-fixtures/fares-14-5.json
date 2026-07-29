@@ -1,0 +1,384 @@
+{
+ "v": 1,
+ "generated_at": "2026-07-29T18:35:59.263593Z",
+ "pair": {
+  "dep": 14,
+  "arr": 5
+ },
+ "trip_date": "2026-07-29",
+ "retrieved_at": "2026-07-29T18:35:59.263593Z",
+ "source_token": "/Date(1785324928043-0700)/",
+ "collection": "Passenger and vehicle/driver fares are collected at Mukilteo, while vehicle/driver only fares are collected at Clinton.",
+ "one_way": [
+  {
+   "id": 1,
+   "label": "Adult (age 19 - 64)",
+   "category": "Passenger",
+   "direction_independent": false,
+   "amount": "7.10",
+   "basic": true
+  },
+  {
+   "id": 2,
+   "label": "Senior (age 65 & over) / Disability",
+   "category": "Passenger",
+   "direction_independent": false,
+   "amount": "3.55",
+   "basic": true
+  },
+  {
+   "id": 3,
+   "label": "Youth (age 18 and under)",
+   "category": "Passenger",
+   "direction_independent": false,
+   "amount": "0.00",
+   "basic": true
+  },
+  {
+   "id": 4,
+   "label": "Multi-Ride Commuter Card 10 Ride",
+   "category": "Passenger",
+   "direction_independent": true,
+   "amount": "58.80",
+   "basic": true
+  },
+  {
+   "id": 37,
+   "label": "WSF Monthly Pass 31 Ride",
+   "category": "Passenger",
+   "direction_independent": true,
+   "amount": "94.10",
+   "basic": true
+  },
+  {
+   "id": 6,
+   "label": "Bicycle Surcharge Only (19 and over)",
+   "category": "Passenger",
+   "direction_independent": false,
+   "amount": "1.00",
+   "basic": false
+  },
+  {
+   "id": 168,
+   "label": "Vehicle Under 14' (less than 168”) & Driver",
+   "category": "Vehicle, Motorcycle, and Stowage Fares",
+   "direction_independent": false,
+   "amount": "12.95",
+   "basic": true
+  },
+  {
+   "id": 178,
+   "label": "Vehicle Under 22' (standard veh) & Driver",
+   "category": "Vehicle, Motorcycle, and Stowage Fares",
+   "direction_independent": false,
+   "amount": "16.30",
+   "basic": true
+  },
+  {
+   "id": 188,
+   "label": "Vehicle U14' (less than 168\") & Sr/Disability Driver",
+   "category": "Vehicle, Motorcycle, and Stowage Fares",
+   "direction_independent": false,
+   "amount": "11.15",
+   "basic": true
+  },
+  {
+   "id": 189,
+   "label": "Vehicle U22' (standard veh) & Sr/Disability Driver",
+   "category": "Vehicle, Motorcycle, and Stowage Fares",
+   "direction_independent": false,
+   "amount": "14.50",
+   "basic": true
+  },
+  {
+   "id": 170,
+   "label": "Multi-Ride Commuter Card - Vehicle U14' & Driver 20 Ride",
+   "category": "Vehicle, Motorcycle, and Stowage Fares",
+   "direction_independent": true,
+   "amount": "161.60",
+   "basic": true
+  },
+  {
+   "id": 180,
+   "label": "Multi-Ride Commuter Card - Vehicle U22' & Driver 20 Ride",
+   "category": "Vehicle, Motorcycle, and Stowage Fares",
+   "direction_independent": true,
+   "amount": "201.60",
+   "basic": true
+  },
+  {
+   "id": 13,
+   "label": "Motorcycle & Driver / Stowage Fare",
+   "category": "Vehicle, Motorcycle, and Stowage Fares",
+   "direction_independent": false,
+   "amount": "7.35",
+   "basic": true
+  },
+  {
+   "id": 14,
+   "label": "Motorcycle & Senior/Disability Driver / Stowage Fare",
+   "category": "Vehicle, Motorcycle, and Stowage Fares",
+   "direction_independent": false,
+   "amount": "5.55",
+   "basic": false
+  },
+  {
+   "id": 16,
+   "label": "Multi-Ride Commuter Card - Motorcycle & Driver 20 Ride",
+   "category": "Vehicle, Motorcycle, and Stowage Fares",
+   "direction_independent": true,
+   "amount": "95.20",
+   "basic": true
+  },
+  {
+   "id": 19,
+   "label": "Vehicle Under 30' Under 7'2 in.",
+   "category": "Vehicle Length-Based",
+   "direction_independent": false,
+   "amount": "23.95",
+   "basic": false
+  },
+  {
+   "id": 20,
+   "label": "Vehicle Under 30' Over 7'2 in.",
+   "category": "Vehicle Length-Based",
+   "direction_independent": false,
+   "amount": "46.90",
+   "basic": false
+  },
+  {
+   "id": 21,
+   "label": "Vehicle Under 40'",
+   "category": "Vehicle Length-Based",
+   "direction_independent": false,
+   "amount": "62.20",
+   "basic": false
+  },
+  {
+   "id": 22,
+   "label": "Vehicle Under 50'",
+   "category": "Vehicle Length-Based",
+   "direction_independent": false,
+   "amount": "77.50",
+   "basic": false
+  },
+  {
+   "id": 23,
+   "label": "Vehicle Under 60'",
+   "category": "Vehicle Length-Based",
+   "direction_independent": false,
+   "amount": "92.80",
+   "basic": false
+  },
+  {
+   "id": 24,
+   "label": "Vehicle Under 70'",
+   "category": "Vehicle Length-Based",
+   "direction_independent": false,
+   "amount": "108.10",
+   "basic": false
+  },
+  {
+   "id": 25,
+   "label": "Vehicle Under 80'",
+   "category": "Vehicle Length-Based",
+   "direction_independent": false,
+   "amount": "123.40",
+   "basic": false
+  },
+  {
+   "id": 26,
+   "label": "Cost per foot over 80'",
+   "category": "Vehicle Length-Based",
+   "direction_independent": false,
+   "amount": "1.55",
+   "basic": false
+  }
+ ],
+ "round_trip": [
+  {
+   "id": 1,
+   "label": "Adult (age 19 - 64)",
+   "category": "Passenger",
+   "direction_independent": false,
+   "amount": "7.10",
+   "basic": true
+  },
+  {
+   "id": 2,
+   "label": "Senior (age 65 & over) / Disability",
+   "category": "Passenger",
+   "direction_independent": false,
+   "amount": "3.55",
+   "basic": true
+  },
+  {
+   "id": 3,
+   "label": "Youth (age 18 and under)",
+   "category": "Passenger",
+   "direction_independent": false,
+   "amount": "0.00",
+   "basic": true
+  },
+  {
+   "id": 4,
+   "label": "Multi-Ride Commuter Card 10 Ride",
+   "category": "Passenger",
+   "direction_independent": true,
+   "amount": "58.80",
+   "basic": true
+  },
+  {
+   "id": 37,
+   "label": "WSF Monthly Pass 31 Ride",
+   "category": "Passenger",
+   "direction_independent": true,
+   "amount": "94.10",
+   "basic": true
+  },
+  {
+   "id": 6,
+   "label": "Bicycle Surcharge Only (19 and over)",
+   "category": "Passenger",
+   "direction_independent": false,
+   "amount": "1.00",
+   "basic": false
+  },
+  {
+   "id": 168,
+   "label": "Vehicle Under 14' (less than 168”) & Driver",
+   "category": "Vehicle, Motorcycle, and Stowage Fares",
+   "direction_independent": false,
+   "amount": "25.90",
+   "basic": true
+  },
+  {
+   "id": 178,
+   "label": "Vehicle Under 22' (standard veh) & Driver",
+   "category": "Vehicle, Motorcycle, and Stowage Fares",
+   "direction_independent": false,
+   "amount": "32.60",
+   "basic": true
+  },
+  {
+   "id": 188,
+   "label": "Vehicle U14' (less than 168\") & Sr/Disability Driver",
+   "category": "Vehicle, Motorcycle, and Stowage Fares",
+   "direction_independent": false,
+   "amount": "22.30",
+   "basic": true
+  },
+  {
+   "id": 189,
+   "label": "Vehicle U22' (standard veh) & Sr/Disability Driver",
+   "category": "Vehicle, Motorcycle, and Stowage Fares",
+   "direction_independent": false,
+   "amount": "29.00",
+   "basic": true
+  },
+  {
+   "id": 170,
+   "label": "Multi-Ride Commuter Card - Vehicle U14' & Driver 20 Ride",
+   "category": "Vehicle, Motorcycle, and Stowage Fares",
+   "direction_independent": true,
+   "amount": "161.60",
+   "basic": true
+  },
+  {
+   "id": 180,
+   "label": "Multi-Ride Commuter Card - Vehicle U22' & Driver 20 Ride",
+   "category": "Vehicle, Motorcycle, and Stowage Fares",
+   "direction_independent": true,
+   "amount": "201.60",
+   "basic": true
+  },
+  {
+   "id": 13,
+   "label": "Motorcycle & Driver / Stowage Fare",
+   "category": "Vehicle, Motorcycle, and Stowage Fares",
+   "direction_independent": false,
+   "amount": "14.70",
+   "basic": true
+  },
+  {
+   "id": 14,
+   "label": "Motorcycle & Senior/Disability Driver / Stowage Fare",
+   "category": "Vehicle, Motorcycle, and Stowage Fares",
+   "direction_independent": false,
+   "amount": "11.10",
+   "basic": false
+  },
+  {
+   "id": 16,
+   "label": "Multi-Ride Commuter Card - Motorcycle & Driver 20 Ride",
+   "category": "Vehicle, Motorcycle, and Stowage Fares",
+   "direction_independent": true,
+   "amount": "95.20",
+   "basic": true
+  },
+  {
+   "id": 19,
+   "label": "Vehicle Under 30' Under 7'2 in.",
+   "category": "Vehicle Length-Based",
+   "direction_independent": false,
+   "amount": "47.90",
+   "basic": false
+  },
+  {
+   "id": 20,
+   "label": "Vehicle Under 30' Over 7'2 in.",
+   "category": "Vehicle Length-Based",
+   "direction_independent": false,
+   "amount": "93.80",
+   "basic": false
+  },
+  {
+   "id": 21,
+   "label": "Vehicle Under 40'",
+   "category": "Vehicle Length-Based",
+   "direction_independent": false,
+   "amount": "124.40",
+   "basic": false
+  },
+  {
+   "id": 22,
+   "label": "Vehicle Under 50'",
+   "category": "Vehicle Length-Based",
+   "direction_independent": false,
+   "amount": "155.00",
+   "basic": false
+  },
+  {
+   "id": 23,
+   "label": "Vehicle Under 60'",
+   "category": "Vehicle Length-Based",
+   "direction_independent": false,
+   "amount": "185.60",
+   "basic": false
+  },
+  {
+   "id": 24,
+   "label": "Vehicle Under 70'",
+   "category": "Vehicle Length-Based",
+   "direction_independent": false,
+   "amount": "216.20",
+   "basic": false
+  },
+  {
+   "id": 25,
+   "label": "Vehicle Under 80'",
+   "category": "Vehicle Length-Based",
+   "direction_independent": false,
+   "amount": "246.80",
+   "basic": false
+  },
+  {
+   "id": 26,
+   "label": "Cost per foot over 80'",
+   "category": "Vehicle Length-Based",
+   "direction_independent": false,
+   "amount": "3.10",
+   "basic": false
+  }
+ ]
+}
