@@ -40,6 +40,7 @@
 
 /* Terminal markers: dot + tracked caps label, west-shore side-aware. */
 .term {
+  z-index: 6; /* labels stay legible above docked hulls */
   display: flex;
   align-items: center;
   gap: 6px;
@@ -75,4 +76,104 @@
 /* Declutter below zoom 10.2 (class set by the controller on the container). */
 :global(.z-lo) .term:global(.soft) {
   display: none;
+}
+
+/* Vessel markers - sprite themed by mode tokens; the windows are the brand. */
+.vm {
+  position: relative;
+  width: 44px;
+  z-index: 5;
+  pointer-events: none;
+  text-align: center;
+  transition: opacity 0.4s ease, filter 0.4s ease;
+}
+
+.vm :global(svg) {
+  width: 44px;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));
+}
+
+.vm :global(.hull) {
+  fill: var(--hull);
+}
+
+.vm :global(.cabin) {
+  fill: var(--cabin);
+}
+
+.vm :global(.win) {
+  fill: var(--win);
+}
+
+.vm :global(.stack) {
+  fill: var(--stack);
+}
+
+html[data-mode="night"] .vm :global(svg) {
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4)) drop-shadow(0 0 6px rgba(255, 207, 122, 0.25));
+}
+
+.vm:global(.flip) :global(svg) {
+  transform: scaleX(-1);
+}
+
+.vm :global(.wake) {
+  width: 34px;
+  height: 4px;
+  margin: -2px auto 0;
+  opacity: 0;
+  background: repeating-linear-gradient(90deg, var(--wake) 0 8px, transparent 8px 14px);
+  border-radius: 2px;
+  transition: opacity 0.4s ease;
+}
+
+.vm:global(.moving) :global(.wake) {
+  opacity: 0.8;
+}
+
+.vm :global(.nm) {
+  font-family: var(--font-gabarito), sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-shadow:
+    0 0 6px var(--halo),
+    0 0 2px var(--halo);
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+.vm :global(.st) {
+  font-size: 9.5px;
+  color: var(--ink-soft);
+  text-shadow: 0 0 5px var(--halo);
+  white-space: nowrap;
+}
+
+.vm:global(.muted) {
+  opacity: 0.62;
+}
+
+.vm:global(.stale) {
+  opacity: 0.55;
+  filter: saturate(0.35);
+}
+
+/* Declutter: below zoom 10.2 the small text yields to the boats. */
+:global(.z-lo) .vm :global(.nm),
+:global(.z-lo) .vm :global(.st) {
+  display: none;
+}
+
+/* Below the declutter zoom the boats shrink with the scenery. */
+:global(.z-lo) .vm :global(svg) {
+  width: 34px;
+}
+
+:global(.z-lo) .vm :global(.wake) {
+  width: 26px;
 }

@@ -83,6 +83,11 @@
 .veilGone {
   opacity: 0;
   pointer-events: none;
+  /* Real hidden-ness after the fade - for assistive tech and honesty. */
+  visibility: hidden;
+  transition:
+    opacity 0.5s ease,
+    visibility 0s 0.5s;
 }
 
 .veilInner {
@@ -98,4 +103,20 @@
   background: var(--accent);
   color: var(--paper);
   font-weight: 700;
+}
+
+.staleBanner {
+  position: absolute;
+  top: 4.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  background: var(--st-delay-bg);
+  color: var(--st-delay-fg);
+  border-radius: 999px;
+  padding: 0.35rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
 }
