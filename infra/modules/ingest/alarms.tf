@@ -86,3 +86,57 @@ resource "aws_cloudwatch_metric_alarm" "dims_errors" {
     FunctionName = aws_lambda_function.dims.function_name
   }
 }
+
+# M2 additions (total 8 of the 10 free).
+
+resource "aws_cloudwatch_metric_alarm" "schedule_refresh_errors" {
+  alarm_name          = "wsf-prod-schedule-refresh-errors"
+  alarm_description   = "Unhandled exception in the schedule/fares refresher."
+  namespace           = "AWS/Lambda"
+  metric_name         = "Errors"
+  statistic           = "Sum"
+  period              = 3600
+  evaluation_periods  = 1
+  threshold           = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [var.alarms_topic_arn]
+
+  dimensions = {
+    FunctionName = aws_lambda_function.schedule_refresh.function_name
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "alerts_poller_errors" {
+  alarm_name          = "wsf-prod-alerts-poller-errors"
+  alarm_description   = "Unhandled exception in the alerts poller (persistent upstream breakage lands here - one failed fetch per minute retries itself)."
+  namespace           = "AWS/Lambda"
+  metric_name         = "Errors"
+  statistic           = "Sum"
+  period              = 900
+  evaluation_periods  = 1
+  threshold           = 5
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [var.alarms_topic_arn]
+
+  dimensions = {
+    FunctionName = aws_lambda_function.alerts_poller.function_name
+  }
+}
+
+# The trip-data equivalent of poller-gap: nothing published for a full day
+# means the token gating or the upstream feed is broken.
+resource "aws_cloudwatch_metric_alarm" "pairs_stale" {
+  alarm_name          = "wsf-prod-pairs-stale"
+  alarm_description   = "No pair-date files published in 24 h (horizon should roll daily)."
+  namespace           = "WSF/Ingest"
+  metric_name         = "PairDatesPublished"
+  statistic           = "Sum"
+  period              = 86400
+  evaluation_periods  = 1
+  threshold           = 1
+  comparison_operator = "LessThanThreshold"
+  treat_missing_data  = "breaching"
+  alarm_actions       = [var.alarms_topic_arn]
+}
