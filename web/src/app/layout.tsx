@@ -32,7 +32,14 @@ document.documentElement.dataset.mode=m;}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-mode="day" className={`${gabarito.variable} ${inter.variable}`}>
+    // suppressHydrationWarning: the pre-hydration script legitimately changes
+    // data-mode before React attaches (the standard theme-stamp pattern).
+    <html
+      lang="en"
+      data-mode="day"
+      suppressHydrationWarning
+      className={`${gabarito.variable} ${inter.variable}`}
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: modeScript }} />
       </head>

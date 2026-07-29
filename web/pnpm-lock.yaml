@@ -24,6 +24,9 @@ importers:
       '@playwright/test':
         specifier: ^1.56.0
         version: 1.62.0
+      '@types/geojson':
+        specifier: ^7946.0.16
+        version: 7946.0.16
       '@types/node':
         specifier: ^25.0.0
         version: 25.9.5
