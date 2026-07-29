@@ -55,21 +55,27 @@ resource "aws_cloudwatch_log_group" "poller" {
   retention_in_days = 30
 }
 
-# Timing spec (ADR-0005): 55 s timeout dies before the next tick; reserved
-# concurrency 1 + scheduler retry 0 make overlap structurally impossible and
-# keep the in-memory dedup cache the single authority. 128 MB keeps the
+# Timing spec (ADR-0005): 55 s timeout dies before the next tick, and the
+# scheduler's retry-0 policy never queues a second invocation, so
+# self-overlap is prevented by timing alone. The design also wants
+# reserved_concurrent_executions = 1 (making the dedup cache's
+# single-authority claim structural), but the fresh account's Lambda
+# concurrency quota is 10 total and AWS requires 10 UNRESERVED minimum -
+# reserving any is impossible until the requested increase to 1000 lands
+# (filed 2026-07-29). Restore it then. Until that point a rare overlap can
+# spawn a second container whose cold dedup cache writes all 21 vessels
+# once - duplicate-write noise, not corruption. 128 MB keeps the
 # ~50 s-resident loop inside the Lambda free tier.
 resource "aws_lambda_function" "poller" {
-  function_name                  = "wsf-prod-ingest-vessels"
-  role                           = aws_iam_role.poller.arn
-  runtime                        = "python3.12"
-  architectures                  = ["arm64"]
-  handler                        = "wsf_ingest.poller.lambda_handler"
-  filename                       = var.lambda_zip_path
-  source_code_hash               = filebase64sha256(var.lambda_zip_path)
-  memory_size                    = 128
-  timeout                        = 55
-  reserved_concurrent_executions = 1
+  function_name    = "wsf-prod-ingest-vessels"
+  role             = aws_iam_role.poller.arn
+  runtime          = "python3.12"
+  architectures    = ["arm64"]
+  handler          = "wsf_ingest.poller.lambda_handler"
+  filename         = var.lambda_zip_path
+  source_code_hash = filebase64sha256(var.lambda_zip_path)
+  memory_size      = 128
+  timeout          = 55
 
   environment {
     variables = {
