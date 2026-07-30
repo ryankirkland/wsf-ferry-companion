@@ -17,3 +17,7 @@ output "dims_function_name" {
   description = "Dims refresher Lambda (also hosts gate2-bench)."
   value       = aws_lambda_function.dims.function_name
 }
+
+output "table_arn" {
+  value = aws_dynamodb_table.hot.arn
+}

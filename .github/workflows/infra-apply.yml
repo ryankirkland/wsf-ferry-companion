@@ -54,6 +54,15 @@ jobs:
             --only-binary :all: --no-cache
           python3 tools/build_lambda_zip.py .build/ingest-src infra/envs/prod/.build/ingest.zip
 
+      - name: build notify lambda artifact
+        run: |
+          uv build --wheel --package wsf-notify --out-dir .build/wheels
+          uv pip install .build/wheels/wsf_core-*.whl .build/wheels/wsf_notify-*.whl \
+            --target .build/notify-src \
+            --python-platform aarch64-manylinux2014 --python-version 3.12 \
+            --only-binary :all: --no-cache
+          python3 tools/build_lambda_zip.py .build/notify-src infra/envs/prod/.build/notify.zip
+
       - uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
         with:
           role-to-assume: arn:aws:iam::654654574183:role/wsf-github-apply

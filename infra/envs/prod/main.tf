@@ -28,6 +28,8 @@ module "api" {
 
   cognito_user_pool_endpoint = module.notify.user_pool_endpoint
   cognito_web_client_id      = module.notify.web_client_id
+  notify_api_invoke_arn      = module.notify.api_lambda_invoke_arn
+  notify_api_function_name   = module.notify.api_lambda_function_name
 }
 
 # M3 alert-notification foundations: SES identity + Cognito + link-token
@@ -35,8 +37,14 @@ module "api" {
 module "notify" {
   source = "../../modules/notify"
 
-  domain_name = var.domain_name
-  zone_id     = aws_route53_zone.main.zone_id
+  domain_name      = var.domain_name
+  zone_id          = aws_route53_zone.main.zone_id
+  table_name       = module.ingest.table_name
+  table_arn        = module.ingest.table_arn
+  data_bucket_name = module.static_site.data_bucket_name
+  data_bucket_arn  = module.static_site.data_bucket_arn
+  # Built by CI (and locally) before terraform runs - see infra-plan.yml.
+  lambda_zip_path = "${path.root}/.build/notify.zip"
 }
 
 # Shared operational alarm channel (ingest now; api/alerts later).
