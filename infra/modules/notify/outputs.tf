@@ -31,3 +31,7 @@ output "api_lambda_invoke_arn" {
 output "api_lambda_function_name" {
   value = aws_lambda_function.api.function_name
 }
+
+output "notifier_function_name" {
+  value = aws_lambda_function.notifier.function_name
+}

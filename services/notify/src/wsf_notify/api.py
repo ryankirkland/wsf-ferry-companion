@@ -159,6 +159,7 @@ def _create(event: dict) -> dict:
     attrs = {
         "dep": pair["dep"],
         "arr": pair["arr"],
+        "slug": pair["slug"],
         "dep_name": pair["dep_name"],
         "arr_name": pair["arr_name"],
         "route_id": pair["route_id"],

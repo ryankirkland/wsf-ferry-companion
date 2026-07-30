@@ -37,12 +37,14 @@ module "api" {
 module "notify" {
   source = "../../modules/notify"
 
-  domain_name      = var.domain_name
-  zone_id          = aws_route53_zone.main.zone_id
-  table_name       = module.ingest.table_name
-  table_arn        = module.ingest.table_arn
-  data_bucket_name = module.static_site.data_bucket_name
-  data_bucket_arn  = module.static_site.data_bucket_arn
+  domain_name            = var.domain_name
+  zone_id                = aws_route53_zone.main.zone_id
+  table_name             = module.ingest.table_name
+  table_arn              = module.ingest.table_arn
+  data_bucket_name       = module.static_site.data_bucket_name
+  data_bucket_arn        = module.static_site.data_bucket_arn
+  alarms_topic_arn       = aws_sns_topic.alarms.arn
+  notifier_function_name = local.notifier_function_name
   # Built by CI (and locally) before terraform runs - see infra-plan.yml.
   lambda_zip_path = "${path.root}/.build/notify.zip"
 }
@@ -58,13 +60,21 @@ resource "aws_sns_topic_subscription" "alarms_email" {
   endpoint  = var.alarm_email
 }
 
+# One name, two modules: the notify module creates this function, the
+# ingest module's alerts poller invokes it. A string local (not a module
+# output) breaks what would otherwise be an ingest<->notify cycle.
+locals {
+  notifier_function_name = "wsf-prod-notify-fanout"
+}
+
 module "ingest" {
   source = "../../modules/ingest"
 
-  data_bucket_name = module.static_site.data_bucket_name
-  data_bucket_arn  = module.static_site.data_bucket_arn
-  distribution_id  = module.static_site.distribution_id
-  alarms_topic_arn = aws_sns_topic.alarms.arn
+  notifier_function_name = local.notifier_function_name
+  data_bucket_name       = module.static_site.data_bucket_name
+  data_bucket_arn        = module.static_site.data_bucket_arn
+  distribution_id        = module.static_site.distribution_id
+  alarms_topic_arn       = aws_sns_topic.alarms.arn
   # Built by CI (and locally) before terraform runs - see infra-plan.yml.
   lambda_zip_path = "${path.root}/.build/ingest.zip"
 }
