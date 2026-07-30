@@ -34,6 +34,15 @@ resource "aws_cognito_user_pool" "users" {
     email_sending_account = "COGNITO_DEFAULT"
   }
 
+  # Branded copy helps a little with spam placement; the real fix is the
+  # SES-sender switch after production access (W2) - COGNITO_DEFAULT's
+  # generic no-reply@verificationemail.com has no DKIM tie to our domain.
+  verification_message_template {
+    default_email_option = "CONFIRM_WITH_CODE"
+    email_subject        = "Your Ferry Sound confirmation code"
+    email_message        = "Welcome aboard. Your Ferry Sound confirmation code is {####}. It expires in 24 hours. If you didn't create an account at ferrysound.com, ignore this email."
+  }
+
   schema {
     name                = "email"
     attribute_data_type = "String"
