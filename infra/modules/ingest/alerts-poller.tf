@@ -32,6 +32,14 @@ data "aws_iam_policy_document" "alerts_poller" {
     actions   = ["lambda:InvokeFunction"]
     resources = [aws_lambda_function.schedule_refresh.arn]
   }
+
+  statement {
+    sid     = "TriggerNotifier"
+    actions = ["lambda:InvokeFunction"]
+    resources = [
+      "arn:aws:lambda:us-west-2:${data.aws_caller_identity.current.account_id}:function:${var.notifier_function_name}"
+    ]
+  }
 }
 
 resource "aws_iam_role" "alerts_poller" {
@@ -72,6 +80,7 @@ resource "aws_lambda_function" "alerts_poller" {
       RAW_BUCKET            = aws_s3_bucket.raw.id
       WSF_ACCESS_CODE_PARAM = aws_ssm_parameter.wsf_access_code.name
       REFRESHER_FUNCTION    = aws_lambda_function.schedule_refresh.function_name
+      NOTIFIER_FUNCTION     = var.notifier_function_name
     }
   }
 

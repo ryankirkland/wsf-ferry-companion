@@ -30,3 +30,13 @@ variable "lambda_zip_path" {
   description = "CI-built zip with wsf-notify + wsf-core."
   type        = string
 }
+
+variable "alarms_topic_arn" {
+  description = "Ops SNS topic - notifier alarm + OnFailure destination."
+  type        = string
+}
+
+variable "notifier_function_name" {
+  description = "Set at the env level so the alerts poller (ingest module) can reference it without a module cycle."
+  type        = string
+}

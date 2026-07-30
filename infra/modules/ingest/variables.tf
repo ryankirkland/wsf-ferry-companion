@@ -22,3 +22,8 @@ variable "lambda_zip_path" {
   description = "Path to the CI-built deterministic ingest artifact."
   type        = string
 }
+
+variable "notifier_function_name" {
+  description = "M3 fan-out notifier; the alerts poller invokes it on digest change. Name set at env level to avoid a module cycle with modules/notify."
+  type        = string
+}
