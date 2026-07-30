@@ -87,6 +87,10 @@ export function BoatFab() {
             Service calendar
             <span>Scheduled cancellations, months ahead</span>
           </Link>
+          <Link href="/alerts" onClick={() => setOpen(false)}>
+            Email alerts
+            <span>Your crossing, your window, one email</span>
+          </Link>
           <Link href="/ambient" onClick={() => setOpen(false)}>
             Ambient mode
             <span>The Sound on a wall, all day</span>
