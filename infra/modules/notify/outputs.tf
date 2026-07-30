@@ -22,3 +22,12 @@ output "configuration_set_name" {
 output "link_secrets_parameter_name" {
   value = aws_ssm_parameter.alert_link_secrets.name
 }
+
+output "api_lambda_invoke_arn" {
+  description = "For the HTTP API integration (modules/api owns routes)."
+  value       = aws_lambda_function.api.invoke_arn
+}
+
+output "api_lambda_function_name" {
+  value = aws_lambda_function.api.function_name
+}

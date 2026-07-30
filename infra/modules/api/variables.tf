@@ -21,3 +21,12 @@ variable "cognito_web_client_id" {
 locals {
   api_domain = "api.${var.domain_name}"
 }
+
+variable "notify_api_invoke_arn" {
+  description = "Subscription API Lambda invoke ARN (module notify, M3)."
+  type        = string
+}
+
+variable "notify_api_function_name" {
+  type = string
+}
