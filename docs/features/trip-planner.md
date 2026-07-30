@@ -44,7 +44,17 @@ across 5 routes.**
   effective-date field; future-date browsing notes today's tables shown).
 - `/data/alerts.json` - slimmed active alerts (plain text, route_ids,
   BulletinID+PublishDate watermark). The route banner is M2's same-day
-  cancellation surface; free-text sailing extraction is M3 scope.
+  cancellation surface; free-text sailing extraction is M3 scope. The UI
+  stamps every alert with its publish time (Sound-time clock if today,
+  short date otherwise) - a 9 AM delay notice means something different
+  at 5 PM.
+- `/data/adjustments.json` (added 2026-07-29) - the season-wide service
+  calendar: every timeadj row expanded to per-date entries (date,
+  route_id/name, dep terminal, add|cancel, tidal, HH:MM local), past
+  dates dropped. Published on full rebuilds - timeadj only moves with
+  the schedule token. Rendered at `/calendar` as month grids; days
+  inside the 14-day horizon deep-link to the pair page for that date,
+  deeper dates are information only (upstream cannot serve them yet).
 
 ## Dependencies
 
@@ -81,6 +91,13 @@ alert banner (the same-day-truth surface) -> answer line ("Next boat:
 signal pills (earlier sailings collapsed) -> 14-chip date strip (`?date=`
 bounded today..+13, out-of-range clamps with an honest note) -> collapsible
 fares panel (basic 13 default, honest effective label).
+
+Navigation: the map carries a boat-button (bottom-left) opening a drawer
+with the trip planner, "your run", the service calendar, and ambient mode
+- /ambient itself stays chromeless. Signal pills mark only states that
+demand a glance (boarding, leaving now, running late, departed/gone,
+no-signal); tight/comfortable rows let the countdown speak for itself
+(Ryan's call, 2026-07-29).
 
 Signal engine (`lib/trip/signal.ts`, pure, exhaustively table-tested):
 states cancelled / departed / gone / boarding / late-start / leaving-now /

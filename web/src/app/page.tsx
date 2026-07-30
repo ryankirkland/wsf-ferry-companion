@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { MapView } from "@/components/MapView";
 import { TopBar } from "@/components/chrome/TopBar";
+import { BoatFab } from "@/components/nav/BoatFab";
 import { VesselCard } from "@/components/vessel/VesselCard";
 import { useFleet } from "@/hooks/use-fleet";
 import { useMode } from "@/hooks/use-mode";
@@ -23,6 +24,7 @@ export default function Home() {
     <main className={styles.stage}>
       <MapView mode={mode} fleet={fleet} onVesselClick={onVesselClick} />
       <TopBar pref={pref} onModeChange={setPref} />
+      <BoatFab />
       {selected && <VesselCard fix={selected} onClose={() => setSelectedId(null)} />}
     </main>
   );

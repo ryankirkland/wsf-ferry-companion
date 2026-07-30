@@ -99,6 +99,16 @@
   color: var(--ink-soft);
   font-weight: 400;
   font-size: 0.8rem;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.alertStamp {
+  color: var(--ink-soft);
+  font-weight: 400;
+  font-size: 0.76rem;
+  margin-left: 0.5rem;
+  white-space: nowrap;
 }
 
 .alertBody {

@@ -94,6 +94,23 @@ export interface AlertsDoc {
   alerts: AlertItem[];
 }
 
+export interface AdjustmentEntry {
+  date: string;
+  route_id: number;
+  route_name: string | null;
+  terminal_id: number;
+  type: "add" | "cancel";
+  tidal: boolean;
+  time_local: string;
+}
+
+export interface AdjustmentsDoc {
+  v: 1;
+  generated_at: string;
+  from: string;
+  adjustments: AdjustmentEntry[];
+}
+
 function isDoc(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && (value as { v?: unknown }).v === 1;
 }
@@ -132,6 +149,19 @@ export function isPairFares(value: unknown): value is PairFares {
       f !== null &&
       typeof (f as FareItem).amount === "string" &&
       typeof (f as FareItem).label === "string",
+  );
+}
+
+export function isAdjustmentsDoc(value: unknown): value is AdjustmentsDoc {
+  if (!isDoc(value) || typeof value.from !== "string" || !Array.isArray(value.adjustments))
+    return false;
+  return value.adjustments.every(
+    (a: unknown) =>
+      typeof a === "object" &&
+      a !== null &&
+      typeof (a as AdjustmentEntry).date === "string" &&
+      typeof (a as AdjustmentEntry).route_id === "number" &&
+      typeof (a as AdjustmentEntry).time_local === "string",
   );
 }
 

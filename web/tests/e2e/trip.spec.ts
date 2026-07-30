@@ -167,9 +167,11 @@ test("trip page answers run-or-relax with live signals", async ({ page }) => {
   await expect(answer).toBeVisible({ timeout: 15_000 });
   await expect(answer).toContainText(/at the dock - leaves in \d+ min/i);
 
-  // Alert banner is route-matched and expandable.
+  // Alert banner is route-matched, expandable, and stamped: the fixture
+  // alert is published "now", so the stamp is a Sound-time clock reading.
   const banner = page.getByTestId("alert-banner");
   await expect(banner).toContainText("sample service notice");
+  await expect(banner.locator("summary time")).toHaveText(/\d{1,2}:\d{2} (AM|PM)/);
   await banner.locator("summary").click();
   await expect(banner).toContainText("Fixture alert body for E2E.");
 

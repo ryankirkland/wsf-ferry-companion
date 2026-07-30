@@ -100,7 +100,8 @@ Dims: `/data/vessels.json` (class/capacity/years), `/data/terminals.json`
 (38 pairs + horizon), `/data/pairs/{dep}-{arr}/{date}.json` (14-day
 window, `depart_ms` = the verified fleet join key),
 `/data/fares/{dep}-{arr}.json` (LineItemLookup-resolved),
-`/data/alerts.json` (watermarked). Pair-day files expire from the bucket
+`/data/alerts.json` (watermarked), `/data/adjustments.json` (season-wide
+service calendar from timeadj). Pair-day files expire from the bucket
 after 30 days.
 
 **Raw archive** (`wsf-prod-raw-*`): `raw/<dataset>/dt=YYYY-MM-DD/HHMM.ndjson.gz`

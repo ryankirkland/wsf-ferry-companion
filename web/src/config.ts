@@ -45,6 +45,7 @@ export const PAIR_REFRESH_MS = 300_000;
 export const ALERTS_POLL_MS = 60_000;
 export const PAIRS_INDEX_PATH = "/data/pairs/index.json";
 export const ALERTS_PATH = "/data/alerts.json";
+export const ADJUSTMENTS_PATH = "/data/adjustments.json";
 export const pairDayPath = (dep: number, arr: number, date: string) =>
   `/data/pairs/${dep}-${arr}/${date}.json`;
 export const pairFaresPath = (dep: number, arr: number) => `/data/fares/${dep}-${arr}.json`;

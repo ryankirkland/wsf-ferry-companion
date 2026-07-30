@@ -1,0 +1,110 @@
+/* Boat FAB + drawer - Paper Sound chrome over the map. */
+
+.fab {
+  position: absolute;
+  left: 1rem;
+  bottom: 1.25rem;
+  z-index: 30;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  border: 1px solid var(--card-line);
+  background: var(--card);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--ink) 18%, transparent);
+  transition: transform 120ms ease;
+}
+
+.fab:hover {
+  transform: scale(1.06);
+}
+
+.fab:active {
+  transform: scale(0.97);
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: color-mix(in srgb, var(--ink) 28%, transparent);
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 40;
+  width: min(20rem, 85vw);
+  background: var(--paper);
+  border-right: 1px solid var(--card-line);
+  box-shadow: 4px 0 24px color-mix(in srgb, var(--ink) 20%, transparent);
+  transform: translateX(-105%);
+  transition: transform 200ms ease;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.drawerOpen {
+  transform: translateX(0);
+}
+
+.drawerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.drawerTitle {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.drawerTitle span {
+  color: var(--accent);
+}
+
+.close {
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+}
+
+.links {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.links a {
+  display: grid;
+  gap: 0.1rem;
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 0.7rem;
+  padding: 0.7rem 0.85rem;
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 650;
+  font-size: 0.95rem;
+}
+
+.links a:hover {
+  border-color: var(--accent);
+}
+
+.links a span {
+  color: var(--ink-soft);
+  font-weight: 400;
+  font-size: 0.8rem;
+}

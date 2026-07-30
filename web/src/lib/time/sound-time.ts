@@ -84,3 +84,16 @@ export function shiftDate(ymd: string, days: number): string {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
+
+const STAMP_DAY = new Intl.DateTimeFormat("en-US", {
+  timeZone: SOUND_TZ,
+  month: "short",
+  day: "numeric",
+});
+
+/** Timestamp voice for feeds: "7:37 PM" if today in Sound time, else "Jul 26". */
+export function soundStamp(iso: string, now: Date = new Date()): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return soundDate(d) === soundDate(now) ? soundTimeShort(d.getTime()) : STAMP_DAY.format(d);
+}
