@@ -45,7 +45,7 @@ _client: WsfClient | None = None
 def _wsf() -> WsfClient:
     global _client
     if _client is None:
-        _client = WsfClient(get_access_code())
+        _client = WsfClient(get_access_code(), transport_retries=1)
     return _client
 
 

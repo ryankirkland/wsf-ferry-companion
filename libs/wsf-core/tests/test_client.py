@@ -87,3 +87,54 @@ def test_400_discrimination_auth_vs_bad_request():
     )
     with pytest.raises(WsfBadRequestError):
         bad.vessel_locations()
+
+
+class FlakyHttp:
+    """Raises transport errors for the first N requests, then succeeds."""
+
+    def __init__(self, failures: int, response: FakeResponse):
+        self._failures = failures
+        self._response = response
+        self.calls = 0
+
+    def request(self, method: str, url: str) -> FakeResponse:
+        self.calls += 1
+        if self.calls <= self._failures:
+            raise TimeoutError("read timed out")
+        return self._response
+
+
+def test_transport_retry_recovers_from_one_timeout(monkeypatch):
+    monkeypatch.setattr("wsf_core.client.time.sleep", lambda s: None)
+    http = FlakyHttp(1, FakeResponse(200, [{"ok": True}]))
+    client = WsfClient("test-code", transport_retries=1, http=http)  # type: ignore[arg-type]
+    assert client.alerts_raw() == [{"ok": True}]
+    assert http.calls == 2
+
+
+def test_transport_retry_exhausted_raises(monkeypatch):
+    monkeypatch.setattr("wsf_core.client.time.sleep", lambda s: None)
+    http = FlakyHttp(2, FakeResponse(200, []))
+    client = WsfClient("test-code", transport_retries=1, http=http)  # type: ignore[arg-type]
+    with pytest.raises(WsfApiError, match="transport failure"):
+        client.alerts_raw()
+    assert http.calls == 2
+
+
+def test_default_client_never_retries_transport():
+    http = FlakyHttp(1, FakeResponse(200, []))
+    client = WsfClient("test-code", http=http)  # type: ignore[arg-type]
+    with pytest.raises(WsfApiError, match="transport failure"):
+        client.alerts_raw()
+    assert http.calls == 1
+
+
+def test_http_errors_never_retry():
+    class CountingHttp(FakeHttp):
+        pass
+
+    http = CountingHttp(FakeResponse(503, b"unavailable"))
+    client = WsfClient("test-code", transport_retries=3, http=http)  # type: ignore[arg-type]
+    with pytest.raises(WsfApiError):
+        client.vessel_locations()
+    assert len(http.requested_urls) == 1

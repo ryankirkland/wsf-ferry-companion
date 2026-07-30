@@ -9,6 +9,7 @@ to alarm on, never to retry-storm).
 
 import json
 import re
+import time
 from typing import Any
 
 import urllib3
@@ -49,22 +50,35 @@ class WsfClient:
         *,
         base_url: str = BASE_URL,
         timeout_s: float = 10.0,
+        transport_retries: int = 0,
         http: urllib3.PoolManager | None = None,
     ):
         self._access_code = access_code
         self._base_url = base_url.rstrip("/")
+        # Retry policy belongs to the caller's failure taxonomy: the vessel
+        # poller treats a failed poll as a data point (default 0), while the
+        # schedule refresher opts into one transport retry - a single 10 s
+        # read timeout must not abort a 532-call horizon rebuild (it did, on
+        # 2026-07-30). Only transport failures retry; HTTP 4xx/5xx never do.
+        self._transport_retries = transport_retries
         self._http = http or urllib3.PoolManager(
             timeout=urllib3.Timeout(total=timeout_s),
-            retries=False,  # retry policy belongs to the caller's failure taxonomy
+            retries=False,
             headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
         )
 
     def _get(self, path: str) -> Any:
         url = f"{self._base_url}{path}?apiaccesscode={self._access_code}"
-        try:
-            resp = self._http.request("GET", url)
-        except Exception as exc:  # urllib3 raises a small zoo; one taxonomy bucket
-            raise WsfApiError(f"transport failure for {path}: {exc}") from exc
+        resp = None
+        for attempt in range(self._transport_retries + 1):
+            try:
+                resp = self._http.request("GET", url)
+                break
+            except Exception as exc:  # urllib3 raises a small zoo; one taxonomy bucket
+                if attempt >= self._transport_retries:
+                    raise WsfApiError(f"transport failure for {path}: {exc}") from exc
+                time.sleep(0.5 * (attempt + 1))
+        assert resp is not None
 
         if resp.status == 400:
             try:
