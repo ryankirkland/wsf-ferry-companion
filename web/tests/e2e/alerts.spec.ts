@@ -143,3 +143,22 @@ test("pair pages link to prefilled alerts", async ({ page }) => {
     /\/alerts\/?\?dep=7&arr=3/,
   );
 });
+
+test("boat FAB survives client-side navigation back to the map", async ({ page }) => {
+  // Regression: navigating /alerts -> wordmark -> map left the FAB
+  // missing until a hard refresh (Ryan, 2026-07-30, on production).
+  await page.route("**/data/**", (r) => r.fulfill({ status: 404, body: "" }));
+  await page.goto("/alerts/");
+  await page.getByRole("link", { name: /Ferry/ }).first().click();
+  await expect(page).toHaveURL(/\/$/);
+  const fab = page.getByTestId("boat-fab");
+  await expect(fab).toBeVisible();
+  const pos = await fab.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { position: s.position, rect: el.getBoundingClientRect().toJSON() };
+  });
+  expect(pos.position).toBe("fixed");
+  const viewport = page.viewportSize()!;
+  expect(pos.rect.bottom).toBeLessThanOrEqual(viewport.height);
+  expect(pos.rect.left).toBeLessThan(100); // bottom-left corner, on screen
+});
