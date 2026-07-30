@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 members = [
     "wsf-core",
     "wsf-ingest",
+    "wsf-notify",
 ]
 
 [manifest.dependency-groups]
@@ -789,6 +790,33 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "moto", extras = ["s3", "dynamodb", "ssm"], specifier = ">=5" },
+    { name = "pytest", specifier = ">=8" },
+]
+
+[[package]]
+name = "wsf-notify"
+version = "0.1.0"
+source = { editable = "services/notify" }
+dependencies = [
+    { name = "boto3" },
+    { name = "wsf-core" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "moto", extra = ["dynamodb", "s3", "ssm"] },
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "boto3", specifier = ">=1.34" },
+    { name = "wsf-core", editable = "libs/wsf-core" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "moto", extras = ["s3", "dynamodb", "ssm", "ses", "sns"], specifier = ">=5" },
     { name = "pytest", specifier = ">=8" },
 ]
 
