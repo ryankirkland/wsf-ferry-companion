@@ -4,6 +4,7 @@
 
 ## Features
 - **F1 Realtime vessel map**: see `docs/features/realtime-map.md` for goals, dependencies, and why it is shaped this way (snapshot serving, staleness rules, dedup). Update that file whenever the feature changes.
+- **F3 Email alerts**: see `docs/features/alerts.md` for the poller->notifier pipeline, the fail-closed prose parser + fallback honesty rules, dedup/cap semantics, and Cognito/SES auth decisions (ADR-0006). Update that file whenever the feature changes.
 - **F2 Trip planner**: see `docs/features/trip-planner.md` for the four `/data` contracts, the verified (VesselID, depart_ms) join, signal-engine honesty rules, and the fares/timeadj traps. Update that file whenever the feature changes.
 
 ## General Guidelines
