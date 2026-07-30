@@ -49,3 +49,9 @@ export const ADJUSTMENTS_PATH = "/data/adjustments.json";
 export const pairDayPath = (dep: number, arr: number, date: string) =>
   `/data/pairs/${dep}-${arr}/${date}.json`;
 export const pairFaresPath = (dep: number, arr: number) => `/data/fares/${dep}-${arr}.json`;
+
+// M3 alerts: Cognito identifiers are public client config, not secrets.
+export const API_ORIGIN = env.NEXT_PUBLIC_API_ORIGIN ?? "https://api.ferrysound.com";
+export const COGNITO_POOL_ID = env.NEXT_PUBLIC_COGNITO_POOL_ID ?? "us-west-2_Rvw5RQOP0";
+export const COGNITO_CLIENT_ID =
+  env.NEXT_PUBLIC_COGNITO_CLIENT_ID ?? "57ckrpr8h75p2hrpf72so0leu7";

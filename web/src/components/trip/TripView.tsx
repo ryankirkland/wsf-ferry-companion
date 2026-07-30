@@ -139,6 +139,11 @@ export function TripView({ slug }: { slug: string }) {
           {crossingMin !== null && <span className={styles.badge}>~{crossingMin} min crossing</span>}
           {indexPair?.reservable && <span className={styles.badge}>Reservations</span>}
           {indexPair?.passenger_only && <span className={styles.badge}>Passengers only</span>}
+          {indexPair?.route_id != null && (
+            <Link href={`/alerts?dep=${entry.dep}&arr=${entry.arr}`} className={styles.swap}>
+              Get alerts for this run
+            </Link>
+          )}
         </div>
 
         <AlertBanner alerts={matchedAlerts} />
