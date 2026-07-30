@@ -174,7 +174,7 @@ describe("schedule-only states", () => {
   it("gone: no fix, past the threshold", () => {
     const s = run(D + 10 * MIN, null);
     expect(s.state).toBe("gone");
-    expect(s.headline).toBe("Likely gone - scheduled 2:05 PM");
+    expect(s.headline).toBe("Likely gone");
     expect(s.tone).toBe("muted");
   });
 

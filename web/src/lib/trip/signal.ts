@@ -137,13 +137,9 @@ export function computeSignal({ sailing, cancelled, fix, depTerminalId, nowMs }:
 
   // No usable live evidence for this sailing from here down.
   if (t < -SIGNAL.goneAfterMin) {
-    return {
-      state: "gone",
-      tone: "muted",
-      headline: `Likely gone - scheduled ${when}`,
-      detail: null,
-      live: false,
-    };
+    // No "- scheduled X" suffix: every surface showing this sits right
+    // next to the scheduled time already.
+    return { state: "gone", tone: "muted", headline: "Likely gone", detail: null, live: false };
   }
   if (t < 0) {
     // The one window where "did it leave?" needs live truth we don't have.
