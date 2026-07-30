@@ -5,7 +5,7 @@ Living document - updated every time deployed infrastructure changes
 (serverless lakehouse), [ADR-0003](adr/0003-tile-hosting.md) (tiles),
 [ADR-0004](adr/0004-state-backend-and-ci.md) (state + CI).
 
-## Deployed today (M0 skeleton + M1 map + M2 trip planner)
+## Deployed today (M0 skeleton + M1 map + M2 trip planner + M3 alerts)
 
 ```mermaid
 flowchart LR
@@ -18,6 +18,9 @@ flowchart LR
         EB --> SCHED[Lambda schedule refresher<br/>token + horizon gated, 15 min]
         EB --> AL[Lambda alerts poller<br/>watermark-gated, 1 min]
         AL -- "on change: today-refresh" --> SCHED
+        AL -- "on change: full slim feed" --> NOTIF[Lambda notifier<br/>diff + match + capped SES fan-out]
+        NOTIF --> SES2[SES ferrysound.com] --> SUBS([Alert subscribers])
+        SES2 -- bounce/complaint --> SUP[Lambda suppress]
     end
 
     subgraph usw2 [AWS us-west-2]
@@ -88,7 +91,10 @@ notifications.
 | Pairs horizon | `META` | `HORIZON#pairs` | last published horizon window |
 | Alerts watermark | `META` | `ALERTS#watermark` | `maxid:maxms` change gate |
 | Departures, today+tomorrow (M2) | `PAIR#0007#0003` | `DEP#<iso>` | vessel, depart_ms; TTL `expires_at` = depart + 6 h; M3's alert-evaluator Query substrate |
-| M3 alerts (planned) | `ALERTS` / `USER#<sub>` | `BULLETIN#` / `SUB#<route>` | Streams fan-out |
+| Bulletin state (M3) | `ALERTS` | `BULLETIN#<id>` | first_seen_ms, text_hash, gone_at; notifier-owned diff state |
+| Subscriptions (M3) | `USER#<sub>` + `ROUTE#<rid>` mirror | `SUB#...` | pair, window, email; TransactWrite pairs |
+| Send claims / caps (M3) | `USER#<sub>` | `SENT#<bulletin>` / `NOTIF#<date>` | effectively-once + daily caps |
+| Suppression (M3) | `EMAIL#<email>` | `SUPPRESS` / `USER` | complaint/bounce hygiene + email->user pointer |
 
 **Public snapshot contract** (`/data/fleet.json`, versioned `"v": 1`, ADR-0005):
 `generated_at` + per vessel `{id, name, lat, lon, speed, heading, state[underway|docked|yard|stale], insvc, age_s, dep, arr, left, eta, eta_basis, sched, routes, pos}`.
