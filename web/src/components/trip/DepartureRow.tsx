@@ -29,9 +29,15 @@ export function DepartureRow({ sailing, signal, cancelledReason, crossingMin }: 
     );
   } else {
     // The clock-form headline ("Leaves at 7:30 PM") just repeats the row's
-    // own time cell - show only what it adds.
+    // own time cell, and gone rows already say it all by fading - show
+    // only what adds information.
     const clockForm = signal.headline === `Leaves at ${soundTimeShort(sailing.depart_ms)}`;
-    const status = clockForm ? signal.detail : `${signal.headline}${signal.detail ? ` · ${signal.detail}` : ""}`;
+    const status =
+      signal.state === "gone"
+        ? null
+        : clockForm
+          ? signal.detail
+          : `${signal.headline}${signal.detail ? ` · ${signal.detail}` : ""}`;
     if (status) meta.push(<span key="status">{status}</span>);
     if (arriveMs !== null && !past) {
       meta.push(<span key="arr">~ arrives {soundTimeShort(arriveMs)}</span>);
