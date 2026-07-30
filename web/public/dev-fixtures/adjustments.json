@@ -1,0 +1,979 @@
+{
+ "v": 1,
+ "generated_at": "2026-07-24T00:00:00Z",
+ "from": "2026-07-24",
+ "adjustments": [
+  {
+   "date": "2026-08-10",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "06:30"
+  },
+  {
+   "date": "2026-08-10",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "07:15"
+  },
+  {
+   "date": "2026-08-11",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "06:30"
+  },
+  {
+   "date": "2026-08-11",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "07:15"
+  },
+  {
+   "date": "2026-08-11",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "08:00"
+  },
+  {
+   "date": "2026-08-11",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "08:45"
+  },
+  {
+   "date": "2026-08-12",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "add",
+   "tidal": true,
+   "time_local": "06:25"
+  },
+  {
+   "date": "2026-08-12",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "06:30"
+  },
+  {
+   "date": "2026-08-12",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "08:00"
+  },
+  {
+   "date": "2026-08-12",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "08:45"
+  },
+  {
+   "date": "2026-08-12",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "08:45"
+  },
+  {
+   "date": "2026-08-12",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "09:30"
+  },
+  {
+   "date": "2026-08-13",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "08:00"
+  },
+  {
+   "date": "2026-08-13",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "08:45"
+  },
+  {
+   "date": "2026-08-13",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "08:45"
+  },
+  {
+   "date": "2026-08-13",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "09:30"
+  },
+  {
+   "date": "2026-08-13",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "09:30"
+  },
+  {
+   "date": "2026-08-13",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "10:15"
+  },
+  {
+   "date": "2026-08-14",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "09:30"
+  },
+  {
+   "date": "2026-08-14",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "10:15"
+  },
+  {
+   "date": "2026-08-14",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "10:15"
+  },
+  {
+   "date": "2026-08-14",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "11:00"
+  },
+  {
+   "date": "2026-09-07",
+   "route_id": 1,
+   "route_name": "Pt. Defiance / Tahlequah",
+   "terminal_id": 16,
+   "type": "add",
+   "tidal": false,
+   "time_local": "05:05"
+  },
+  {
+   "date": "2026-09-07",
+   "route_id": 1,
+   "route_name": "Pt. Defiance / Tahlequah",
+   "terminal_id": 21,
+   "type": "add",
+   "tidal": false,
+   "time_local": "05:30"
+  },
+  {
+   "date": "2026-09-09",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "06:30"
+  },
+  {
+   "date": "2026-09-09",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "07:15"
+  },
+  {
+   "date": "2026-09-10",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "08:00"
+  },
+  {
+   "date": "2026-09-10",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "08:45"
+  },
+  {
+   "date": "2026-09-27",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "20:30"
+  },
+  {
+   "date": "2026-09-27",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "21:10"
+  },
+  {
+   "date": "2026-10-25",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:45"
+  },
+  {
+   "date": "2026-10-25",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "19:30"
+  },
+  {
+   "date": "2026-10-25",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "20:30"
+  },
+  {
+   "date": "2026-10-25",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "21:10"
+  },
+  {
+   "date": "2026-10-26",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "20:30"
+  },
+  {
+   "date": "2026-10-26",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "21:10"
+  },
+  {
+   "date": "2026-10-27",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "20:30"
+  },
+  {
+   "date": "2026-10-27",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "21:10"
+  },
+  {
+   "date": "2026-10-28",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "add",
+   "tidal": true,
+   "time_local": "20:25"
+  },
+  {
+   "date": "2026-10-28",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "20:30"
+  },
+  {
+   "date": "2026-11-06",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "17:15"
+  },
+  {
+   "date": "2026-11-06",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:00"
+  },
+  {
+   "date": "2026-11-06",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:45"
+  },
+  {
+   "date": "2026-11-06",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "19:30"
+  },
+  {
+   "date": "2026-11-07",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "17:15"
+  },
+  {
+   "date": "2026-11-07",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:00"
+  },
+  {
+   "date": "2026-11-07",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:45"
+  },
+  {
+   "date": "2026-11-07",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "19:30"
+  },
+  {
+   "date": "2026-11-08",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:45"
+  },
+  {
+   "date": "2026-11-08",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "19:30"
+  },
+  {
+   "date": "2026-11-09",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:45"
+  },
+  {
+   "date": "2026-11-09",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "19:30"
+  },
+  {
+   "date": "2026-11-09",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "20:30"
+  },
+  {
+   "date": "2026-11-09",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "21:10"
+  },
+  {
+   "date": "2026-11-10",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "20:30"
+  },
+  {
+   "date": "2026-11-10",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "21:10"
+  },
+  {
+   "date": "2026-11-22",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "17:15"
+  },
+  {
+   "date": "2026-11-22",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:00"
+  },
+  {
+   "date": "2026-11-22",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:45"
+  },
+  {
+   "date": "2026-11-22",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "add",
+   "tidal": true,
+   "time_local": "18:50"
+  },
+  {
+   "date": "2026-11-23",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "17:15"
+  },
+  {
+   "date": "2026-11-23",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:00"
+  },
+  {
+   "date": "2026-11-23",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:45"
+  },
+  {
+   "date": "2026-11-23",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "19:30"
+  },
+  {
+   "date": "2026-11-24",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:45"
+  },
+  {
+   "date": "2026-11-24",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "19:30"
+  },
+  {
+   "date": "2026-11-25",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:45"
+  },
+  {
+   "date": "2026-11-25",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "19:30"
+  },
+  {
+   "date": "2026-11-25",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "20:30"
+  },
+  {
+   "date": "2026-11-25",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "21:10"
+  },
+  {
+   "date": "2026-11-26",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "20:30"
+  },
+  {
+   "date": "2026-11-26",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "21:10"
+  },
+  {
+   "date": "2026-11-27",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "20:30"
+  },
+  {
+   "date": "2026-11-27",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "21:10"
+  },
+  {
+   "date": "2026-12-04",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "17:15"
+  },
+  {
+   "date": "2026-12-04",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:00"
+  },
+  {
+   "date": "2026-12-05",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "17:15"
+  },
+  {
+   "date": "2026-12-05",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:00"
+  },
+  {
+   "date": "2026-12-06",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "17:15"
+  },
+  {
+   "date": "2026-12-06",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:00"
+  },
+  {
+   "date": "2026-12-06",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:45"
+  },
+  {
+   "date": "2026-12-06",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "19:30"
+  },
+  {
+   "date": "2026-12-07",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "17:15"
+  },
+  {
+   "date": "2026-12-07",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:00"
+  },
+  {
+   "date": "2026-12-07",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:45"
+  },
+  {
+   "date": "2026-12-07",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "19:30"
+  },
+  {
+   "date": "2026-12-08",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:45"
+  },
+  {
+   "date": "2026-12-08",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "19:30"
+  },
+  {
+   "date": "2026-12-09",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "20:30"
+  },
+  {
+   "date": "2026-12-09",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "21:10"
+  },
+  {
+   "date": "2026-12-20",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "17:15"
+  },
+  {
+   "date": "2026-12-20",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:00"
+  },
+  {
+   "date": "2026-12-21",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "17:15"
+  },
+  {
+   "date": "2026-12-21",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:00"
+  },
+  {
+   "date": "2026-12-22",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "17:15"
+  },
+  {
+   "date": "2026-12-22",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:00"
+  },
+  {
+   "date": "2026-12-22",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:45"
+  },
+  {
+   "date": "2026-12-22",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "19:30"
+  },
+  {
+   "date": "2026-12-23",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:45"
+  },
+  {
+   "date": "2026-12-23",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "19:30"
+  },
+  {
+   "date": "2026-12-24",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "18:45"
+  },
+  {
+   "date": "2026-12-24",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "19:30"
+  },
+  {
+   "date": "2026-12-24",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "20:30"
+  },
+  {
+   "date": "2026-12-24",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "21:10"
+  },
+  {
+   "date": "2026-12-25",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "20:30"
+  },
+  {
+   "date": "2026-12-25",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "21:10"
+  },
+  {
+   "date": "2026-12-26",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 17,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "20:30"
+  },
+  {
+   "date": "2026-12-26",
+   "route_id": 8,
+   "route_name": "Port Townsend / Coupeville",
+   "terminal_id": 11,
+   "type": "cancel",
+   "tidal": true,
+   "time_local": "21:10"
+  }
+ ]
+}

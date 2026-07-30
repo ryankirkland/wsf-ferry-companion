@@ -198,3 +198,36 @@ def test_upstream_false_passenger_only_flag_is_suppressed():
     assert by_dep[17]["passenger_only"] is False  # suppressed: upstream-false
     assert by_dep[17]["reservable"] is True
     assert by_dep[20]["passenger_only"] is True  # any other route: honored
+
+
+def test_full_rebuild_publishes_adjustments_calendar(aws, monkeypatch, fake):
+    _run(monkeypatch, fake)
+    doc = _get_json(aws, "data/adjustments.json")
+    assert doc["v"] == 1 and doc["from"] == "2026-07-24"
+    assert len(doc["adjustments"]) >= 100  # golden feed: 108 season rows, none past
+    first = doc["adjustments"][0]
+    assert set(first) == {
+        "date",
+        "route_id",
+        "route_name",
+        "terminal_id",
+        "type",
+        "tidal",
+        "time_local",
+    }
+    assert first["date"] >= "2026-07-24"
+    dates = [a["date"] for a in doc["adjustments"]]
+    assert dates == sorted(dates)
+    # The Aug-10 tidal cancel pair rides along with a real HH:MM.
+    aug10 = [a for a in doc["adjustments"] if a["date"] == "2026-08-10"]
+    assert aug10 and all(a["tidal"] and a["type"] == "cancel" for a in aug10)
+    assert all(len(a["time_local"]) == 5 for a in doc["adjustments"])
+
+
+def test_force_rebuild_ignores_unmoved_tokens(aws, monkeypatch, fake):
+    _run(monkeypatch, fake)
+    calls_after_first = fake.pair_calls
+    counts = _run(monkeypatch, fake, {"mode": "force-rebuild"})
+    assert counts["PairDatesPublished"] == 4  # full horizon again, tokens unchanged
+    assert counts["FaresPublished"] == 38
+    assert fake.pair_calls > calls_after_first

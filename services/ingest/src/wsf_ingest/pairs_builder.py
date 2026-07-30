@@ -202,3 +202,39 @@ def build_pair_fares(
         "one_way": items(fares.one_way),
         "round_trip": items(fares.round_trip),
     }
+
+
+def build_adjustments_doc(
+    *,
+    adjustments: list[TimeAdjustment],
+    route_details: list[dict],
+    from_date: date,
+    now: datetime,
+) -> dict:
+    """/data/adjustments.json - the season-wide service calendar.
+
+    One entry per (calendar date, adjustment): multi-day ranges are expanded
+    so the client never does date-range math. Past dates are dropped; the
+    upstream feed keeps rows for the whole season either way.
+    """
+    names = {rd["RouteID"]: rd.get("Description") for rd in route_details}
+    out = []
+    for adj in adjustments:
+        tod = parse_dotnet_time_of_day(adj.time_to_adj)
+        d = max(adj.adj_date_from.date(), from_date)
+        thru = adj.adj_date_thru.date()
+        while d <= thru:
+            out.append(
+                {
+                    "date": d.isoformat(),
+                    "route_id": adj.route_id,
+                    "route_name": names.get(adj.route_id),
+                    "terminal_id": adj.terminal_id,
+                    "type": "add" if adj.adj_type == 1 else "cancel",
+                    "tidal": adj.tidal,
+                    "time_local": tod.strftime("%H:%M"),
+                }
+            )
+            d += timedelta(days=1)
+    out.sort(key=lambda a: (a["date"], a["route_id"], a["time_local"]))
+    return {"v": 1, "generated_at": _iso(now), "from": from_date.isoformat(), "adjustments": out}

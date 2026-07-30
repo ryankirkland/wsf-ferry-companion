@@ -31,6 +31,15 @@ await writeFile(path.join(OUT, "pair-day.template.json"), JSON.stringify(day, nu
 const fares = await get("/data/fares/14-5.json");
 await writeFile(path.join(OUT, "fares-14-5.json"), JSON.stringify(fares, null, 1));
 
+// Season calendar - published by the schedule refresher; skip gracefully if
+// this runs against a stack that predates the contract.
+try {
+  const adjustments = await get("/data/adjustments.json");
+  await writeFile(path.join(OUT, "adjustments.json"), JSON.stringify(adjustments, null, 1));
+} catch {
+  console.warn("adjustments.json not live yet - kept the existing fixture");
+}
+
 await writeFile(
   path.join(OUT, "alerts.json"),
   JSON.stringify(

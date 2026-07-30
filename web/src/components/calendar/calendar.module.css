@@ -1,0 +1,162 @@
+/* Service calendar - month grids in Paper Sound. Cancel dots ride the
+ * stack orange, additions the accent green; the legend is the detail
+ * panel itself. */
+
+.lede {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  margin: 0 0 1.4rem;
+}
+
+.month {
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 0.9rem;
+  padding: 0.9rem 1rem 1rem;
+  margin-bottom: 1.1rem;
+}
+
+.monthHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.monthHead h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.monthSummary {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.15rem;
+}
+
+.weekday {
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  font-weight: 650;
+  padding-bottom: 0.2rem;
+}
+
+.pad {
+  aspect-ratio: 1;
+  max-height: 3rem;
+}
+
+.day {
+  aspect-ratio: 1;
+  max-height: 3rem;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.12rem;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+  border-radius: 0.5rem;
+  border: none;
+  background: none;
+  position: relative;
+}
+
+.dayMarked {
+  color: var(--ink);
+  font-weight: 700;
+  background: color-mix(in srgb, var(--stack) 9%, transparent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.dayMarked:hover {
+  background: color-mix(in srgb, var(--stack) 18%, transparent);
+}
+
+.dayToday {
+  outline: 1.5px solid var(--accent);
+  outline-offset: -1.5px;
+}
+
+.daySelected {
+  background: color-mix(in srgb, var(--stack) 24%, transparent);
+}
+
+.dots {
+  display: flex;
+  gap: 0.15rem;
+  height: 0.3rem;
+}
+
+.dots i {
+  width: 0.3rem;
+  height: 0.3rem;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dotCancel {
+  background: var(--stack);
+}
+
+.dotAdd {
+  background: var(--accent);
+}
+
+.detail {
+  list-style: none;
+  margin: 0.7rem 0 0;
+  padding: 0.6rem 0 0;
+  border-top: 1px solid var(--card-line);
+  display: grid;
+  gap: 0.45rem;
+}
+
+.detail li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  font-size: 0.86rem;
+  flex-wrap: wrap;
+}
+
+.badgeCancel,
+.badgeAdd {
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badgeCancel {
+  background: color-mix(in srgb, var(--stack) 16%, var(--card));
+  color: color-mix(in srgb, var(--stack) 80%, var(--ink));
+}
+
+.badgeAdd {
+  background: color-mix(in srgb, var(--accent) 14%, var(--card));
+  color: var(--accent);
+}
+
+.detailText {
+  color: var(--ink);
+}
+
+.detailLink {
+  color: var(--accent);
+  font-weight: 650;
+  text-decoration: none;
+  font-size: 0.82rem;
+}

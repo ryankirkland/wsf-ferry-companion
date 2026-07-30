@@ -8,6 +8,10 @@ is a cheap token check; rebuilds happen only when:
 - event {"mode": "today-refresh"}                -> today's files, with a
   ScheduleDivergence diff log: the standing instrument for whether
   /schedule/{date} drops same-day alert-cancelled sailings.
+- event {"mode": "force-rebuild"}                -> full rebuild + fares,
+  ignoring tokens - the operational lever after builder-logic changes
+  (e.g. a quirk fix) that must reach the published files before the next
+  upstream token change.
 
 Everything fetched is archived raw (fetch-time keys): upstream cannot serve
 past dates, so this archive is the only history - load-bearing for M4.
@@ -27,7 +31,12 @@ from wsf_core.ssm import get_access_code
 
 from wsf_ingest.archive import ArchiveBatch
 from wsf_ingest.metrics import emit
-from wsf_ingest.pairs_builder import build_pair_day, build_pair_fares, build_pairs_index
+from wsf_ingest.pairs_builder import (
+    build_adjustments_doc,
+    build_pair_day,
+    build_pair_fares,
+    build_pairs_index,
+)
 
 META_PK = "META"
 _client: WsfClient | None = None
@@ -102,10 +111,11 @@ def lambda_handler(event, context):
 
     counts = {"PairDatesPublished": 0, "FaresPublished": 0}
 
+    force = mode == "force-rebuild"
     if mode == "today-refresh":
         counts["PairDatesPublished"] = _refresh_today(client, table, s3, today)
     else:
-        if schedule_token != stored_sched_token or stored_from is None:
+        if force or schedule_token != stored_sched_token or stored_from is None:
             counts["PairDatesPublished"] = _rebuild_horizon(client, table, s3, today)
             _put_token(table, "schedule", schedule_token)
         elif stored_from != today.isoformat():
@@ -116,7 +126,7 @@ def lambda_handler(event, context):
             )
             _write_horizon(table, today)
 
-        if fares_token != stored_fares_token:
+        if force or fares_token != stored_fares_token:
             counts["FaresPublished"] = _publish_fares(client, s3, today, fares_token)
             _put_token(table, "fares", fares_token)
 
@@ -245,6 +255,15 @@ def _publish_dates(
             now=now,
         )
         _put_json(s3, "data/pairs/index.json", index)
+        # The season-wide service calendar rides the same full-rebuild
+        # trigger: timeadj rows only move when the schedule token does.
+        adjustments_doc = build_adjustments_doc(
+            adjustments=timeadj,
+            route_details=route_details,
+            from_date=today,
+            now=now,
+        )
+        _put_json(s3, "data/adjustments.json", adjustments_doc, max_age=300)
         _write_horizon(table, today)
 
     archive.flush(dataset="schedule_refresh")

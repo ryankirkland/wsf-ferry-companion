@@ -4,6 +4,7 @@
 // guards or are dropped (callers keep their last good copy).
 
 import {
+  ADJUSTMENTS_PATH,
   ALERTS_PATH,
   DATA_BASE,
   DATA_MODE,
@@ -13,10 +14,12 @@ import {
 } from "@/config";
 import { resolveTripTemplate } from "@/lib/trip/fixture-template";
 import {
+  isAdjustmentsDoc,
   isAlertsDoc,
   isPairDay,
   isPairFares,
   isPairsIndex,
+  type AdjustmentsDoc,
   type AlertsDoc,
   type PairDay,
   type PairFares,
@@ -28,6 +31,7 @@ export interface TripFetchers {
   day(dep: number, arr: number, date: string): Promise<PairDay | null>;
   fares(dep: number, arr: number): Promise<PairFares | null>;
   alerts(): Promise<AlertsDoc | null>;
+  adjustments(): Promise<AdjustmentsDoc | null>;
 }
 
 async function getJson(url: string): Promise<unknown> {
@@ -52,6 +56,7 @@ const live: TripFetchers = {
     guarded(await getJson(DATA_BASE + pairDayPath(dep, arr, date)), isPairDay),
   fares: async (dep, arr) => guarded(await getJson(DATA_BASE + pairFaresPath(dep, arr)), isPairFares),
   alerts: async () => guarded(await getJson(DATA_BASE + ALERTS_PATH), isAlertsDoc),
+  adjustments: async () => guarded(await getJson(DATA_BASE + ADJUSTMENTS_PATH), isAdjustmentsDoc),
 };
 
 // Fixture mode: one template pair-day re-timed around "now" and re-labeled
@@ -72,6 +77,8 @@ const fixture: TripFetchers = {
     const raw = await getText("/dev-fixtures/alerts.json");
     return guarded(JSON.parse(resolveTripTemplate(raw, Date.now())), isAlertsDoc);
   },
+  adjustments: async () =>
+    guarded(await getJson("/dev-fixtures/adjustments.json"), isAdjustmentsDoc),
 };
 
 export function makeTripFetchers(): TripFetchers {
@@ -92,5 +99,6 @@ export function makeTripFetchers(): TripFetchers {
     day: safely(inner.day),
     fares: safely(inner.fares),
     alerts: safely(inner.alerts),
+    adjustments: safely(inner.adjustments),
   };
 }
