@@ -25,6 +25,18 @@ module "api" {
 
   domain_name = var.domain_name
   zone_id     = aws_route53_zone.main.zone_id
+
+  cognito_user_pool_endpoint = module.notify.user_pool_endpoint
+  cognito_web_client_id      = module.notify.web_client_id
+}
+
+# M3 alert-notification foundations: SES identity + Cognito + link-token
+# secrets (ADR-0006). Lambdas land in D2/D3.
+module "notify" {
+  source = "../../modules/notify"
+
+  domain_name = var.domain_name
+  zone_id     = aws_route53_zone.main.zone_id
 }
 
 # Shared operational alarm channel (ingest now; api/alerts later).

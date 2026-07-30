@@ -1,9 +1,16 @@
 """Alerts poller Lambda: the 1-minute same-day-truth sensor.
 
 Watermark-gated: identical feed -> exit with zero writes. On change:
-publish the slimmed /data/alerts.json, archive raw, and async-invoke the
-schedule refresher's today-refresh (the ScheduleDivergence instrument).
-Errors propagate - the next minute is the retry (no DLQ by design).
+publish the slimmed /data/alerts.json, archive raw, async-invoke the
+notifier (M3 fan-out - it owns all per-bulletin diff state) and the
+schedule refresher's today-refresh (the ScheduleDivergence instrument),
+and write the watermark LAST: a crash before the watermark makes the
+next minute repeat everything, and duplicate invokes are absorbed by
+the notifier's conditional writes. The reverse order would silently
+swallow notifications. Errors propagate - the next minute is the retry.
+
+The watermark is a full-feed digest (see wsf_core.alerts): the M2
+max-based version was blind to edits and withdrawals.
 """
 
 import json
@@ -75,6 +82,23 @@ def lambda_handler(event, context):
     archive.add(fetched_at=now, status=200, body=raw)
     archive.flush(dataset="alerts")
 
+    lam = boto3.client("lambda")
+    if notifier := os.environ.get("NOTIFIER_FUNCTION"):
+        lam.invoke(
+            FunctionName=notifier,
+            InvocationType="Event",
+            Payload=json.dumps(
+                {"observed_at_ms": int(now.timestamp() * 1000), "alerts": payload["alerts"]}
+            ).encode(),
+        )
+    if refresher := os.environ.get("REFRESHER_FUNCTION"):
+        lam.invoke(
+            FunctionName=refresher,
+            InvocationType="Event",
+            Payload=json.dumps({"mode": "today-refresh"}).encode(),
+        )
+
+    # Watermark last: everything above is idempotent-or-absorbed on repeat.
     table.put_item(
         Item={
             "PK": META_PK,
@@ -83,13 +107,6 @@ def lambda_handler(event, context):
             "updated_at_utc": now.isoformat(),
         }
     )
-
-    if refresher := os.environ.get("REFRESHER_FUNCTION"):
-        boto3.client("lambda").invoke(
-            FunctionName=refresher,
-            InvocationType="Event",
-            Payload=json.dumps({"mode": "today-refresh"}).encode(),
-        )
 
     emit(AlertsChanged=1)
     return {"changed": True, "watermark": watermark}

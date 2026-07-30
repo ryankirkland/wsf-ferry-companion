@@ -36,3 +36,17 @@ resource "aws_lambda_permission" "apigw" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
 }
+
+# M3: Cognito JWT authorizer for /v1/subscriptions routes (attached in
+# D2). HTTP API validates the ID token natively - no auth Lambda.
+resource "aws_apigatewayv2_authorizer" "cognito" {
+  api_id           = aws_apigatewayv2_api.api.id
+  authorizer_type  = "JWT"
+  identity_sources = ["$request.header.Authorization"]
+  name             = "cognito-jwt"
+
+  jwt_configuration {
+    audience = [var.cognito_web_client_id]
+    issuer   = var.cognito_user_pool_endpoint
+  }
+}
