@@ -69,7 +69,9 @@ Users subscribe to routes (or specific terminal pairs + time windows). When WSF 
 - Alert precision is measurable: every sent alert links to the source WSF bulletin.
 
 ### F4. On-time performance statistics
-Historical reliability, powered by a multi-year backfill (2012+) of scheduled-vs-actual departures: on-time % (within 10 min) by route/vessel/season/time-of-day, delay percentiles (p50/p90), cancellation rates, and fun superlatives (most punctual boat, roughest month).
+Historical reliability, powered by a multi-year backfill (**2002+**, amended 2026-07-30 - the undocumented vesselhistory feed answers back to its verified 2002-03 floor, and the full pull cost one supervised afternoon) of scheduled-vs-actual departures: on-time % (within 10 min) by pair/vessel/season/time-of-day, delay percentiles (p50/p90), cancellation rates, and fun superlatives (most punctual boat, roughest month).
+
+Two amendments from build: statistics are keyed on the terminal **pair**, with route_id a nullable annotation (a required route_id would quarantine 17 years of the Sidney B.C. route); and cancellation rate is a scheduled-vs-sailed reconciliation that begins 2026-07-29, because the history feed reports only departures that happened and has no cancelled flag to read.
 
 *Acceptance criteria*
 - Cancelled sailings are excluded from on-time denominators and reported as their own rate.
@@ -129,7 +131,7 @@ Single upstream: the **WSDOT/WSF Traveler Information API** (four REST sub-APIs:
 | **M1 The Map** | F1 incl. ambient mode, on the real domain | A stranger calls it beautiful; ambient runs 24 h on a wall tablet |
 | **M2 Trip planner** | F2 schedules + fares | Commuter answers run-or-relax in <10 s |
 | **M3 Alerts** | F3 email+push, Cognito auth | Real subscribers receive a real disruption within SLO |
-| **M4 The Numbers** | F4 stats with 2012+ backfill, F5 capacity | Route pages answer "is my sailing usually late?" |
+| **M4 The Numbers** | F4 stats with 2002+ backfill, F5 capacity | Route pages answer "is my sailing usually late?" |
 
 Order rationale: the map first because it is the soul of the product and the design phase's proving ground; alerts before stats because real users rely on them; stats last because the backfill is valuable but nobody is waiting on it.
 

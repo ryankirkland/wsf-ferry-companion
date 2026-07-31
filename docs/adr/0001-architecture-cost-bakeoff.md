@@ -191,6 +191,31 @@ Consequences accepted:
 - In-region latency confirmation for Gate 2 runs from the first deployed Lambda in M0 (expected to only improve on the WAN numbers).
 - The ~$13/month of ceiling headroom funds SMS (toll-free), growth, and the self-hosted tile fallback (ADR-0003) without renegotiation.
 
+## Amendment (2026-07-30, M4 build)
+
+The decision stands; three shapes were refined once the real 3.5M-row corpus
+replaced the synthetic one:
+
+1. **Terminal pair is the primary analytical dimension**, `route_id` a
+   nullable best-effort annotation. The Sidney B.C. route ran 2002-2019 and
+   has no live route row; requiring route_id would have quarantined 17 years
+   of real sailings forever. Retired terminals carry synthetic dim ids, the
+   same precedent as Eagle Harbor 122.
+2. **One Parquet file per year partition, same-key overwrite.** S3 PUTs are
+   atomic and strongly consistent, so a rewrite is safe; a versioned second
+   file would silently double-count under partition projection, which reads
+   whatever is at the prefix.
+3. **The `cancelled` column is dropped** (spike query q4 with it). The feed
+   reports departures that happened and has no cancelled flag, so the column
+   could only ever hold a hardcoded `false` served as fact. Cancellation is
+   measured instead by reconciling each day's archived published schedule
+   against reported sailings, tracked from 2026-07-29 and labeled as a floor.
+
+Measured against the spike's projections: 3,493,725 rows over 25 year
+partitions compress to ~46 MB, and the full nightly Athena suite scans
+~237 MB (~$0.0012 per run, ~$0.04/mo) - comfortably inside the modeled
+envelope.
+
 ## Appendix: run evidence
 
 - Total estimated spike spend: **$0.26** of the $5 cap (tracker: `spikes/.spend.json`); next-day billing sanity check to confirm.
