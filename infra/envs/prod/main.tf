@@ -42,6 +42,7 @@ module "analytics" {
   data_bucket_arn  = module.static_site.data_bucket_arn
   table_name       = module.ingest.table_name
   table_arn        = module.ingest.table_arn
+  alarms_topic_arn = aws_sns_topic.alarms.arn
   # Built by CI (and locally) before terraform runs - see infra-plan.yml.
   lambda_zip_path = "${path.root}/.build/analytics.zip"
 }
