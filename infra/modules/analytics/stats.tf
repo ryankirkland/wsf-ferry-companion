@@ -79,9 +79,14 @@ data "aws_iam_policy_document" "stats" {
   }
 
   statement {
-    sid       = "PairDirectory"
-    actions   = ["s3:GetObject"]
-    resources = ["${var.data_bucket_arn}/data/pairs/index.json"]
+    sid     = "ServingDims"
+    actions = ["s3:GetObject"]
+    resources = [
+      "${var.data_bucket_arn}/data/pairs/index.json",
+      # The fleet dim carries the names riders know; without it the feed's
+      # compacted "WallaWalla" reaches the page.
+      "${var.data_bucket_arn}/data/vessels.json",
+    ]
   }
 }
 
