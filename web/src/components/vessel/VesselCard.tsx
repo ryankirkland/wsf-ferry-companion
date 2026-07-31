@@ -37,6 +37,28 @@ function statusLine(fix: VesselFix): string {
 }
 
 /** Honest delay line, or null - omission beats fake precision (direction.md). */
+/** WSDOT's official drawing for this vessel's class.
+ *
+ * It is a CLASS drawing, not a portrait: all five Issaquah 130s share one,
+ * so the caption says "class" rather than implying this is that hull. The
+ * plate stays light in every mode because these are dark line drawings on
+ * white - knock the background out and the hull outline disappears on a
+ * night card. A drawing that fails to load (a class commissioned since the
+ * last mirror run) removes itself rather than leaving a broken frame.
+ */
+function ClassDrawing({ src, className }: { src: string; className: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return (
+    <figure className={styles.drawing} data-testid="class-drawing">
+      {/* eslint-disable-next-line @next/next/no-img-element -- static export,
+          and the intrinsic size varies per class */}
+      <img src={src} alt={`WSDOT profile drawing of a ${className}-class ferry`} onError={() => setFailed(true)} />
+      <figcaption>WSDOT class drawing</figcaption>
+    </figure>
+  );
+}
+
 function delayLine(fix: VesselFix): { text: string; lateMin: number } | null {
   const sched = fix.sched ? Date.parse(fix.sched) : null;
   if (!sched) return null;
@@ -95,6 +117,7 @@ export function VesselCard({ fix, onClose }: { fix: VesselFix; onClose: () => vo
       {delay && (
         <p className={`${styles.delay} ${delay.lateMin >= 5 ? styles.late : ""}`}>{delay.text}</p>
       )}
+      {dim?.drawing && <ClassDrawing src={dim.drawing} className={dim.class} />}
       {dim && (
         <p className={styles.facts}>
           {dim.max_passengers.toLocaleString()} passengers · {dim.reg_deck_space} vehicles ·

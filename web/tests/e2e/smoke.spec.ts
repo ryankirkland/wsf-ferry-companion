@@ -99,3 +99,48 @@ test("the boat FAB never covers the map attribution", async ({ page }) => {
   });
   expect(clash).toBe(false);
 });
+
+// The class drawing on the vessel card: WSDOT's own artwork, mirrored.
+// It must sit AFTER the operational answer (where the boat is), and it
+// must remove itself rather than leave a broken frame if the asset is
+// missing - a class commissioned since the last mirror run.
+test("the vessel card shows the WSDOT class drawing", async ({ page }) => {
+  await interceptData(page);
+  await page.goto("/");
+  await page.waitForTimeout(3000);
+  await page.evaluate(() => {
+    const el = [...document.querySelectorAll(".maplibregl-marker")].find((e) =>
+      e.querySelector("svg"),
+    );
+    el?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  const card = page.getByTestId("vessel-card");
+  await expect(card).toBeVisible();
+
+  const drawing = page.getByTestId("class-drawing");
+  await expect(drawing).toBeVisible();
+  await expect(drawing).toContainText("WSDOT class drawing");
+  // Captioned as a class drawing, never as a portrait of this hull.
+  await expect(drawing.locator("img")).toHaveAttribute("alt", /class ferry$/);
+
+  // The status the rider tapped for comes first.
+  const order = await card.evaluate((el) =>
+    [...el.children].map((c) => c.getAttribute("data-testid") ?? c.tagName),
+  );
+  expect(order.indexOf("class-drawing")).toBeGreaterThan(order.indexOf("H2"));
+});
+
+test("a missing class drawing leaves no broken frame", async ({ page }) => {
+  await interceptData(page);
+  await page.route("**/assets/vessels/*.png", (r) => r.fulfill({ status: 404, body: "" }));
+  await page.goto("/");
+  await page.waitForTimeout(3000);
+  await page.evaluate(() => {
+    const el = [...document.querySelectorAll(".maplibregl-marker")].find((e) =>
+      e.querySelector("svg"),
+    );
+    el?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  await expect(page.getByTestId("vessel-card")).toBeVisible();
+  await expect(page.getByTestId("class-drawing")).toHaveCount(0);
+});

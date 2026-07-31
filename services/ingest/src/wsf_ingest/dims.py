@@ -77,6 +77,11 @@ def _publish_vessels(s3, client: WsfClient) -> None:
                     "name": d.vessel_name,
                     "abbrev": d.vessel_abbrev,
                     "class": d.class_name,
+                    # WSDOT's official class drawing, mirrored into the
+                    # assets bucket by tools/vessel-drawings. Published
+                    # even if a new class has not been mirrored yet - the
+                    # card hides a drawing that fails to load.
+                    "drawing": f"/assets/vessels/{d.class_slug}.png" if d.class_slug else None,
                     "silhouette": d.silhouette_url,
                     "max_passengers": d.max_passengers,
                     "reg_deck_space": d.reg_deck_space,
@@ -130,11 +135,17 @@ def lambda_handler(event, context):
     if isinstance(event, dict) and event.get("mode") == "gate2-bench":
         return gate2_bench()
 
+    # {"mode": "force-rebuild"} republishes regardless of the token - the
+    # operational lever for shipping a CONTRACT change (a new field) when
+    # upstream has no reason to flush its cache. Same lever the schedule
+    # refresher carries.
+    force = isinstance(event, dict) and event.get("mode") == "force-rebuild"
+
     client, table, s3 = _wsf(), _table(), boto3.client("s3")
     refreshed: list[str] = []
     for sub_api, (publish, raw_fetcher, raw_name, path) in _DATASETS.items():
         token = client.cache_flush_date(sub_api)
-        if token == _stored_token(table, sub_api):
+        if token == _stored_token(table, sub_api) and not force:
             continue
         publish(s3, client)
         archive_dim(s3, os.environ["RAW_BUCKET"], raw_name, getattr(client, raw_fetcher)(), token)

@@ -8,6 +8,8 @@ export interface VesselDim {
   name: string;
   abbrev: string;
   class: string;
+  /** Mirrored WSDOT class drawing, e.g. /assets/vessels/jumbo-mark-ii.png. */
+  drawing: string | null;
   silhouette: string;
   max_passengers: number;
   reg_deck_space: number;
