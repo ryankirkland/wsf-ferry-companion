@@ -12,7 +12,8 @@
    "tall_deck_space": 25,
    "year_built": 1981,
    "year_rebuilt": 1993,
-   "length": "328' 2\""
+   "length": "328' 2\"",
+   "drawing": "/assets/vessels/issaquah.png"
   },
   {
    "id": 2,
@@ -25,7 +26,8 @@
    "tall_deck_space": 25,
    "year_built": 1981,
    "year_rebuilt": 2005,
-   "length": "328' 2\""
+   "length": "328' 2\"",
+   "drawing": "/assets/vessels/issaquah.png"
   },
   {
    "id": 65,
@@ -38,7 +40,8 @@
    "tall_deck_space": 25,
    "year_built": 2010,
    "year_rebuilt": null,
-   "length": "273' 10\""
+   "length": "273' 10\"",
+   "drawing": "/assets/vessels/kwa-di-tabil.png"
   },
   {
    "id": 74,
@@ -51,7 +54,8 @@
    "tall_deck_space": 34,
    "year_built": 2017,
    "year_rebuilt": null,
-   "length": "362' 5\""
+   "length": "362' 5\"",
+   "drawing": "/assets/vessels/olympic.png"
   },
   {
    "id": 15,
@@ -64,7 +68,8 @@
    "tall_deck_space": 25,
    "year_built": 1979,
    "year_rebuilt": 1989,
-   "length": "328' 2\""
+   "length": "328' 2\"",
+   "drawing": "/assets/vessels/issaquah.png"
   },
   {
    "id": 17,
@@ -77,7 +82,8 @@
    "tall_deck_space": 32,
    "year_built": 1967,
    "year_rebuilt": 1999,
-   "length": "382' 2\""
+   "length": "382' 2\"",
+   "drawing": "/assets/vessels/super.png"
   },
   {
    "id": 52,
@@ -90,7 +96,8 @@
    "tall_deck_space": 25,
    "year_built": 2011,
    "year_rebuilt": null,
-   "length": "273' 10\""
+   "length": "273' 10\"",
+   "drawing": "/assets/vessels/kwa-di-tabil.png"
   },
   {
    "id": 18,
@@ -103,7 +110,8 @@
    "tall_deck_space": 25,
    "year_built": 1980,
    "year_rebuilt": 1992,
-   "length": "328' 2\""
+   "length": "328' 2\"",
+   "drawing": "/assets/vessels/issaquah.png"
   },
   {
    "id": 19,
@@ -116,7 +124,8 @@
    "tall_deck_space": 25,
    "year_built": 1980,
    "year_rebuilt": 1990,
-   "length": "328' 2\""
+   "length": "328' 2\"",
+   "drawing": "/assets/vessels/issaquah.png"
   },
   {
    "id": 25,
@@ -129,7 +138,8 @@
    "tall_deck_space": 68,
    "year_built": 1999,
    "year_rebuilt": null,
-   "length": "460' 2\""
+   "length": "460' 2\"",
+   "drawing": "/assets/vessels/jumbo-mark-ii.png"
   },
   {
    "id": 66,
@@ -142,7 +152,8 @@
    "tall_deck_space": 25,
    "year_built": 2011,
    "year_rebuilt": null,
-   "length": "273' 10\""
+   "length": "273' 10\"",
+   "drawing": "/assets/vessels/kwa-di-tabil.png"
   },
   {
    "id": 69,
@@ -155,7 +166,8 @@
    "tall_deck_space": 34,
    "year_built": 2015,
    "year_rebuilt": null,
-   "length": "362' 5\""
+   "length": "362' 5\"",
+   "drawing": "/assets/vessels/olympic.png"
   },
   {
    "id": 28,
@@ -168,7 +180,8 @@
    "tall_deck_space": 32,
    "year_built": 1982,
    "year_rebuilt": null,
-   "length": "328' 2\""
+   "length": "328' 2\"",
+   "drawing": "/assets/vessels/issaquah.png"
   },
   {
    "id": 30,
@@ -181,7 +194,8 @@
    "tall_deck_space": 66,
    "year_built": 1972,
    "year_rebuilt": 2004,
-   "length": "440'"
+   "length": "440'",
+   "drawing": "/assets/vessels/jumbo.png"
   },
   {
    "id": 75,
@@ -194,7 +208,8 @@
    "tall_deck_space": 34,
    "year_built": 2018,
    "year_rebuilt": null,
-   "length": "362' 5\""
+   "length": "362' 5\"",
+   "drawing": "/assets/vessels/olympic.png"
   },
   {
    "id": 32,
@@ -207,7 +222,8 @@
    "tall_deck_space": 68,
    "year_built": 1997,
    "year_rebuilt": null,
-   "length": "460' 2\""
+   "length": "460' 2\"",
+   "drawing": "/assets/vessels/jumbo-mark-ii.png"
   },
   {
    "id": 33,
@@ -220,7 +236,8 @@
    "tall_deck_space": 28,
    "year_built": 1959,
    "year_rebuilt": 1994,
-   "length": "310' 2\""
+   "length": "310' 2\"",
+   "drawing": "/assets/vessels/evergreen-state.png"
   },
   {
    "id": 68,
@@ -233,7 +250,8 @@
    "tall_deck_space": 34,
    "year_built": 2014,
    "year_rebuilt": null,
-   "length": "362' 5\""
+   "length": "362' 5\"",
+   "drawing": "/assets/vessels/olympic.png"
   },
   {
    "id": 36,
@@ -246,7 +264,8 @@
    "tall_deck_space": 66,
    "year_built": 1973,
    "year_rebuilt": 2005,
-   "length": "440'"
+   "length": "440'",
+   "drawing": "/assets/vessels/jumbo.png"
   },
   {
    "id": 37,
@@ -259,7 +278,8 @@
    "tall_deck_space": 68,
    "year_built": 1998,
    "year_rebuilt": 2025,
-   "length": "460' 2\""
+   "length": "460' 2\"",
+   "drawing": "/assets/vessels/jumbo-mark-ii.png"
   },
   {
    "id": 38,
@@ -272,7 +292,8 @@
    "tall_deck_space": 32,
    "year_built": 1967,
    "year_rebuilt": 2000,
-   "length": "382' 2\""
+   "length": "382' 2\"",
+   "drawing": "/assets/vessels/super.png"
   }
  ]
 }

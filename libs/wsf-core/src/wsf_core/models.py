@@ -10,6 +10,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from wsf_core.dotnet_dates import parse_dotnet_date
+from wsf_core.vessel_classes import class_slug
 
 _DOTNET_FIELDS = ("left_dock", "eta", "scheduled_departure", "source_ts")
 
@@ -58,6 +59,9 @@ class VesselDim(BaseModel):
     vessel_name: str = Field(alias="VesselName")
     vessel_abbrev: str = Field(alias="VesselAbbrev")
     class_name: str
+    # ClassName, not the display name: "Issaquah" and "Issaquah 130" share
+    # a display name but are different classes with different drawings.
+    class_slug: str
     silhouette_url: str
     max_passengers: int = Field(alias="MaxPassengerCount")
     reg_deck_space: int = Field(alias="RegDeckSpace")
@@ -74,6 +78,7 @@ class VesselDim(BaseModel):
             {
                 **row,
                 "class_name": cls_block.get("PublicDisplayName") or cls_block.get("ClassName", ""),
+                "class_slug": class_slug(cls_block.get("ClassName", "")),
                 "silhouette_url": cls_block.get("SilhouetteImg", ""),
             }
         )

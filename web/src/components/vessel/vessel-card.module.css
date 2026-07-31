@@ -92,3 +92,36 @@
 .tripLink:hover {
   text-decoration: underline;
 }
+
+/* WSDOT's class drawing.
+ *
+ * The plate stays light in every mode on purpose: these are dark line
+ * drawings made for white paper, so a transparent background would erase
+ * the hull outline on a dusk or night card. Night dims it slightly so it
+ * sits in the card rather than glaring out of it. */
+.drawing {
+  margin: 0.5rem 0 0.7rem;
+  background: #fff;
+  border: 1px solid var(--card-line);
+  border-radius: 0.6rem;
+  padding: 0.5rem 0.6rem 0.35rem;
+}
+
+.drawing img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.drawing figcaption {
+  margin-top: 0.3rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+html[data-mode="dusk"] .drawing,
+html[data-mode="night"] .drawing {
+  filter: brightness(0.92);
+}

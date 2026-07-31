@@ -50,3 +50,47 @@ def test_terminallocations(terminallocations_rows):
     assert coupeville.terminal_name == "Coupeville"  # trailing space stripped
     seattle = next(t for t in terms if t.terminal_id == 7)
     assert seattle.terminal_abbrev == "P52"
+
+
+def test_class_slug_keeps_lookalike_classes_apart():
+    """Issaquah and Issaquah 130 both display as "Issaquah" and have
+    different WSDOT drawings; keying on the display name would merge them."""
+    from wsf_core.models import VesselDim
+
+    plain = VesselDim.from_verbose(
+        {
+            "VesselID": 1,
+            "VesselName": "Klahowya",
+            "VesselAbbrev": "KLA",
+            "Class": {
+                "ClassName": "Issaquah",
+                "PublicDisplayName": "Issaquah",
+                "SilhouetteImg": "",
+            },
+            "MaxPassengerCount": 1,
+            "RegDeckSpace": 1,
+            "TallDeckSpace": 1,
+            "YearBuilt": 1980,
+            "Length": "328'",
+        }
+    )
+    upgraded = VesselDim.from_verbose(
+        {
+            "VesselID": 2,
+            "VesselName": "Cathlamet",
+            "VesselAbbrev": "CAT",
+            "Class": {
+                "ClassName": "Issaquah 130",
+                "PublicDisplayName": "Issaquah",
+                "SilhouetteImg": "",
+            },
+            "MaxPassengerCount": 1,
+            "RegDeckSpace": 1,
+            "TallDeckSpace": 1,
+            "YearBuilt": 1981,
+            "Length": "328'",
+        }
+    )
+    assert plain.class_name == upgraded.class_name == "Issaquah"
+    assert plain.class_slug == "issaquah"
+    assert upgraded.class_slug == "issaquah-130"

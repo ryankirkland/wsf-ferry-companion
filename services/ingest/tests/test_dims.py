@@ -67,3 +67,33 @@ def test_single_token_change_refreshes_one(
     _run(monkeypatch, fake)
     fake._tokens["terminals"] = "B2"
     assert _run(monkeypatch, fake)["refreshed"] == ["/data/terminals.json"]
+
+
+def test_force_rebuild_republishes_without_a_token_change(
+    aws, monkeypatch, vesselverbose_rows, terminallocations_rows
+):
+    """Shipping a new field in vessels.json cannot wait for WSDOT to flush
+    their cache, which may be weeks away."""
+    fake = FakeWsf(vesselverbose_rows, terminallocations_rows, {"vessels": "A", "terminals": "B"})
+    monkeypatch.setattr(dims, "_client", fake)
+
+    assert dims.lambda_handler({}, None)["refreshed"]  # first run stores tokens
+    assert dims.lambda_handler({}, None)["refreshed"] == []  # token unchanged
+    assert sorted(dims.lambda_handler({"mode": "force-rebuild"}, None)["refreshed"]) == [
+        "/data/terminals.json",
+        "/data/vessels.json",
+    ]
+
+
+def test_vessels_json_carries_the_mirrored_class_drawing(
+    aws, monkeypatch, vesselverbose_rows, terminallocations_rows
+):
+    fake = FakeWsf(vesselverbose_rows, terminallocations_rows, {"vessels": "A", "terminals": "B"})
+    monkeypatch.setattr(dims, "_client", fake)
+    dims.lambda_handler({}, None)
+    doc = json.loads(
+        aws["s3"].get_object(Bucket=DATA_BUCKET, Key="data/vessels.json")["Body"].read()
+    )
+    for vessel in doc["vessels"]:
+        assert vessel["drawing"].startswith("/assets/vessels/")
+        assert vessel["drawing"].endswith(".png")
