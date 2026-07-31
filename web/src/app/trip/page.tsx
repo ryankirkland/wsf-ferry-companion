@@ -22,7 +22,8 @@ export default function TripIndexPage() {
         <p className={styles.footNote}>
           Every published crossing on the Washington State Ferries system - live vessel status,
           the next two weeks of departures, and current fares. Planning further out? See the{" "}
-          <Link href="/calendar">service calendar</Link> of scheduled cancellations.
+          <Link href="/calendar">service calendar</Link> of scheduled cancellations, or set up{" "}
+          <Link href="/alerts">email alerts</Link> for your run.
         </p>
       </div>
     </main>

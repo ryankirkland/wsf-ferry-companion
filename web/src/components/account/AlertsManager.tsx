@@ -6,7 +6,7 @@
 // (pair pages link here with their own crossing).
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -30,6 +30,12 @@ const PRESETS: [string, string, string][] = [
 export function AlertsManager() {
   const { state, signOut } = useAuth();
   const params = useSearchParams();
+  const pathname = usePathname();
+  // Send sign-in back to EXACTLY here - a "Get alerts for this run" deep
+  // link must keep its ?dep&arr through the account flow.
+  const nextHere = encodeURIComponent(
+    `${pathname}${params.size ? `?${params.toString()}` : ""}`,
+  );
 
   return (
     <main className={tripStyles.page}>
@@ -53,7 +59,7 @@ export function AlertsManager() {
               it, you get one plain-language email - usually within two minutes of WSF publishing.
               No spam: capped, deduplicated, one-click unsubscribe.
             </p>
-            <Link className={tripStyles.go} style={{ textAlign: "center", textDecoration: "none" }} href="/account?next=/alerts">
+            <Link className={tripStyles.go} style={{ textAlign: "center", textDecoration: "none" }} href={`/account?next=${nextHere}`}>
               Sign in or create an account
             </Link>
           </div>
