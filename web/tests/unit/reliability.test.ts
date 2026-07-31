@@ -132,7 +132,18 @@ describe("capacity", () => {
     // Friday Harbor publishes nothing; that must not read as "full".
     const view = capacityFor(doc(), 10, 1, now, 240_000);
     expect(view.reporting).toBe(false);
+    expect(view.feedQuiet).toBe(false); // others ARE reporting, so the claim is fair
     expect(view.sailings).toBeNull();
+  });
+
+  it("an empty overnight feed is not evidence that a terminal never reports", () => {
+    // The feed returns [] overnight. Bainbridge publishes space all day, so
+    // saying it "does not report" would be false - the page must blame the
+    // feed's silence, not the terminal.
+    const overnight = doc({ reporting_terminals: [], pairs: {} });
+    const view = capacityFor(overnight, 3, 7, now, 240_000);
+    expect(view.feedQuiet).toBe(true);
+    expect(view.reporting).toBe(false);
   });
 
   it("returns upcoming sailings for a reporting terminal", () => {

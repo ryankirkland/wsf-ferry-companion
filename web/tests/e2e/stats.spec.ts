@@ -296,6 +296,30 @@ test.describe("drive-up capacity", () => {
   });
 });
 
+test("an overnight-quiet feed blames the feed, not the terminal", async ({ page }) => {
+  const baseMs = Date.now();
+  await interceptSchedule(page, baseMs);
+  await interceptStats(page, baseMs);
+  // The real 01:00 PT payload: nothing reporting anywhere.
+  await page.route("**/data/capacity.json", (r) =>
+    r.fulfill(
+      json({
+        v: 1,
+        generated_at: new Date(baseMs).toISOString(),
+        reporting_terminals: [],
+        pairs: {},
+      }),
+    ),
+  );
+  await page.goto(`/trip/${SLUG}/`);
+
+  const quiet = page.getByTestId("capacity-quiet");
+  await expect(quiet).toBeVisible();
+  await expect(quiet).toContainText("not publishing drive-up space for any terminal");
+  // Seattle DOES report during the day; the page must not claim otherwise.
+  await expect(page.getByTestId("capacity-absent")).toHaveCount(0);
+});
+
 test.describe("/stats overview", () => {
   test.beforeEach(async ({ page }) => {
     await interceptStats(page, Date.now());
