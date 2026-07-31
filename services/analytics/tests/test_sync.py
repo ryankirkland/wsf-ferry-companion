@@ -44,7 +44,7 @@ def test_nightly_sweep_archives_all_vessels_one_batch(aws, monkeypatch):
     (lines,) = bodies.values()
     assert {ln["body"]["vessel"] for ln in lines} == {"Salish", "Tacoma", "Walla Walla"}
     # 7-day trailing window, dates in ISO.
-    name, start, end = fake.calls[0]
+    _name, start, end = fake.calls[0]
     assert len(start) == 10 and len(end) == 10 and start < end
 
 
