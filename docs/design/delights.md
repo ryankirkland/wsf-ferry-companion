@@ -38,3 +38,22 @@ Awaiting Ryan's design call - mechanics all shipped, these are taste:
   takeover with no warning; guests may not know how to leave.
 - **Trip picker**: no browse-all-crossings view (From->To only). Fine for
   v1; revisit if terminal-first browsing feels wrong.
+
+## Parked 2026-07-31 (phone walkthrough of the deployed app)
+
+The same walk fixed six things in PR #50 - vessel scale, the terminal set,
+the FAB-over-attribution collision, town-label weight, the calendar legend,
+and the default framing. These two need more than a tuned constant:
+
+- **Docked boats stack into a clump.** Two or three hulls overlap at
+  Seattle and Vashon and read as one shape; enlarging the icons made it
+  more obvious. `cluster.ts` declutters moored *labels* ("Sealth +2") but
+  nothing moves the icons. Wants real collision handling - fan the boats
+  around the terminal, or collapse a berth into one marker with a count.
+  Sized on its own, not bolted onto an icon-scale change.
+
+- **Mode switcher owns the top of a phone screen.** AUTO/DAY/DUSK/NIGHT is
+  an aesthetic preference sitting in the most valuable strip of the map,
+  above anything a rider came for. Candidate for the drawer, leaving the
+  masthead and clock. Deliberately not changed unilaterally: it was a
+  deliberate design-phase choice and it is Ryan's taste to spend.
