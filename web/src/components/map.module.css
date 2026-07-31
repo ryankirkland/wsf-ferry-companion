@@ -12,11 +12,19 @@
   outline: none;
 }
 
-/* Attribution stays legible but quiet in every mode. */
+/* Attribution stays legible but quiet in every mode.
+ *
+ * It expands full-width along the bottom, which ran it under the boat FAB
+ * in the corner - "Terrain: Mapzen via AWS Open Data" rendered as "apzen
+ * via AWS Open Data". Attribution is a licensing obligation, not
+ * decoration, so it is capped short of the FAB's column and wraps instead
+ * of hiding behind it. */
 .map :global(.maplibregl-ctrl-attrib) {
   font-size: 0.65rem;
   background: color-mix(in srgb, var(--paper) 70%, transparent);
   color: var(--ink-soft);
+  max-width: calc(100% - 4.5rem - env(safe-area-inset-left, 0px));
+  margin-left: auto;
 }
 
 .map :global(.maplibregl-ctrl-attrib a) {
@@ -84,7 +92,10 @@
    * (position:absolute) has equal specificity, so whichever stylesheet
    * loads last wins - dev and prod disagreed, and boats rendered in
    * document flow, stacked progressively off their true positions. */
-  width: 44px;
+  /* Overridden per-vessel inline by the marker pool (real relative
+   * lengths); this is the fallback before dims resolve. Keep in step with
+   * VESSEL_ANCHOR_PX. */
+  width: 68px;
   z-index: 5;
   pointer-events: none;
   text-align: center;
@@ -180,17 +191,27 @@ html[data-mode="night"] .vm :global(svg) {
   display: none;
 }
 
-/* Below the declutter zoom the boats shrink with the scenery. */
+/* Below the declutter zoom the boats shrink with the scenery - scaled
+ * from the 68px anchor, so zooming out is a step down and not a collapse
+ * back to the old size. */
 :global(.z-lo) .vm :global(svg) {
-  width: 34px;
+  width: 52px;
 }
 
 :global(.z-lo) .vm :global(.wake) {
-  width: 26px;
+  width: 40px;
 }
 
 /* Moored-cluster declutter: companions render sprite-only (see cluster.ts). */
 .vm:global(.lbl-off) :global(.nm),
 .vm:global(.lbl-off) :global(.st) {
   display: none;
+}
+
+/* Zoomed out, only the anchor terminals name themselves - twenty DOM
+ * labels at the default framing overlapped each other and the basemap.
+ * The dots stay at every zoom, so a terminal is never invisible. */
+:global(.labels-far) .term:global(.minor) span {
+  opacity: 0;
+  pointer-events: none;
 }

@@ -10,6 +10,7 @@ import type { VesselFix, VesselState } from "@/lib/data/types";
 import { asOf, soundClock } from "@/lib/time/sound-time";
 import { planMooredLabels } from "./cluster";
 import { getVesselDims } from "@/lib/data/dims";
+import { VESSEL_ANCHOR_PX } from "./anchor";
 import { classIcon, classSvg, REFERENCE_FEET } from "./class-icons";
 import { GlideLoop } from "./interpolate";
 
@@ -135,8 +136,8 @@ export class VesselMarkerPool {
     const icon = classIcon(className);
     if (className) el.dataset.vesselClass = className;
     // Real relative lengths: a 460' Jumbo Mark II reads wider than a 274'
-    // Kwa-di Tabil at the same zoom (44px anchor on the longest class).
-    el.style.width = `${((44 * icon.feet) / REFERENCE_FEET).toFixed(1)}px`;
+    // Kwa-di Tabil at the same zoom (VESSEL_ANCHOR_PX on the longest class).
+    el.style.width = `${((VESSEL_ANCHOR_PX * icon.feet) / REFERENCE_FEET).toFixed(1)}px`;
     const slot = el.querySelector<HTMLElement>(".boat");
     if (slot) slot.innerHTML = classSvg(icon);
   }

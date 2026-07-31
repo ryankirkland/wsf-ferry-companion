@@ -9,9 +9,20 @@ import type { VesselFix } from "@/lib/data/types";
 import type { Mode } from "@/lib/time/sound-time";
 import { setupLayers } from "./layers";
 import { PAL } from "./palettes";
-import { dedupePlaceLabels, recolor } from "./recolor";
-import { addTerminalMarkers } from "./terminals";
+import { dedupePlaceLabels, quietenPlaceLabels, recolor } from "./recolor";
+import {
+  addTerminalMarkers,
+  LABEL_ALL_ZOOM,
+  servedTerminals,
+  suppressedTownNames,
+} from "./terminals";
+import { servedTerminalIds } from "@/lib/data/pairs-served";
+import { getTerminalDims } from "@/lib/data/dims";
 import { VesselMarkerPool } from "./vessels/markers";
+
+// Below this width the expanded attribution and the boat FAB fight for
+// the same bottom-left corner.
+const COMPACT_ATTRIB_MAX_PX = 640;
 
 export interface ControllerOptions {
   styleUrl: string;
@@ -49,6 +60,18 @@ export class PaperSoundMap {
     });
     this.map.touchZoomRotate.disableRotation();
 
+    // MapLibre opens the compact attribution by default, which lays two
+    // lines of credits along the bottom edge - straight under the boat FAB
+    // in the corner. Collapse it to the "i" on narrow screens: the credits
+    // stay one tap away, which is what compact mode is for, and the corner
+    // belongs to the control the rider actually uses.
+    this.map.once("load", () => {
+      if (window.innerWidth > COMPACT_ATTRIB_MAX_PX) return;
+      container
+        .querySelector(".maplibregl-ctrl-attrib")
+        ?.classList.remove("maplibregl-compact-show");
+    });
+
     if (opts.ambient) {
       for (const handler of [
         this.map.dragPan,
@@ -67,11 +90,25 @@ export class PaperSoundMap {
     this.map.on("load", () => {
       try {
         setupLayers(this.map);
-        const matched = dedupePlaceLabels(this.map);
+        const matched = quietenPlaceLabels(this.map);
         if (process.env.NODE_ENV !== "production" && matched === 0) {
-          console.warn("place-label dedup matched 0 layers - style fork changed?");
+          console.warn("place-label layers matched 0 - style fork changed?");
         }
-        this.terminalMarkers = addTerminalMarkers(this.map, opts.terminalClassName);
+        // Terminals arrive with the dim: async, so the map is interactive
+        // first and a dim outage costs labels, never the map.
+        void Promise.all([getTerminalDims(), servedTerminalIds()])
+          .then(([dims, servedIds]) => {
+            if (this.destroyed) return;
+            const terminals = servedTerminals([...dims.values()], servedIds);
+            this.terminalMarkers = addTerminalMarkers(
+              this.map,
+              opts.terminalClassName,
+              terminals,
+            );
+            dedupePlaceLabels(this.map, suppressedTownNames(terminals));
+            this.syncLabelZoom();
+          })
+          .catch(() => undefined);
         this.vesselPool = new VesselMarkerPool(this.map, {
           vesselClassName: opts.vesselClassName,
           reducedMotion: () => this.reducedMotion.matches,
@@ -92,6 +129,8 @@ export class PaperSoundMap {
     // ONE permanent idle listener + a dirty flag (the prototype re-registered
     // once("idle") per setMode - a leak under React). styledata also wipes
     // paints (tile settling, style reloads), so it re-arms the flag.
+    this.map.on("zoom", () => this.syncLabelZoom());
+
     this.map.on("styledata", () => {
       this.recolorDirty = true;
     });
@@ -148,6 +187,12 @@ export class PaperSoundMap {
   applySnapshot(vessels: VesselFix[]): void {
     if (this.vesselPool) this.vesselPool.applySnapshot(vessels);
     else this.pendingFleet = vessels;
+  }
+
+  /** Minor terminals name themselves only when there is room for the
+   *  names; the dots never leave. */
+  private syncLabelZoom(): void {
+    this.map.getContainer().classList.toggle("labels-far", this.map.getZoom() < LABEL_ALL_ZOOM);
   }
 
   fitSound(): void {

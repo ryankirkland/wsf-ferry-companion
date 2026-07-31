@@ -160,3 +160,32 @@
   text-decoration: none;
   font-size: 0.82rem;
 }
+
+/* Key for the grid. The detail panel names the sailings on a day you tap;
+ * this names the colours you scan before tapping anything. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.9rem;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  margin: 0 0 1rem;
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.legend i {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  flex: none;
+}
+
+.legendHint {
+  color: color-mix(in srgb, var(--ink-soft) 80%, transparent);
+}
