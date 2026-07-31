@@ -1,0 +1,207 @@
+/* /stats: the system view. Wider than the trip reading column because the
+ * 24-year bar chart needs room, but still a column, not a dashboard. */
+
+.page {
+  min-height: 100dvh;
+  background: var(--paper);
+  color: var(--ink);
+  padding-bottom: 4rem;
+}
+
+.column {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.title {
+  font-size: 1.9rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 0.4rem 0 0.2rem;
+}
+
+.subtitle {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  margin: 0 0 1.2rem;
+  line-height: 1.5;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 1rem;
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 0.9rem;
+  padding: 1.1rem 1.2rem;
+}
+
+.heroPct {
+  font-size: 3.4rem;
+  font-weight: 800;
+  line-height: 0.95;
+  font-variant-numeric: tabular-nums;
+}
+
+.heroLabel {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  margin-top: 0.35rem;
+  line-height: 1.4;
+}
+
+.heroSub {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.heroCompare {
+  text-align: right;
+  padding-left: 1rem;
+  border-left: 1px solid var(--card-line);
+}
+
+.heroComparePct {
+  font-size: 1.5rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* ---- 24-year chart ---- */
+
+.yearChart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.22rem;
+  height: 9rem;
+  margin-top: 0.5rem;
+}
+
+.yearCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.yearBarTrack {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  background: color-mix(in srgb, var(--ink-soft) 8%, transparent);
+  border-radius: 0.25rem 0.25rem 0 0;
+}
+
+.yearBar {
+  width: 100%;
+  background: currentColor;
+  border-radius: 0.25rem 0.25rem 0 0;
+  min-height: 2px;
+}
+
+.yearLabel {
+  font-size: 0.62rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  padding-top: 0.25rem;
+}
+
+/* ---- months ---- */
+
+.monthGrid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.month {
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 0.7rem;
+  padding: 0.5rem 0.3rem;
+  text-align: center;
+}
+
+/* ---- superlative cards ---- */
+
+.cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 0.8rem;
+  padding: 0.9rem 1rem;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+a.card:hover {
+  border-color: var(--accent);
+}
+
+.cardPct {
+  font-size: 1.8rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.cardName {
+  font-weight: 650;
+  font-size: 0.92rem;
+  margin-bottom: 0.15rem;
+}
+
+.link {
+  color: var(--accent);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+@media (max-width: 34rem) {
+  .hero {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .heroCompare {
+    text-align: left;
+    padding-left: 0;
+    border-left: none;
+    border-top: 1px solid var(--card-line);
+    padding-top: 0.7rem;
+  }
+
+  .heroPct {
+    font-size: 2.8rem;
+  }
+
+  .monthGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .yearChart {
+    height: 7rem;
+  }
+
+  .yearLabel {
+    font-size: 0.55rem;
+  }
+}

@@ -55,7 +55,9 @@ export function buildDayView(today: PairDay, yesterday: PairDay | null = null): 
   const sailings = mergeDays(today, yesterday);
   const cancelledMs = new Set<number>();
   const cancelReason = new Map<number, string>();
-  const dayNotes: string[] = [];
+  // A Set, not an array: yesterday's file and today's can carry the same
+  // unmatched adjustment, and the reader should see that cancellation once.
+  const dayNotes = new Set<string>();
 
   const adjustments = [...(yesterday?.adjustments ?? []), ...today.adjustments];
   for (const adj of adjustments) {
@@ -67,11 +69,11 @@ export function buildDayView(today: PairDay, yesterday: PairDay | null = null): 
       cancelledMs.add(row.depart_ms);
       cancelReason.set(row.depart_ms, reason(adj));
     } else {
-      dayNotes.push(
+      dayNotes.add(
         `A ${adj.time_local} departure from this terminal area is cancelled (${reason(adj)}) - ` +
           "check the alert for details.",
       );
     }
   }
-  return { sailings, cancelledMs, cancelReason, dayNotes };
+  return { sailings, cancelledMs, cancelReason, dayNotes: [...dayNotes] };
 }

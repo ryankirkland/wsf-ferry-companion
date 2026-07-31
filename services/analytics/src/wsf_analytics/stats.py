@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 
 import boto3
 from wsf_core.slips import RETIRED_TERMINAL_NAMES
+from wsf_core.vessel_names import build_display_map, display_name
 
 from wsf_analytics import queries, reconcile
 from wsf_analytics.athena import Athena
@@ -45,6 +46,17 @@ def _stat(row: dict, suffix: str) -> dict:
 def _pair_directory(s3, data_bucket: str) -> dict[tuple[int, int], dict]:
     body = s3.get_object(Bucket=data_bucket, Key="data/pairs/index.json")["Body"].read()
     return {(p["dep"], p["arr"]): p for p in json.loads(body)["pairs"]}
+
+
+def _vessel_display_map(s3, data_bucket: str) -> dict[str, str]:
+    """The feed's compacted names ("WallaWalla") repaired for display."""
+    try:
+        body = s3.get_object(Bucket=data_bucket, Key="data/vessels.json")["Body"].read()
+        doc = json.loads(body)
+        vessels = doc["vessels"] if isinstance(doc, dict) else doc
+        return build_display_map(v["name"] for v in vessels)
+    except Exception:
+        return build_display_map([])  # retired-name repairs still apply
 
 
 def _terminal_label(directory: dict, terminal_id: int, position: str) -> str:
@@ -127,6 +139,7 @@ def lambda_handler(event, context):
         cancellations = reconcile.reconcile(scheduled, sailed)
 
     directory = _pair_directory(s3, data_bucket)
+    vessel_names = _vessel_display_map(s3, data_bucket)
     generated_at = datetime.now(UTC).isoformat()
     cancel_note = (
         "A scheduled sailing that never departed. Measured by comparing each day's published "
@@ -274,7 +287,7 @@ def lambda_handler(event, context):
         "superlatives": {
             "most_punctual_vessel": (
                 {
-                    "vessel_name": punctual_vessel["vessel_name"],
+                    "vessel_name": display_name(punctual_vessel["vessel_name"], vessel_names),
                     "ontime_pct": punctual_vessel.get("ontime_win")
                     or punctual_vessel["ontime_all"],
                     "n": punctual_vessel.get("n_win") or punctual_vessel["n_all"],
@@ -296,7 +309,7 @@ def lambda_handler(event, context):
         },
         "vessels": [
             {
-                "vessel_name": r["vessel_name"],
+                "vessel_name": display_name(r["vessel_name"], vessel_names),
                 "primary": _stat(r, "win"),
                 "all_time": _stat(r, "all"),
             }

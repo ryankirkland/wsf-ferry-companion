@@ -106,6 +106,12 @@ data "aws_iam_policy_document" "capacity" {
   }
 
   statement {
+    sid       = "PublishCapacityContract"
+    actions   = ["s3:PutObject"]
+    resources = ["${var.data_bucket_arn}/data/capacity.json"]
+  }
+
+  statement {
     sid       = "AccessCodeRead"
     actions   = ["ssm:GetParameter"]
     resources = ["arn:aws:ssm:us-west-2:${data.aws_caller_identity.current.account_id}:parameter/wsf/prod/wsf-access-code"]
@@ -147,6 +153,7 @@ resource "aws_lambda_function" "capacity" {
   environment {
     variables = {
       RAW_BUCKET            = var.raw_bucket_name
+      DATA_BUCKET           = var.data_bucket_name
       WSF_ACCESS_CODE_PARAM = "/wsf/prod/wsf-access-code"
     }
   }
