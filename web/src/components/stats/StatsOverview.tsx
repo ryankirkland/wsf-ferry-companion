@@ -102,6 +102,8 @@ export function StatsOverview() {
 
       <section className={styles.section}>
         <h2 className={`display ${styles.sectionTitle}`}>Every year since {doc.coverage.since.slice(0, 4)}</h2>
+        {/* 25 labels do not fit a phone: every fifth year carries the
+            axis, and the caption below carries the range. */}
         <div className={overview.yearChart} data-testid="year-chart">
           {years.map((y) => (
             <div key={y.year} className={overview.yearCol} title={`${y.year}: ${formatPct(y.ontime_pct)} of ${formatSampleSize(y.n)}`}>
@@ -111,12 +113,15 @@ export function StatsOverview() {
                   style={{ height: `${((y.ontime_pct ?? 0) - 50) * 2}%` }}
                 />
               </div>
-              <div className={overview.yearLabel}>{`'${String(y.year).slice(2)}`}</div>
+              <div className={overview.yearLabel}>
+                {y.year % 5 === 0 ? `'${String(y.year).slice(2)}` : "\u00a0"}
+              </div>
             </div>
           ))}
         </div>
         <p className={styles.foot}>
-          Bars start at 50%. Height is the share of departures within{" "}
+          One bar per year, {doc.coverage.since.slice(0, 4)} to {doc.data_through.slice(0, 4)},
+          starting at 50%. Height is the share of departures within{" "}
           {doc.ontime_definition_min} minutes of schedule; the thinnest year still holds{" "}
           {Math.round(Math.min(...doc.by_year.map((y) => y.n)) / 1000)}k sailings, the fullest{" "}
           {Math.round(maxYearN / 1000)}k.

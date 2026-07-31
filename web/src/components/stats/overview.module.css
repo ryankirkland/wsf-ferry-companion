@@ -79,10 +79,16 @@
   gap: 0.22rem;
   height: 9rem;
   margin-top: 0.5rem;
+  /* Label overhang must not give the chart a scrollbar - the bars
+     themselves always fit. */
+  overflow: hidden;
 }
 
 .yearCol {
   flex: 1;
+  /* Without min-width:0 the year label sets a floor on the column width
+     and 25 bars overflow the container, clipping the newest year. */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -110,6 +116,10 @@
   color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
   padding-top: 0.25rem;
+  white-space: nowrap;
+  /* Labels are drawn every fifth year; letting one overhang its own
+     column keeps it centred on its bar instead of squeezing the bar. */
+  overflow: visible;
 }
 
 /* ---- months ---- */
