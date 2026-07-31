@@ -49,13 +49,20 @@ def _pair_directory(s3, data_bucket: str) -> dict[tuple[int, int], dict]:
 
 
 def _vessel_display_map(s3, data_bucket: str) -> dict[str, str]:
-    """The feed's compacted names ("WallaWalla") repaired for display."""
+    """The feed's compacted names ("WallaWalla") repaired for display.
+
+    Degrading to feed spellings is survivable, so this does not raise - but
+    it is NOT silent. The first version swallowed an IAM denial and shipped
+    "WallaWalla" to production looking exactly like success.
+    """
     try:
         body = s3.get_object(Bucket=data_bucket, Key="data/vessels.json")["Body"].read()
         doc = json.loads(body)
         vessels = doc["vessels"] if isinstance(doc, dict) else doc
         return build_display_map(v["name"] for v in vessels)
-    except Exception:
+    except Exception as exc:
+        print(json.dumps({"VesselDimUnavailable": {"error": str(exc)}}))
+        emit(VesselDimUnavailable=1)
         return build_display_map([])  # retired-name repairs still apply
 
 

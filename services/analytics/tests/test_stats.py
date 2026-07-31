@@ -231,3 +231,12 @@ def test_feed_vessel_names_are_repaired_for_display(seeded, monkeypatch):
     assert "Walla Walla" in names  # from the live fleet dim
     assert "Evergreen State" in names  # retired, from the curated map
     assert summary["superlatives"]["most_punctual_vessel"]["vessel_name"] == "Walla Walla"
+
+
+def test_missing_fleet_dim_is_reported_not_swallowed(seeded, monkeypatch, capsys):
+    # An IAM denial on the fleet dim once shipped "WallaWalla" to production
+    # while every metric read like success. Degrade, but say so.
+    seeded["s3"].delete_object(Bucket="wsf-test-data", Key="data/vessels.json")
+    install(monkeypatch, BASE_ROWS)
+    stats.lambda_handler({}, None)
+    assert "VesselDimUnavailable" in capsys.readouterr().out
