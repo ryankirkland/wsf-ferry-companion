@@ -23,6 +23,18 @@ async function interceptData(page: Page) {
   );
 }
 
+/** A 1x1 PNG for /assets/vessels/*.png, so the card's onError fallback is
+ *  not what the positive test ends up exercising. */
+async function interceptClassDrawing(page: Page) {
+  const pixel = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+    "base64",
+  );
+  await page.route("**/assets/vessels/*.png", (route) =>
+    route.fulfill({ body: pixel, contentType: "image/png" }),
+  );
+}
+
 test("the map page loads, draws the fleet, and switches modes", async ({ page }) => {
   await interceptData(page);
   await page.goto("/");
@@ -106,6 +118,10 @@ test("the boat FAB never covers the map attribution", async ({ page }) => {
 // missing - a class commissioned since the last mirror run.
 test("the vessel card shows the WSDOT class drawing", async ({ page }) => {
   await interceptData(page);
+  // Serve the asset ourselves: the mirrored drawings are gitignored (they
+  // are WSDOT artwork, kept out of the repo), so a test that relied on the
+  // real files would pass locally and never in CI.
+  await interceptClassDrawing(page);
   await page.goto("/");
   await page.waitForTimeout(3000);
   await page.evaluate(() => {
