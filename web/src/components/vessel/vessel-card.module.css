@@ -79,3 +79,16 @@
   color: var(--ink-soft);
   font-size: 0.85rem;
 }
+
+.tripLink {
+  display: inline-block;
+  margin-top: 0.6rem;
+  color: var(--accent);
+  font-weight: 650;
+  font-size: 0.88rem;
+  text-decoration: none;
+}
+
+.tripLink:hover {
+  text-decoration: underline;
+}

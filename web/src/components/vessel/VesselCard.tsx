@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   getTerminalDims,
@@ -7,6 +8,7 @@ import {
   type TerminalDim,
   type VesselDim,
 } from "@/lib/data/dims";
+import { PAIRS } from "@/lib/trip/pairs";
 import type { VesselFix } from "@/lib/data/types";
 import { asOf, soundClock } from "@/lib/time/sound-time";
 import styles from "./vessel-card.module.css";
@@ -100,6 +102,17 @@ export function VesselCard({ fix, onClose }: { fix: VesselFix; onClose: () => vo
           {dim.year_rebuilt ? `, rebuilt ${dim.year_rebuilt}` : ""}
         </p>
       )}
+      {(() => {
+        // The card must never be a dead end: link to this run's schedule.
+        const entry = Object.entries(PAIRS).find(
+          ([, e]) => e.dep === fix.dep && e.arr === fix.arr,
+        );
+        return entry ? (
+          <Link className={styles.tripLink} href={`/trip/${entry[0]}`}>
+            Next sailings: {entry[1].depName} → {entry[1].arrName}
+          </Link>
+        ) : null;
+      })()}
     </aside>
   );
 }

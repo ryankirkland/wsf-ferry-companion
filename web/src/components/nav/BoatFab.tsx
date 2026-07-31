@@ -7,6 +7,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { PAIRS } from "@/lib/trip/pairs";
 import styles from "./nav.module.css";
 
@@ -37,6 +38,7 @@ function BoatGlyph() {
 
 export function BoatFab() {
   const [open, setOpen] = useState(false);
+  const { state: auth } = useAuth();
   const yourRunSlug = useSyncExternalStore(subscribeStorage, readYourRun, () => null);
   const yourRun = yourRunSlug && PAIRS[yourRunSlug] ? PAIRS[yourRunSlug] : null;
 
@@ -95,6 +97,17 @@ export function BoatFab() {
             Ambient mode
             <span>The Sound on a wall, all day</span>
           </Link>
+          {auth.status === "in" ? (
+            <Link href="/alerts" onClick={() => setOpen(false)}>
+              Account
+              <span>{auth.email}</span>
+            </Link>
+          ) : (
+            <Link href="/account?next=/alerts" onClick={() => setOpen(false)}>
+              Sign in
+              <span>Create an account for email alerts</span>
+            </Link>
+          )}
         </nav>
       </aside>
     </>
