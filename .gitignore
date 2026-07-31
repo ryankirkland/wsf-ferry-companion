@@ -17,6 +17,7 @@ __pycache__/
 # Node / Next.js
 node_modules/
 .next/
+*.tsbuildinfo
 out/
 
 # Terraform - state and secrets never in git
