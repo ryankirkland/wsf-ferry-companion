@@ -76,7 +76,19 @@ def test_missing_sailing_counts_as_not_sailed():
     assert result["pairs"][(3, 7)]["days"] == 1
 
 
-def test_day_with_no_reported_sailings_is_unreconciled_not_all_cancelled():
+def test_multi_stop_journey_is_not_a_cancellation():
+    # The schedule sells Fauntleroy -> Southworth; the boat physically runs
+    # Fauntleroy -> Vashon -> Southworth and the feed logs the first leg.
+    # Matching whole pairs called this a cancellation (80% on this route);
+    # matching the departure dock and minute sees the sailing that left.
+    scheduled = {("2026-07-30", 9, 20): {"08:30"}, ("2026-07-30", 9, 22): {"08:30"}}
+    sailed = [{"service_date": "2026-07-30", "dep": 9, "arr": 22, "hhmm": "08:30"}]
+    result = reconcile.reconcile(scheduled, sailed)
+    assert result["totals"]["not_sailed"] == 0
+    assert result["pairs"][(9, 20)]["not_sailed"] == 0
+
+
+def test_terminal_with_no_reported_departures_is_unreconciled():
     scheduled = {("2026-07-30", 3, 7): {"06:10", "07:55"}}
     result = reconcile.reconcile(scheduled, [])
     assert result["totals"]["unreconciled_days"] == 1
@@ -84,8 +96,16 @@ def test_day_with_no_reported_sailings_is_unreconciled_not_all_cancelled():
     assert result["totals"]["rate_pct"] is None
 
 
+def test_window_excludes_the_partially_collected_last_day():
+    # data_through is the day collection stopped mid-afternoon; counting
+    # its un-fetched evening as cancelled turned a normal day into 37%.
+    days = reconcile.window_days(date(2026, 8, 5))
+    assert days[-1] == date(2026, 8, 4)
+
+
 def test_window_never_reaches_before_tracking_started():
     days = reconcile.window_days(date(2026, 8, 1))
     assert days[0] == reconcile.TRACKING_FLOOR
-    assert days[-1] == date(2026, 8, 1)
-    assert reconcile.window_days(date(2026, 7, 1)) == []
+    assert days[-1] == date(2026, 7, 31)
+    # Only the tracking floor itself is in the history: nothing complete yet.
+    assert reconcile.window_days(date(2026, 7, 29)) == []

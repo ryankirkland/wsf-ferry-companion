@@ -60,8 +60,34 @@ reported. Consequences, all stated in the contract:
 - It compares the last schedule snapshot taken on or before the end of that service day - the
   plan riders actually saw. A sailing cancelled early enough to be pulled from the schedule is
   invisible, so the published rate is a **floor**, and the `note` field says so.
-- A pair-day with a schedule but zero reported sailings counts as `unreconciled_days`, never as
-  a 100%-cancelled day. Collection gaps do not get to masquerade as service failures.
+- Only **complete** service days are reconciled. The newest day in the history is the day
+  collection stopped partway through.
+- A terminal-day with a schedule but zero reported departures counts as `unreconciled_days`,
+  never as a 100%-cancelled day. Collection gaps do not get to masquerade as service failures.
+
+### The matching unit (a correction, measured 2026-07-31)
+
+The first implementation diffed full `(departing, arriving)` pairs and produced a **19.8%**
+cancellation rate on a normal Wednesday. It was wrong, because the two sides count different
+things:
+
+| | unit | example |
+|---|---|---|
+| Schedule `TerminalCombos` | the rider's **journey** | Anacortes -> Friday Harbor, listed even though the boat calls at Orcas first |
+| vesselhistory | the physical **leg** | the same sailing, logged as Anacortes -> Orcas |
+
+Diffing journeys against legs reads every multi-stop sailing as a cancellation. The evidence was
+in the shape of the error: gaps of 80% on Fauntleroy->Southworth and 83% on Orcas->Shaw - exactly
+where WSF interlines - while point-to-point runs (Bainbridge, Bremerton, Edmonds-Kingston,
+Coupeville-Port Townsend) came out clean.
+
+The fix matches on `(service_date, departing terminal, HH:MM)`: **did a boat leave that dock at
+that minute?** That is also the question the rider is asking. Same day, same data: **3.4%**
+unmatched, scattered singletons rather than whole routes.
+
+The tradeoff is documented in code: if two boats were scheduled out of one dock in the same
+minute and only one sailed, this method misses it. That biases toward under-reporting, which is
+consistent with publishing the number as a floor.
 
 **Collection gaps are labeled.** `coverage.thin_days` lists recent days whose sailing count fell
 below half the recent median, so a half-collected day is visible rather than quietly averaged in.

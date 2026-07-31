@@ -201,5 +201,7 @@ def test_cancellations_carry_their_window_and_caveat(seeded, monkeypatch):
     summary = read_json(seeded, "data/stats/summary.json")
     cancellations = summary["cancellations"]
     assert cancellations["tracking_since"] == "2026-07-29"
-    assert cancellations["window"] == {"from": "2026-07-29", "to": "2026-07-30"}
+    # data_through is 2026-07-30 and only partly collected, so the last
+    # reconcilable day is the 29th.
+    assert cancellations["window"] == {"from": "2026-07-29", "to": "2026-07-29"}
     assert "floor" in cancellations["note"]
