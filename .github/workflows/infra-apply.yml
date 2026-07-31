@@ -63,6 +63,16 @@ jobs:
             --only-binary :all: --no-cache
           python3 tools/build_lambda_zip.py .build/notify-src infra/envs/prod/.build/notify.zip
 
+      - name: build analytics lambda artifact
+        run: |
+          uv build --wheel --package wsf-analytics --out-dir .build/wheels
+          uv build --wheel --package wsf-ingest --out-dir .build/wheels || true
+          uv pip install .build/wheels/wsf_core-*.whl .build/wheels/wsf_ingest-*.whl .build/wheels/wsf_analytics-*.whl \
+            --target .build/analytics-src \
+            --python-platform aarch64-manylinux2014 --python-version 3.12 \
+            --only-binary :all: --no-cache
+          python3 tools/build_lambda_zip.py .build/analytics-src infra/envs/prod/.build/analytics.zip
+
       - uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
         with:
           role-to-assume: arn:aws:iam::654654574183:role/wsf-github-apply

@@ -147,6 +147,22 @@ class WsfClient:
     def alerts_raw(self) -> list[dict]:
         return self._get("/schedule/rest/alerts")
 
+    def vessel_history_raw(self, vessel_name: str, date_start: str, date_end: str) -> list[dict]:
+        """UNDOCUMENTED endpoint; the M4 backfill workhorse. One row per
+        completed crossing; join on the NAME (VesselId is corrupt there);
+        a bad/unknown name returns 200 [] indistinguishable from an empty
+        window - callers must alarm on suspicious emptiness. Names with
+        spaces are percent-encoded into the path."""
+        from urllib.parse import quote
+
+        path = f"/vessels/rest/vesselhistory/{quote(vessel_name)}/{date_start}/{date_end}"
+        return self._get(path)
+
+    def terminal_sailing_space_raw(self) -> list[dict]:
+        """Current-state drive-up space for the subset of terminals that
+        report it; empty overnight. History exists only via our snapshots."""
+        return self._get("/terminals/rest/terminalsailingspace")
+
     def fare_line_items_verbose_raw(self, trip_date: str) -> dict:
         return self._get(f"/fares/rest/farelineitemsverbose/{trip_date}")
 

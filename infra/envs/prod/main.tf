@@ -32,6 +32,20 @@ module "api" {
   notify_api_function_name   = module.notify.api_lambda_function_name
 }
 
+# M4 analytics: history collectors + Glue/Athena catalog (ADR-0001).
+module "analytics" {
+  source = "../../modules/analytics"
+
+  raw_bucket_name  = module.ingest.raw_bucket
+  raw_bucket_arn   = module.ingest.raw_bucket_arn
+  data_bucket_name = module.static_site.data_bucket_name
+  data_bucket_arn  = module.static_site.data_bucket_arn
+  table_name       = module.ingest.table_name
+  table_arn        = module.ingest.table_arn
+  # Built by CI (and locally) before terraform runs - see infra-plan.yml.
+  lambda_zip_path = "${path.root}/.build/analytics.zip"
+}
+
 # M3 alert-notification foundations: SES identity + Cognito + link-token
 # secrets (ADR-0006). Lambdas land in D2/D3.
 module "notify" {
