@@ -77,7 +77,8 @@ resource "aws_lambda_function" "sync" {
   runtime          = "python3.12"
   architectures    = ["arm64"]
   handler          = "wsf_analytics.sync.lambda_handler"
-  filename         = var.lambda_zip_path
+  s3_bucket        = var.raw_bucket_name
+  s3_key           = var.lambda_zip_s3_key
   source_code_hash = filebase64sha256(var.lambda_zip_path)
   memory_size      = 256
   timeout          = 600
@@ -88,6 +89,7 @@ resource "aws_lambda_function" "sync" {
       RAW_BUCKET            = var.raw_bucket_name
       DATA_BUCKET           = var.data_bucket_name
       WSF_ACCESS_CODE_PARAM = "/wsf/prod/wsf-access-code"
+      TRANSFORM_FUNCTION    = "wsf-prod-analytics-transform"
     }
   }
 
@@ -136,7 +138,8 @@ resource "aws_lambda_function" "capacity" {
   runtime          = "python3.12"
   architectures    = ["arm64"]
   handler          = "wsf_analytics.capacity.lambda_handler"
-  filename         = var.lambda_zip_path
+  s3_bucket        = var.raw_bucket_name
+  s3_key           = var.lambda_zip_s3_key
   source_code_hash = filebase64sha256(var.lambda_zip_path)
   memory_size      = 128
   timeout          = 30
@@ -205,4 +208,91 @@ resource "aws_scheduler_schedule" "capacity_1min" {
       maximum_retry_attempts = 0
     }
   }
+}
+
+# --- transform (D2): raw -> year-partitioned Parquet ---
+
+data "aws_iam_policy_document" "transform" {
+  statement {
+    sid       = "RawRead"
+    actions   = ["s3:GetObject"]
+    resources = ["${var.raw_bucket_arn}/raw/vesselhistory/*"]
+  }
+
+  statement {
+    sid       = "RawList"
+    actions   = ["s3:ListBucket"]
+    resources = [var.raw_bucket_arn]
+  }
+
+  statement {
+    sid     = "AnalyticsWrite"
+    actions = ["s3:PutObject"]
+    resources = [
+      "${var.raw_bucket_arn}/analytics/history/*",
+      "${var.raw_bucket_arn}/analytics/quarantine/*",
+    ]
+  }
+
+  statement {
+    sid       = "PairsIndexRead"
+    actions   = ["s3:GetObject"]
+    resources = ["${var.data_bucket_arn}/data/pairs/index.json"]
+  }
+}
+
+resource "aws_iam_role" "transform" {
+  name               = "wsf-prod-analytics-transform"
+  assume_role_policy = data.aws_iam_policy_document.lambda_trust.json
+}
+
+resource "aws_iam_role_policy" "transform" {
+  role   = aws_iam_role.transform.name
+  policy = data.aws_iam_policy_document.transform.json
+}
+
+resource "aws_iam_role_policy_attachment" "transform_logs" {
+  role       = aws_iam_role.transform.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_cloudwatch_log_group" "transform" {
+  name              = "/aws/lambda/wsf-prod-analytics-transform"
+  retention_in_days = 30
+}
+
+resource "aws_lambda_function" "transform" {
+  function_name    = "wsf-prod-analytics-transform"
+  role             = aws_iam_role.transform.arn
+  runtime          = "python3.12"
+  architectures    = ["arm64"]
+  handler          = "wsf_analytics.transform.lambda_handler"
+  s3_bucket        = var.raw_bucket_name
+  s3_key           = var.lambda_zip_s3_key
+  source_code_hash = filebase64sha256(var.lambda_zip_path)
+  memory_size      = 1536
+  timeout          = 900
+
+  environment {
+    variables = {
+      RAW_BUCKET  = var.raw_bucket_name
+      DATA_BUCKET = var.data_bucket_name
+    }
+  }
+
+  depends_on = [aws_cloudwatch_log_group.transform]
+}
+
+# sync -> transform chain permission
+resource "aws_iam_role_policy" "sync_invokes_transform" {
+  name = "invoke-transform"
+  role = aws_iam_role.sync.name
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "lambda:InvokeFunction"
+      Resource = aws_lambda_function.transform.arn
+    }]
+  })
 }

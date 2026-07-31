@@ -78,6 +78,11 @@ jobs:
           role-to-assume: arn:aws:iam::654654574183:role/wsf-github-apply
           aws-region: us-west-2
 
+      # The analytics artifact exceeds Lambda's 50 MB direct upload; code
+      # deploys from S3, hash still computed from the local file.
+      - name: upload analytics artifact to S3
+        run: aws s3 cp infra/envs/prod/.build/analytics.zip s3://wsf-prod-raw-654654574183/build/analytics.zip
+
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_version: "1.15.8"

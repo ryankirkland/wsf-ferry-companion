@@ -96,6 +96,18 @@ def lambda_handler(event, context):
         time.sleep(SPACING_S)
 
     key = archive.flush(dataset="vesselhistory")
+
+    # Chain the transform for every service year the window touched -
+    # ordering by causality, not clock offsets (the stats stage chains off
+    # the transform the same way).
+    if key and os.environ.get("TRANSFORM_FUNCTION"):
+        years = sorted({int(window[0][:4]), int(window[1][:4])})
+        boto3.client("lambda").invoke(
+            FunctionName=os.environ["TRANSFORM_FUNCTION"],
+            InvocationType="Event",
+            Payload=json.dumps({"years": years}).encode(),
+        )
+
     if counts["HistoryRowsFetched"] == 0 and counts["HistoryVesselsFetched"] > 0:
         # Every vessel answered [] - upstream outage or vocabulary drift,
         # never plain "no sailings happened this week".
