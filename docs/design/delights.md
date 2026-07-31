@@ -22,3 +22,19 @@ milestones, never as blockers.
 - **Brand glyphs on the basemap.** Convert Gabarito to PBF glyphs,
   self-host, so map-rendered labels match the brand type.
 - **Arrival ripple.** A soft pulse when a vessel reaches dock.
+
+## UX decisions parked 2026-07-30 (new-user walkthrough)
+
+Awaiting Ryan's design call - mechanics all shipped, these are taste:
+
+- **Boat-button discoverability**: the drawer FAB is an unlabeled circle;
+  every nav path hides behind it. Options: one-time gentle pulse on first
+  visit (lean), tiny "Menu" caption, or promote Trips/Alerts into the top
+  bar at desktop widths.
+- **First-visit orientation**: nothing tells a newcomer boats are
+  tappable. One-time dismissible whisper ("Tap a boat - the boat button
+  has trips & alerts") vs. keeping the map perfectly quiet.
+- **Ambient-mode entry**: one tap from the drawer into a chromeless
+  takeover with no warning; guests may not know how to leave.
+- **Trip picker**: no browse-all-crossings view (From->To only). Fine for
+  v1; revisit if terminal-first browsing feels wrong.
