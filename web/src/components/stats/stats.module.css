@@ -1,0 +1,335 @@
+/* Reliability + capacity surfaces. Paper Sound on the reading column: the
+ * same card/ink/accent tokens the trip page uses, with an on-time trio
+ * tuned to sit on --card in day, dusk and night. */
+
+.section {
+  margin: 1.6rem 0 0;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.15rem;
+}
+
+.sectionTitle {
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.windowNote {
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.lede {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  margin: 0 0 0.7rem;
+  line-height: 1.45;
+}
+
+/* ---- headline card ---- */
+
+.headline {
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 0.8rem;
+  padding: 0.9rem 1rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.bigPct {
+  font-size: 2.1rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.strong {
+  color: var(--accent);
+}
+
+.mixed {
+  color: #96691f;
+}
+
+.poor {
+  color: color-mix(in srgb, var(--stack) 80%, var(--ink));
+}
+
+.unknown {
+  color: var(--ink-soft);
+}
+
+.headlineMeta {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  line-height: 1.4;
+}
+
+.headlineMeta strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+/* ---- your sailing ---- */
+
+.yourSlot {
+  margin-top: 0.7rem;
+  background: color-mix(in srgb, var(--accent) 7%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--card-line));
+  border-radius: 0.8rem;
+  padding: 0.85rem 1rem;
+}
+
+.yourSlotHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.yourSlotTime {
+  font-weight: 750;
+  font-size: 0.95rem;
+}
+
+.caveat {
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  margin: 0.3rem 0 0;
+}
+
+/* ---- slot table ---- */
+
+.slots {
+  margin-top: 0.8rem;
+  border: 1px solid var(--card-line);
+  border-radius: 0.8rem;
+  overflow: hidden;
+  background: var(--card);
+}
+
+.slotRow {
+  display: grid;
+  grid-template-columns: 5.4rem 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.85rem;
+  border-top: 1px solid var(--card-line);
+  font-size: 0.86rem;
+}
+
+.slotRow:first-child {
+  border-top: none;
+}
+
+.slotRowHighlight {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.slotTime {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.slotBar {
+  position: relative;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink-soft) 18%, transparent);
+  overflow: hidden;
+}
+
+.slotBarFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.slotPct {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  min-width: 2.6rem;
+  text-align: right;
+}
+
+.slotHourMark {
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  font-weight: 600;
+  margin-left: 0.3rem;
+}
+
+.toggle {
+  margin-top: 0.6rem;
+  background: none;
+  border: 1px solid var(--card-line);
+  border-radius: 999px;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 650;
+  padding: 0.3rem 0.85rem;
+  cursor: pointer;
+}
+
+.toggle:hover {
+  border-color: var(--accent);
+}
+
+/* ---- seasons ---- */
+
+.seasons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+}
+
+.season {
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 0.7rem;
+  padding: 0.55rem 0.4rem;
+  text-align: center;
+}
+
+.seasonName {
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.seasonPct {
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+}
+
+/* ---- capacity ---- */
+
+.capacityList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.capacityRow {
+  display: grid;
+  /* The label column is capped: "24 spaces - filling up" must wrap inside
+     the card rather than push the meter off the edge on a narrow phone. */
+  grid-template-columns: 5.4rem 1fr minmax(4.5rem, 7.5rem);
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 0.7rem;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.86rem;
+}
+
+.capacityMeter {
+  height: 0.42rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink-soft) 18%, transparent);
+  overflow: hidden;
+}
+
+/* Tone classes carry COLOR only; the meter paints itself with
+ * currentColor. Setting a background here too gave the space count a
+ * pill-shaped fill that overflowed the card. */
+.capacityFill {
+  height: 100%;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.levelPlenty {
+  color: var(--accent);
+}
+
+.levelFilling {
+  color: #96691f;
+}
+
+.levelFull {
+  color: color-mix(in srgb, var(--stack) 80%, var(--ink));
+}
+
+.spaces {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+  line-height: 1.25;
+}
+
+.spacesLabel {
+  font-weight: 500;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+}
+
+.absent {
+  background: var(--card);
+  border: 1px dashed var(--card-line);
+  border-radius: 0.8rem;
+  padding: 0.85rem 1rem;
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.staleTag {
+  color: #96691f;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.cancelledTag {
+  color: color-mix(in srgb, var(--stack) 80%, var(--ink));
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+/* ---- footnotes ---- */
+
+.foot {
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  margin: 0.7rem 0 0;
+}
+
+@media (max-width: 30rem) {
+  .seasons {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .slotRow,
+  .capacityRow {
+    grid-template-columns: 4.6rem 1fr auto;
+  }
+}
+
+/* The legend repeats the inline marker so the reader can match them by
+ * sight rather than by inference. */
+.caveat .slotHourMark {
+  background: color-mix(in srgb, var(--ink-soft) 14%, transparent);
+  border-radius: 0.3rem;
+  padding: 0.05rem 0.3rem;
+  margin-left: 0;
+}

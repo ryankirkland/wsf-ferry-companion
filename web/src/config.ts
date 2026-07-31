@@ -55,3 +55,12 @@ export const API_ORIGIN = env.NEXT_PUBLIC_API_ORIGIN ?? "https://api.ferrysound.
 export const COGNITO_POOL_ID = env.NEXT_PUBLIC_COGNITO_POOL_ID ?? "us-west-2_Rvw5RQOP0";
 export const COGNITO_CLIENT_ID =
   env.NEXT_PUBLIC_COGNITO_CLIENT_ID ?? "57ckrpr8h75p2hrpf72so0leu7";
+
+// M4 stats + capacity contracts (materialized nightly / every minute).
+export const STATS_SUMMARY_PATH = "/data/stats/summary.json";
+export const CAPACITY_PATH = "/data/capacity.json";
+export const pairStatsPath = (dep: number, arr: number) => `/data/stats/pairs/${dep}-${arr}.json`;
+// Capacity readings older than this are labeled, never silently shown as now.
+export const CAPACITY_STALE_MS = 240_000;
+export const STATS_REFRESH_MS = 3_600_000;
+export const CAPACITY_POLL_MS = 60_000;

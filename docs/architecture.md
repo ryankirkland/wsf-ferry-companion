@@ -25,7 +25,7 @@ flowchart LR
 
     subgraph analytics [Analytics - live, M4]
         EB2[EventBridge Scheduler<br/>03:30 PT + 1 min + 05:15 PT] --> SYNC[Lambda history sync<br/>7-day window, per-vessel isolation]
-        EB2 --> CAP[Lambda capacity poller<br/>terminalsailingspace, 24/7]
+        EB2 --> CAP[Lambda capacity poller<br/>terminalsailingspace, 24/7<br/>archives + publishes capacity.json]
         SYNC -- "touched years" --> XF[Lambda transform<br/>dedup + Pacific service year]
         XF -- "on success" --> ST[Lambda stats<br/>Athena suite + reconciliation]
         EB2 -. "05:15 catch-up" .-> ST
@@ -65,6 +65,7 @@ flowchart LR
     WSF --> CAP
     SYNC --> RAW
     CAP --> RAW
+    CAP -- capacity.json --> DATA
     XF -- "year=YYYY/part-0.parquet" --> RAW
     RAW --> GLUE
     ATH --> ST
@@ -175,7 +176,8 @@ windows, 24-year `by_year`, `by_month`, per-vessel table, superlatives,
 coverage + thin days, cancellations) and `/data/stats/pairs/{dep}-{arr}.json`
 (pair headline, `slots[]` with `basis`/`primary`/`slot_window`/`all_time`,
 `seasons[]`, cancellations). Keyed by terminal ID so a rename never breaks a
-file name.
+file name. `/data/capacity.json` (minute-fresh, pair-keyed drive-up space +
+`reporting_terminals`, so absence is distinguishable from fullness).
 
 Scale as of 2026-07-30: **3,493,725 sailings, 2002-03-01 to 2026-07-30, 30
 vessels, 25 partitions, ~46 MB Parquet**; a full nightly Athena suite scans

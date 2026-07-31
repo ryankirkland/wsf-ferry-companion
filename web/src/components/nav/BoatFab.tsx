@@ -89,6 +89,10 @@ export function BoatFab() {
             Service calendar
             <span>Scheduled cancellations, months ahead</span>
           </Link>
+          <Link href="/stats" onClick={() => setOpen(false)}>
+            On-time record
+            <span>24 years of departures, by route and boat</span>
+          </Link>
           <Link href="/alerts" onClick={() => setOpen(false)}>
             Email alerts
             <span>Your crossing, your window, one email</span>

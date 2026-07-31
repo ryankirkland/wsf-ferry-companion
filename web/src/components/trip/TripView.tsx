@@ -10,6 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { TRIP_HORIZON_DAYS } from "@/config";
 import { useFleet } from "@/hooks/use-fleet";
+import { usePairStats } from "@/hooks/use-pair-stats";
 import { useMode } from "@/hooks/use-mode";
 import { useTripData } from "@/hooks/use-trip-data";
 import { makeTripFetchers } from "@/lib/data/trip-data";
@@ -18,6 +19,9 @@ import { PAIRS } from "@/lib/trip/pairs";
 import { computeSignal } from "@/lib/trip/signal";
 import type { Sailing } from "@/lib/trip/types";
 import { shiftDate, soundDate, soundTimeShort } from "@/lib/time/sound-time";
+import { CapacityGauge } from "@/components/stats/CapacityGauge";
+import { Reliability } from "@/components/stats/Reliability";
+import { slotKeyFor } from "@/lib/stats/reliability";
 import { AlertBanner } from "./AlertBanner";
 import { AnswerLine } from "./AnswerLine";
 import { DateStrip } from "./DateStrip";
@@ -58,6 +62,7 @@ export function TripView({ slug }: { slug: string }) {
 
   const trip = useTripData(entry, date);
   const fleet = useFleet();
+  const stats = usePairStats(entry.dep, entry.arr);
 
   // Remember this as "your run" for the picker.
   useEffect(() => {
@@ -99,6 +104,12 @@ export function TripView({ slug }: { slug: string }) {
   );
   const isToday = date === today;
   const next = isToday && nextIndex >= 0 ? items[nextIndex]! : null;
+
+  // Which departure "your sailing" means: the next one today, or the first
+  // of the day when browsing ahead. Slot identity is Sound-local HH:MM,
+  // exactly how the stats contract keys it.
+  const focusMs = next?.sailing.depart_ms ?? (!isToday ? items[0]?.sailing.depart_ms : undefined);
+  const yourSlot = focusMs !== undefined ? slotKeyFor(focusMs) : null;
   const exhausted = trip.daySettled && (items.length === 0 || (isToday && nextIndex === -1));
 
   const indexPair = trip.index?.pairs.find((p) => p.dep === entry.dep && p.arr === entry.arr) ?? null;
@@ -181,6 +192,16 @@ export function TripView({ slug }: { slug: string }) {
         )}
 
         <DateStrip today={today} selected={date} onSelect={setDate} />
+
+        <CapacityGauge
+          capacity={stats.capacity}
+          dep={entry.dep}
+          arr={entry.arr}
+          depName={entry.depName}
+          nowMs={now}
+        />
+
+        <Reliability stats={stats.stats} yourSlot={yourSlot} settled={stats.settled} />
 
         {trip.fares && <FaresPanel fares={trip.fares} viewDate={date} />}
 

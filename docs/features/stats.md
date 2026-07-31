@@ -131,12 +131,52 @@ Lambda error alarms for transform and stats.
 ## Live capacity (F5)
 
 The capacity poller archives `terminalsailingspace` every minute, 24/7 - including the empty
-overnight responses, which re-verify the coverage quirk rather than hiding it. Only a subset of
-terminals report drive-up space; the rest are absent from the feed and must be absent from the
-UI, with copy that says the terminal does not report rather than implying space is unknown or
-full. Readings older than a few minutes are labeled stale.
+overnight responses, which re-verify the coverage quirk rather than hiding it - and publishes
+`/data/capacity.json` from the same fetch.
+
+The contract's shape came from scanning 319 snapshots / 9,111 departures (2026-07-31), not from
+assumption:
+
+- **13 terminals report**, not the ~6 the plan assumed. **23 of the 38 published pairs** ever
+  carry capacity, so the absent case is the common case.
+- `DriveUpSpaceCount` is never null. `DriveUpSpaceHexColor` takes exactly three values -
+  `#00FF00` plenty (7,739), `#FFFF00` filling (962), `#FF0000` full (410) - which is WSF's own
+  fullness judgment, passed through rather than reinvented. An unrecognized code yields a null
+  level and the raw count, never a guessed level.
+- **No percent-full is published.** Reservable space is a separate inventory, null in 8,013 of
+  9,111 records, so a percentage would be arithmetic over a number we cannot see. Spaces
+  remaining is the honest figure.
+- Each departure carries a live `IsCancelled` flag, passed through and kept distinct from the
+  historical reconciliation above.
+
+The contract is keyed by pair (`"3-7"`), because a rider asks about their run, not their
+terminal. `reporting_terminals` exists so the UI can distinguish "this terminal publishes no
+drive-up data" from "no room left" - the page says the former in words and never renders an
+empty gauge that could read as the latter. Readings older than four minutes are labeled stale.
+
+## The pages
+
+**Pair page** (`/trip/{slug}`) gains two sections. Drive-up space sits above Reliability, since
+a full lot changes the decision more urgently than a historical average.
+
+Reliability picks the rider's own departure out of the slot table by Sound-local `HH:MM` - the
+same key the contract uses - and leads with it. A degraded slot shows the hour bucket, marks
+itself `hour`, and a legend under the table explains the marker; the slot's own thin count stays
+visible so the reader can judge the evidence. Cancellations print a count rather than a rate
+until a week of tracking exists.
+
+**`/stats`** carries the system view: a bar per year since 2002 (every fifth year labeled, since
+25 labels do not fit a phone), a month grid, the most and least dependable routes, a per-boat
+table, and the coverage and cancellation caveats in full.
+
+Vessel names are repaired for display by `wsf_core.vessel_names`: the history feed answers
+"WallaWalla", riders know the boat as "Walla Walla". The map comes from the live fleet dim, plus
+a curated entry for boats retired before that dim existed (`Evergreen` -> `Evergreen State`).
+The Parquet keeps the feed's spelling, because it is ground truth and must stay re-derivable.
 
 ## History
 
-- 2026-07-31: F4 backend complete (D3) - stats + reconciliation + alarms. Frontend is W1.
+- 2026-07-31: F4/F5 frontend (W1) - reliability + capacity on pair pages, `/stats` overview,
+  `/data/capacity.json` publisher, vessel display-name repair.
+- 2026-07-31: F4 backend complete (D3) - stats + reconciliation + alarms.
 - 2026-07-30: 24-year backfill transformed to Parquet and verified against Athena (D2).

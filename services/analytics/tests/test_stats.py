@@ -111,6 +111,11 @@ def seeded(aws):
         Key="data/pairs/index.json",
         Body=json.dumps(PAIRS_INDEX).encode(),
     )
+    aws["s3"].put_object(
+        Bucket="wsf-test-data",
+        Key="data/vessels.json",
+        Body=json.dumps({"vessels": [{"name": "Walla Walla"}, {"name": "Tacoma"}]}).encode(),
+    )
     return aws
 
 
@@ -205,3 +210,24 @@ def test_cancellations_carry_their_window_and_caveat(seeded, monkeypatch):
     # reconcilable day is the 29th.
     assert cancellations["window"] == {"from": "2026-07-29", "to": "2026-07-29"}
     assert "floor" in cancellations["note"]
+
+
+def test_feed_vessel_names_are_repaired_for_display(seeded, monkeypatch):
+    # vesselhistory answers "WallaWalla"; a rider knows the boat as
+    # "Walla Walla". The Parquet keeps the feed's spelling; the contract
+    # does not.
+    rows = {
+        **BASE_ROWS,
+        "vessels": [
+            {"vessel_name": "WallaWalla", **both(900, 96.0)},
+            {"vessel_name": "Evergreen", **both(400, 91.0)},
+            {"vessel_name": "Tacoma", **both(800, 90.0)},
+        ],
+    }
+    install(monkeypatch, rows)
+    stats.lambda_handler({}, None)
+    summary = read_json(seeded, "data/stats/summary.json")
+    names = [v["vessel_name"] for v in summary["vessels"]]
+    assert "Walla Walla" in names  # from the live fleet dim
+    assert "Evergreen State" in names  # retired, from the curated map
+    assert summary["superlatives"]["most_punctual_vessel"]["vessel_name"] == "Walla Walla"
