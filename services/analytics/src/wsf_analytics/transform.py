@@ -104,7 +104,7 @@ def lambda_handler(event, context):
         return s3.get_object(Bucket=bucket, Key=key)["Body"].read()
 
     with ThreadPoolExecutor(max_workers=16) as pool:
-        for key, blob in zip(keys, pool.map(fetch, keys)):
+        for blob in pool.map(fetch, keys):
             for line in gzip.decompress(blob).decode().strip().split("\n"):
                 rec = json.loads(line)
                 fetched_at = rec.get("fetched_at", "")
