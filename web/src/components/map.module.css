@@ -92,7 +92,7 @@
 }
 
 .vm :global(svg) {
-  width: 44px;
+  width: 100%;
   height: auto;
   display: block;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));
@@ -100,6 +100,10 @@
 
 .vm :global(.hull) {
   fill: var(--hull);
+  /* stroke units live in the traced 550px viewBox space */
+  stroke: var(--keel);
+  stroke-width: 4;
+  stroke-linejoin: round;
 }
 
 .vm :global(.cabin) {
@@ -112,6 +116,10 @@
 
 .vm :global(.stack) {
   fill: var(--stack);
+}
+
+.vm :global(.keel) {
+  fill: var(--keel);
 }
 
 html[data-mode="night"] .vm :global(svg) {

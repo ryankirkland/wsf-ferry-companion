@@ -9,7 +9,8 @@ import { STALE_S } from "@/config";
 import type { VesselFix, VesselState } from "@/lib/data/types";
 import { asOf, soundClock } from "@/lib/time/sound-time";
 import { planMooredLabels } from "./cluster";
-import { FERRY_SVG } from "./ferry-svg";
+import { getVesselDims } from "@/lib/data/dims";
+import { classIcon, classSvg, REFERENCE_FEET } from "./class-icons";
 import { GlideLoop } from "./interpolate";
 
 const MOVING_KN = 0.5; // docked boats drift 0.1-0.4 kn with noisy headings
@@ -37,11 +38,23 @@ export class VesselMarkerPool {
   private handles = new Map<number, Handle>();
   private glides: GlideLoop;
   private lastSnapshotAt: number | null = null;
+  // VesselID -> class display name. Dims usually resolve after the first
+  // fleet snapshot, so markers born before then get retrofitted.
+  private classes = new Map<number, string>();
 
   constructor(
     private map: MLMap,
     private opts: MarkerPoolOptions,
   ) {
+    void getVesselDims()
+      .then((dims) => {
+        dims.forEach((d) => this.classes.set(d.id, d.class));
+        this.handles.forEach((h, id) => {
+          if (!h.el.dataset.vesselClass) this.applyClassIcon(h.el, id);
+        });
+      })
+      .catch(() => undefined); // fallback icons are fine without dims
+
     this.glides = new GlideLoop((id, lat, lon) => {
       const h = this.handles.get(id);
       if (h) {
@@ -117,11 +130,23 @@ export class VesselMarkerPool {
     return this.handles.size;
   }
 
+  private applyClassIcon(el: HTMLElement, id: number): void {
+    const className = this.classes.get(id);
+    const icon = classIcon(className);
+    if (className) el.dataset.vesselClass = className;
+    // Real relative lengths: a 460' Jumbo Mark II reads wider than a 274'
+    // Kwa-di Tabil at the same zoom (44px anchor on the longest class).
+    el.style.width = `${((44 * icon.feet) / REFERENCE_FEET).toFixed(1)}px`;
+    const slot = el.querySelector<HTMLElement>(".boat");
+    if (slot) slot.innerHTML = classSvg(icon);
+  }
+
   private create(fix: VesselFix): Handle {
     const el = document.createElement("div");
     el.className = this.opts.vesselClassName;
     el.dataset.vessel = String(fix.id);
-    el.innerHTML = `${FERRY_SVG}<div class="wake"></div><div class="nm"></div><div class="st"></div>`;
+    el.innerHTML = `<div class="boat"></div><div class="wake"></div><div class="nm"></div><div class="st"></div>`;
+    this.applyClassIcon(el, fix.id);
     const nameEl = el.querySelector<HTMLElement>(".nm")!;
     const statusEl = el.querySelector<HTMLElement>(".st")!;
     nameEl.textContent = fix.name;
