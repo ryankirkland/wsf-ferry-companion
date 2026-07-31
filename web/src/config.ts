@@ -21,7 +21,9 @@ export const SOUND_BOUNDS: [[number, number], [number, number]] = [
   [-122.72, 47.52],
   [-122.3, 47.85],
 ];
-export const FIT_PADDING = { top: 80, bottom: 110, left: 40, right: 40 };
+// Top padding clears the masthead + mode switcher, which float over the
+// map: at 80 the Clinton terminal label landed under the switcher pill.
+export const FIT_PADDING = { top: 124, bottom: 110, left: 40, right: 40 };
 
 export const DECLUTTER_ZOOM = 10.2;
 export const STALE_S = 300;

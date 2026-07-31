@@ -82,3 +82,20 @@ test("the honest 404 page exists for CloudFront's error mapping", async ({ page 
   await page.goto("/404.html", { waitUntil: "load" });
   await expect(page.getByText("This slip is empty.")).toBeVisible();
 });
+
+// Map chrome regressions found by reading the deployed page, not by any
+// test: the FAB sat on top of the attribution (a licensing obligation),
+// and only 5 of 20 terminals were ever labelled.
+test("the boat FAB never covers the map attribution", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForTimeout(2500);
+  const clash = await page.evaluate(() => {
+    const a = document.querySelector(".maplibregl-ctrl-attrib");
+    const fab = document.querySelector('[class*="fab"], [class*="Fab"]');
+    if (!a || !fab) return "missing";
+    const ar = a.getBoundingClientRect();
+    const fr = fab.getBoundingClientRect();
+    return !(ar.right < fr.left || ar.left > fr.right || ar.bottom < fr.top || ar.top > fr.bottom);
+  });
+  expect(clash).toBe(false);
+});

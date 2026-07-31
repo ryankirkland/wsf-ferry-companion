@@ -9,8 +9,6 @@ import type { MapPalette } from "./palettes";
 
 // Basemap towns suppressed under our own terminal markers. The basemap
 // spells the island in full.
-const SUPPRESSED_TOWNS = ["Seattle", "Bremerton", "Edmonds", "Kingston", "Bainbridge Island"];
-
 const GREEN_RE = /(wood|grass|park|landcover|cemetery|golf|garden)/;
 const LANDUSE_RE = /(residential|landuse|sand|school|hospital|industrial|commercial)/;
 const ROAD_MAJOR_RE = /(motorway|trunk|primary|major)/;
@@ -98,30 +96,51 @@ export function recolor(map: MLMap, pal: MapPalette): void {
   trySet(() => map.setPaintProperty("ps-grain", "fill-pattern", pal.grain));
 }
 
-/** Suppress basemap labels for our five terminal towns. The prototype
- * tested /place/ against layer IDS - a silent no-op, since positron names
- * them label_city/label_town with source-layer "place". Returns how many
- * layers matched so callers can assert the fork didn't break this. */
-export function dedupePlaceLabels(map: MLMap): number {
-  const layers = styleLayers(map);
-  if (!layers) return 0;
-
+/** Suppress basemap labels for towns we name ourselves, so the same place
+ * is never labeled twice in two voices. The prototype tested /place/
+ * against layer IDS - a silent no-op, since positron names them
+ * label_city/label_town with source-layer "place". Returns how many layers
+ * matched so callers can assert the fork didn't break this. */
+export function dedupePlaceLabels(map: MLMap, towns: string[]): number {
   const notOurs = [
     "!",
-    ["in", ["coalesce", ["get", "name:latin"], ["get", "name"]], ["literal", SUPPRESSED_TOWNS]],
+    ["in", ["coalesce", ["get", "name:latin"], ["get", "name"]], ["literal", towns]],
   ];
+  return eachPlaceLayer(map, (layer) => {
+    const existing = map.getFilter(layer.id);
+    map.setFilter(
+      layer.id,
+      (existing ? ["all", existing, notOurs] : notOurs) as Parameters<typeof map.setFilter>[1],
+    );
+  });
+}
+
+/** Push basemap town names back so the ferries lead.
+ *
+ * On a ferry map the ferries were the quietest thing on screen: Woodway,
+ * Shoreline, Burien and SeaTac rendered brighter and larger than the boats
+ * and the terminals. This dims and shrinks the town layer rather than
+ * removing it - the towns are still useful for orientation, they just stop
+ * competing with the subject. */
+export function quietenPlaceLabels(map: MLMap): number {
+  return eachPlaceLayer(map, (layer) => {
+    map.setPaintProperty(layer.id, "text-opacity", 0.55);
+    const size = map.getLayoutProperty(layer.id, "text-size");
+    if (typeof size === "number") map.setLayoutProperty(layer.id, "text-size", size * 0.85);
+  });
+}
+
+type StyleLayer = NonNullable<ReturnType<typeof styleLayers>>[number];
+
+function eachPlaceLayer(map: MLMap, apply: (layer: StyleLayer) => void): number {
+  const layers = styleLayers(map);
+  if (!layers) return 0;
   let matched = 0;
   for (const layer of layers) {
     if (layer.type !== "symbol") continue;
     if (!("source-layer" in layer) || layer["source-layer"] !== "place") continue;
     matched++;
-    trySet(() => {
-      const existing = map.getFilter(layer.id);
-      map.setFilter(
-        layer.id,
-        (existing ? ["all", existing, notOurs] : notOurs) as Parameters<typeof map.setFilter>[1],
-      );
-    });
+    trySet(() => apply(layer));
   }
   return matched;
 }

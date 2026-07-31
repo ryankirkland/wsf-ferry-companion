@@ -56,6 +56,19 @@ export function CalendarView() {
           pages as alerts, not here.
         </p>
 
+        {/* Six months of coloured dots with no key: the detail panel
+            explains a day you tap, but nothing explained the grid you
+            scan. */}
+        <p className={styles.legend} data-testid="calendar-legend">
+          <span>
+            <i className={styles.dotCancel} /> cancelled
+          </span>
+          <span>
+            <i className={styles.dotAdd} /> added sailing
+          </span>
+          <span className={styles.legendHint}>Tap a highlighted day for the sailings.</span>
+        </p>
+
         {!settled && <p className={tripStyles.rangeNote}>Loading the season…</p>}
         {settled && months.length === 0 && (
           <div className={tripStyles.emptyDay}>
