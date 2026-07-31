@@ -154,6 +154,16 @@ terminal. `reporting_terminals` exists so the UI can distinguish "this terminal 
 drive-up data" from "no room left" - the page says the former in words and never renders an
 empty gauge that could read as the latter. Readings older than four minutes are labeled stale.
 
+Three absence states, because collapsing them produces a false statement (caught on production
+at 01:00 PT, where the page told a rider that Bainbridge "does not report drive-up space" -
+Bainbridge reports all day):
+
+| state | what the page says |
+|---|---|
+| `reporting_terminals` is empty | "WSF is not publishing drive-up space for any terminal right now" - the feed goes quiet overnight, and that is a fact about the feed |
+| Terminals reporting, but not this one | "{Terminal} does not report drive-up space to WSF… not a sign the lot is full" |
+| This terminal reports, no upcoming sailings listed | "No upcoming departures… are reporting space right now" |
+
 ## The pages
 
 **Pair page** (`/trip/{slug}`) gains two sections. Drive-up space sits above Reliability, since

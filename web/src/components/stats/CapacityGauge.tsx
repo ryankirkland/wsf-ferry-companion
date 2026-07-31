@@ -43,6 +43,22 @@ export function CapacityGauge({
 
   if (!capacity) return null;
 
+  // "This terminal never reports" is a claim about the terminal, and it is
+  // only true when other terminals ARE reporting. Overnight the whole feed
+  // returns nothing, and saying Bainbridge does not publish space would be
+  // false - it publishes all day.
+  if (view.feedQuiet) {
+    return (
+      <section className={styles.section} data-testid="capacity-quiet">
+        <h2 className={`display ${styles.sectionTitle}`}>Drive-up space</h2>
+        <p className={styles.absent}>
+          WSF is not publishing drive-up space for any terminal right now. It usually returns
+          during service hours.
+        </p>
+      </section>
+    );
+  }
+
   if (!view.reporting) {
     return (
       <section className={styles.section} data-testid="capacity-absent">

@@ -88,9 +88,13 @@ export function bestBlock(pair: {
 }
 
 export interface CapacityView {
-  /** null when this terminal publishes no drive-up data at all. */
+  /** null unless this terminal is currently publishing drive-up data. */
   sailings: CapacitySailing[] | null;
   reporting: boolean;
+  /** No terminal anywhere is publishing - the feed goes quiet overnight.
+   *  Distinct from `reporting: false`, which is a claim about THIS
+   *  terminal and must not be made while the whole feed is empty. */
+  feedQuiet: boolean;
   stale: boolean;
   asOfMs: number | null;
 }
@@ -102,11 +106,15 @@ export function capacityFor(
   nowMs: number,
   staleMs: number,
 ): CapacityView {
-  if (!doc) return { sailings: null, reporting: false, stale: false, asOfMs: null };
-  const asOfMs = Date.parse(doc.generated_at);
-  const stale = Number.isFinite(asOfMs) && nowMs - asOfMs > staleMs;
+  if (!doc) {
+    return { sailings: null, reporting: false, feedQuiet: false, stale: false, asOfMs: null };
+  }
+  const parsed = Date.parse(doc.generated_at);
+  const asOfMs = Number.isFinite(parsed) ? parsed : null;
+  const stale = asOfMs !== null && nowMs - asOfMs > staleMs;
+  const feedQuiet = doc.reporting_terminals.length === 0;
   const reporting = doc.reporting_terminals.includes(dep);
-  if (!reporting) return { sailings: null, reporting: false, stale, asOfMs };
+  if (!reporting) return { sailings: null, reporting: false, feedQuiet, stale, asOfMs };
   const sailings = (doc.pairs[`${dep}-${arr}`] ?? []).filter((s) => s.depart_ms >= nowMs - 300_000);
-  return { sailings, reporting: true, stale, asOfMs: Number.isFinite(asOfMs) ? asOfMs : null };
+  return { sailings, reporting: true, feedQuiet, stale, asOfMs };
 }
