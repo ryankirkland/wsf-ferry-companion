@@ -26,6 +26,7 @@ html[data-mode="day"] {
   --cabin: #007b5f;
   --win: #eaf3ef;
   --stack: #e5674b;
+  --keel: #1e4d40;
   --wake: #26737b;
 }
 
@@ -51,6 +52,7 @@ html[data-mode="dusk"] {
   /* The lantern moment: windows go amber the moment dusk begins. */
   --win: #ffcf7a;
   --stack: #d05a40;
+  --keel: #163b32;
   --wake: #4c6f84;
 }
 
@@ -75,6 +77,7 @@ html[data-mode="night"] {
   --cabin: #0e5544;
   --win: #ffcf7a;
   --stack: #8f4433;
+  --keel: #0c261f;
   --wake: #7fd8b8;
 }
 

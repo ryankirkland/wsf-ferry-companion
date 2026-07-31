@@ -33,6 +33,16 @@ test("the map page loads, draws the fleet, and switches modes", async ({ page })
   // The full 21-vessel roster renders as markers.
   await expect(page.locator("[data-vessel]")).toHaveCount(21, { timeout: 15_000 });
 
+  // Class icons: dims map every boat to its class, and lengths scale for
+  // real (a Jumbo Mark II marker is wider than a Kwa-di Tabil's).
+  await expect(page.locator('[data-vessel-class="Jumbo Mark II"]').first()).toBeVisible({
+    timeout: 10_000,
+  });
+  const widths = await page
+    .locator("[data-vessel]")
+    .evaluateAll((els) => [...new Set(els.map((el) => (el as HTMLElement).style.width))]);
+  expect(widths.length).toBeGreaterThanOrEqual(4); // several classes on screen
+
   // Markers must be absolutely positioned by MapLibre - if any stylesheet
   // out-orders .maplibregl-marker, boats render in document flow and stack
   // off their true positions (shipped once; never again).

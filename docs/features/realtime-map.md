@@ -59,3 +59,17 @@ ambient "frame on a wall" mode (`/ambient`) that runs unattended for days.
 - Outstanding: the 24 h ambient soak on a physical tablet, and the
   "stranger calls it beautiful" gate - both Ryan-side; the PMTiles switch
   test records into tools/pmtiles/RUNBOOK.md.
+
+## Vessel class icons (2026-07-30)
+
+Each of the 7 vessel classes renders its own silhouette, vector-traced
+from WSDOT's official class profile drawings by
+`tools/vessel-icons/build_icons.py` (regenerate with `uv run` on that
+script; output is the committed `web/src/lib/map/vessels/class-icons.ts`).
+Marker widths scale with real vessel length (460' Jumbo Mark II = 44 px
+anchor; 274' Kwa-di Tabil ~26 px). Layers reuse the existing mode tokens
+- hull/win/cabin plus the new `--keel` - so the dusk/night lantern
+windows work per class for free. Vessel->class comes from the dims feed;
+the pool retrofits markers created before dims resolve and falls back to
+the Issaquah silhouette for unknown classes. Reference photos/drawings
+stay out of the repo; only the traced originals ship.
