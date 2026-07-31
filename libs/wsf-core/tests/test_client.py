@@ -138,3 +138,12 @@ def test_http_errors_never_retry():
     with pytest.raises(WsfApiError):
         client.vessel_locations()
     assert len(http.requested_urls) == 1
+
+
+def test_vessel_history_strips_spaces_from_names():
+    # Probed live 2026-07-30: "Walla%20Walla" silently returns [] while
+    # "WallaWalla" returns the real 8,157 rows for 2015.
+    http = FakeHttp(FakeResponse(200, []))
+    client = WsfClient("test-code", http=http)  # type: ignore[arg-type]
+    client.vessel_history_raw("Walla Walla", "2015-01-01", "2015-12-31")
+    assert "/vesselhistory/WallaWalla/2015-01-01/2015-12-31" in http.requested_urls[0]

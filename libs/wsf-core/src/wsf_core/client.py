@@ -151,12 +151,14 @@ class WsfClient:
         """UNDOCUMENTED endpoint; the M4 backfill workhorse. One row per
         completed crossing; join on the NAME (VesselId is corrupt there);
         a bad/unknown name returns 200 [] indistinguishable from an empty
-        window - callers must alarm on suspicious emptiness. Names with
-        spaces are percent-encoded into the path."""
-        from urllib.parse import quote
+        window - callers must alarm on suspicious emptiness.
 
-        path = f"/vessels/rest/vesselhistory/{quote(vessel_name)}/{date_start}/{date_end}"
-        return self._get(path)
+        Name quirk (probed live 2026-07-30): spaces must be REMOVED, not
+        percent-encoded - "WallaWalla" returns 8,157 rows for 2015 while
+        "Walla%20Walla" silently returns []. Same for "Evergreen" (the
+        Evergreen State sails under its short name here)."""
+        compact = vessel_name.replace(" ", "")
+        return self._get(f"/vessels/rest/vesselhistory/{compact}/{date_start}/{date_end}")
 
     def terminal_sailing_space_raw(self) -> list[dict]:
         """Current-state drive-up space for the subset of terminals that
