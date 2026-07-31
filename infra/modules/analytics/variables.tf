@@ -35,3 +35,8 @@ variable "lambda_zip_s3_key" {
   type        = string
   default     = "build/analytics.zip"
 }
+
+variable "alarms_topic_arn" {
+  description = "Shared SNS topic for operational alarms."
+  type        = string
+}

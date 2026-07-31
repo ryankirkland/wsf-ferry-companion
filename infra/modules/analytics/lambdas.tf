@@ -168,7 +168,7 @@ resource "aws_iam_role_policy" "scheduler" {
     Statement = [{
       Effect   = "Allow"
       Action   = "lambda:InvokeFunction"
-      Resource = [aws_lambda_function.sync.arn, aws_lambda_function.capacity.arn]
+      Resource = [aws_lambda_function.sync.arn, aws_lambda_function.capacity.arn, aws_lambda_function.stats.arn]
     }]
   })
 }
@@ -275,8 +275,9 @@ resource "aws_lambda_function" "transform" {
 
   environment {
     variables = {
-      RAW_BUCKET  = var.raw_bucket_name
-      DATA_BUCKET = var.data_bucket_name
+      RAW_BUCKET     = var.raw_bucket_name
+      DATA_BUCKET    = var.data_bucket_name
+      STATS_FUNCTION = "wsf-prod-analytics-stats"
     }
   }
 

@@ -5,7 +5,7 @@ Living document - updated every time deployed infrastructure changes
 (serverless lakehouse), [ADR-0003](adr/0003-tile-hosting.md) (tiles),
 [ADR-0004](adr/0004-state-backend-and-ci.md) (state + CI).
 
-## Deployed today (M0 skeleton + M1 map + M2 trip planner + M3 alerts)
+## Deployed today (M0 skeleton + M1 map + M2 trip planner + M3 alerts + M4 analytics)
 
 ```mermaid
 flowchart LR
@@ -23,9 +23,18 @@ flowchart LR
         SES2 -- bounce/complaint --> SUP[Lambda suppress]
     end
 
+    subgraph analytics [Analytics - live, M4]
+        EB2[EventBridge Scheduler<br/>03:30 PT + 1 min + 05:15 PT] --> SYNC[Lambda history sync<br/>7-day window, per-vessel isolation]
+        EB2 --> CAP[Lambda capacity poller<br/>terminalsailingspace, 24/7]
+        SYNC -- "touched years" --> XF[Lambda transform<br/>dedup + Pacific service year]
+        XF -- "on success" --> ST[Lambda stats<br/>Athena suite + reconciliation]
+        EB2 -. "05:15 catch-up" .-> ST
+    end
+
     subgraph usw2 [AWS us-west-2]
         DDB[(DynamoDB wsf-prod-hot<br/>FLEET + META items)]
-        RAW[(S3 raw archive<br/>gzipped NDJSON by fetch-time)]
+        RAW[(S3 raw archive<br/>gzipped NDJSON by fetch-time<br/>+ analytics/history Parquet)]
+        GLUE[Glue catalog<br/>partition projection 2002-2035] --> ATH[Athena<br/>workgroup, 2 GB cutoff]
         DATA[(S3 data bucket<br/>fleet.json + dims)]
         WEB[(S3 web bucket<br/>Next.js static export)]
         ASSETS[(S3 map-assets bucket<br/>style + glyphs + sprites)]
@@ -52,6 +61,14 @@ flowchart LR
     SCHED -- "pairs index + 532 day files + fares" --> DATA
     AL --> RAW
     AL -- alerts.json --> DATA
+    WSF --> SYNC
+    WSF --> CAP
+    SYNC --> RAW
+    CAP --> RAW
+    XF -- "year=YYYY/part-0.parquet" --> RAW
+    RAW --> GLUE
+    ATH --> ST
+    ST -- "stats/summary.json + 38 pair files" --> DATA
     U -- HTTPS --> CF
     CF -- default --> WEB
     CF -- "/data/* (5s TTL)" --> DATA
@@ -71,10 +88,15 @@ path). Deploys via `web-deploy.yml` two-pass sync + invalidation. Tiles
 come from the OpenFreeMap public instance; the PMTiles fallback behind
 `/tiles/*` is the tested escape hatch (ADR-0003 as amended).
 
-Alarms (8 of 10 free): poller-gap (the SLO alarm), auth-failure
-(400+Message canary), empty-fleet, three Lambda-error alarms,
-schedule-refresh-errors, pairs-stale (PairDatesPublished, 24 hourly
-buckets) - all to the `wsf-prod-alarms` SNS topic. Account-level
+Alarms (16, all to the `wsf-prod-alarms` SNS topic). Ingest (8):
+poller-gap (the SLO alarm), auth-failure (400+Message canary),
+empty-fleet, three Lambda-error alarms, schedule-refresh-errors,
+pairs-stale. Notify (1): notifier-errors. Analytics (7):
+stats-not-fresh (the F4 freshness SLO - missing data breaches),
+stats-data-lag, unmapped-slip, history-failures, empty-night, and
+Lambda-error alarms for transform and stats. Six sit past the 10-alarm
+free tier (~$0.60/mo) - accepted deliberately, because each detects a
+failure whose signature is silence. Account-level
 (bootstrap stack): Terraform state bucket with native lockfile, GitHub
 OIDC provider, plan/apply CI roles, $15 budget with three email
 notifications.
@@ -112,6 +134,52 @@ after 30 days.
 
 **Raw archive** (`wsf-prod-raw-*`): `raw/<dataset>/dt=YYYY-MM-DD/HHMM.ndjson.gz`
 partitioned by fetch-time UTC; the replayable ground truth for M4.
+
+**M4 analytics store** (same bucket, `analytics/` prefix - derived, always
+rebuildable from raw). Details and honesty rules in
+[stats.md](features/stats.md).
+
+`analytics/history/year=YYYY/part-0.parquet` - zstd, ONE file per year,
+same-key overwrite (S3 PUTs are atomic and strongly consistent; a second
+versioned file would double-count under partition projection). Year is the
+**Pacific wall-clock service year**, so a 23:00 New Year's Eve sailing
+belongs to the year the rider sailed it.
+
+| Column | Type | Notes |
+|---|---|---|
+| `vessel_name` | string | the join key; VesselId in vesselhistory is corrupt |
+| `departing_terminal_id` / `arriving_terminal_id` | int32 | via `wsf_core.slips`; the PRIMARY stats dimension |
+| `route_id` | int32, nullable | best-effort annotation from the live pairs index |
+| `service_date` | date32 | Pacific |
+| `depart_hhmm_local` | string | Pacific; slot identity is (dep, arr, HH:MM) |
+| `scheduled_depart` / `actual_depart` | timestamp ms | UTC-naive; null actual keeps the row with null delay |
+| `delay_min` | float32 | actual - scheduled; negative means early |
+
+No `cancelled` column: vesselhistory has no such flag, so the column could
+only ever hold a hardcoded `false` published as fact. Cancellation is a
+scheduled-vs-sailed reconciliation instead (`reconcile.py`, from
+2026-07-29).
+
+`analytics/quarantine/dt=.../HHMMSS.ndjson.gz` - rows that could not join,
+with a reason. Current residue: 119,579 `null_slip` (2.95%, a COVID-era
+cluster), **zero** `unmapped_slip`.
+
+**Catalog**: Glue database `wsf_prod_analytics`, EXTERNAL_TABLE `history`,
+partition projection `year` 2002-2035 (no crawler, no partition metadata to
+drift). The location template must match the prefix byte for byte - a
+mismatch returns zero rows silently. Athena workgroup
+`wsf-prod-analytics` enforces the result location and a 2 GB scan cutoff.
+
+**M4 stats contracts** (`"v": 1`): `/data/stats/summary.json` (system
+windows, 24-year `by_year`, `by_month`, per-vessel table, superlatives,
+coverage + thin days, cancellations) and `/data/stats/pairs/{dep}-{arr}.json`
+(pair headline, `slots[]` with `basis`/`primary`/`slot_window`/`all_time`,
+`seasons[]`, cancellations). Keyed by terminal ID so a rename never breaks a
+file name.
+
+Scale as of 2026-07-30: **3,493,725 sailings, 2002-03-01 to 2026-07-30, 30
+vessels, 25 partitions, ~46 MB Parquet**; a full nightly Athena suite scans
+~237 MB (~$0.0012).
 
 ## Deploy pipeline
 
