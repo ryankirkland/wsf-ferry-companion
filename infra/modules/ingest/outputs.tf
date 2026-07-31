@@ -21,3 +21,7 @@ output "dims_function_name" {
 output "table_arn" {
   value = aws_dynamodb_table.hot.arn
 }
+
+output "raw_bucket_arn" {
+  value = aws_s3_bucket.raw.arn
+}

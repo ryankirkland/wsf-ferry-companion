@@ -35,3 +35,18 @@ def test_dim_archive(aws, terminallocations_rows):
     )
     assert body["cacheflushdate"] == "/Date(0)/"
     assert len(body["body"]) == 20
+
+
+def test_flush_suffix_disambiguates_same_minute_writers(aws):
+    from datetime import UTC, datetime
+
+    from wsf_ingest.archive import ArchiveBatch
+
+    now = datetime(2026, 7, 29, 14, 30, tzinfo=UTC)
+    batch = ArchiveBatch(aws["s3"], "wsf-test-raw")
+    batch.add(fetched_at=now, status=200, body=[1])
+    key = batch.flush(dataset="vesselhistory", now=now, suffix="tacoma-2015")
+    assert key == "raw/vesselhistory/dt=2026-07-29/1430-tacoma-2015.ndjson.gz"
+    # No suffix keeps the M1 key contract byte-identical.
+    batch.add(fetched_at=now, status=200, body=[2])
+    assert batch.flush(now=now) == "raw/vessellocations/dt=2026-07-29/1430.ndjson.gz"
