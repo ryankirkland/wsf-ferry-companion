@@ -1,5 +1,11 @@
 # Analytics alarms. Handled failures surface as EMF metrics; Lambda Errors
 # stays reserved for actual bugs. All notify the shared SNS topic.
+#
+# These seven push the account past the 10-alarm free tier (~$0.60/mo at
+# $0.10 per extra alarm) - a deliberate trade, since every one of them
+# detects a failure whose signature is silence. Deliberately NOT alarmed:
+# zero-row backfills, which only happen during an operator-supervised run
+# where the invoke output is read live.
 
 # The freshness SLO (PRD: stats fresh daily by 06:00 PT). Missing data
 # breaches, so a dead chain, a broken cron and a silent Athena failure all
@@ -75,21 +81,6 @@ resource "aws_cloudwatch_metric_alarm" "history_empty_night" {
   alarm_description   = "Every vessel returned zero history rows - upstream outage or vessel-name drift."
   namespace           = "WSF/Analytics"
   metric_name         = "HistoryEmptyNight"
-  statistic           = "Sum"
-  period              = 3600
-  evaluation_periods  = 1
-  threshold           = 1
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  treat_missing_data  = "notBreaching"
-  alarm_actions       = [var.alarms_topic_arn]
-}
-
-# A backfill that fetched nothing at all: bad name in, silent [] out.
-resource "aws_cloudwatch_metric_alarm" "backfill_zero_rows" {
-  alarm_name          = "wsf-prod-analytics-backfill-zero"
-  alarm_description   = "A backfill invocation returned zero rows for every requested year."
-  namespace           = "WSF/Analytics"
-  metric_name         = "BackfillZeroRows"
   statistic           = "Sum"
   period              = 3600
   evaluation_periods  = 1
