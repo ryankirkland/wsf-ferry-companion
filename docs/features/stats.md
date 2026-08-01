@@ -120,6 +120,26 @@ Both stamp `generated_at` and `data_through`, and both are cached `max-age=300`.
 - Glue partition projection (`year` 2002-2035). The location template must match the Parquet
   prefix byte for byte; a mismatch returns zero rows silently.
 
+## How the SQL is verified
+
+`test_queries.py` asserts STRUCTURE - the sailed-denominator guard, the
+paired window columns, the on-time constant matching the contract, seasons
+covering the calendar once, and every interpolated cutoff arriving as a
+real `DATE 'YYYY-MM-DD'`. Without a Trino engine it cannot prove a query
+returns the right rows.
+
+The semantic check is a **run against Athena**, which belongs to deploy
+rather than CI. `services/analytics/verify_queries.py` runs the whole
+suite and reports rows + bytes scanned:
+
+```bash
+eval "$(aws configure export-credentials --profile ryan --format env)"
+AWS_DEFAULT_REGION=us-west-2 uv run python services/analytics/verify_queries.py
+```
+
+Last run 2026-07-31: all 10 queries returned, **237 MB scanned** for the
+full suite (about $0.0012). Run it after editing any query.
+
 ## Alarms
 
 `stats-not-fresh` (no publish in 24h, missing data breaches - the SLO alarm), `stats-data-lag`
@@ -186,6 +206,9 @@ The Parquet keeps the feed's spelling, because it is ground truth and must stay 
 
 ## History
 
+- 2026-08-01: closed the two untested modules in the analytics path -
+  `athena.py` (the runner every statistic passes through) and `queries.py`
+  (the SQL itself), plus a repeatable Athena verification script.
 - 2026-07-31: F4/F5 frontend (W1) - reliability + capacity on pair pages, `/stats` overview,
   `/data/capacity.json` publisher, vessel display-name repair.
 - 2026-07-31: F4 backend complete (D3) - stats + reconciliation + alarms.

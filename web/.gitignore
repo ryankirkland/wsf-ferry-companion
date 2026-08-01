@@ -1,2 +1,6 @@
 # Mirrored WSDOT drawings for local dev - see tools/vessel-drawings (never committed)
 public/assets/vessels/
+
+# Playwright run artifacts - rewritten every run, never a source change
+test-results/
+playwright-report/

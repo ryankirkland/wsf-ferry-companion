@@ -37,7 +37,7 @@ flowchart LR
         GLUE[Glue catalog<br/>partition projection 2002-2035] --> ATH[Athena<br/>workgroup, 2 GB cutoff]
         DATA[(S3 data bucket<br/>fleet.json + dims)]
         WEB[(S3 web bucket<br/>Next.js static export)]
-        ASSETS[(S3 map-assets bucket<br/>style + glyphs + sprites)]
+        ASSETS[(S3 map-assets bucket<br/>style + glyphs + sprites<br/>+ WSDOT class drawings)]
         TILES[(S3 tiles bucket<br/>wa.pmtiles)]
         TLAMBDA[Protomaps Lambda<br/>tiles fallback]
         AGW[API Gateway HTTP<br/>api.ferrysound.com]
@@ -56,6 +56,7 @@ flowchart LR
     POLL --> RAW
     POLL -- every poll --> DATA
     DIMS --> DATA
+    DIMS -. "force-rebuild lever" .-> DATA
     SCHED --> DDB
     SCHED --> RAW
     SCHED -- "pairs index + 532 day files + fares" --> DATA
@@ -121,8 +122,20 @@ notifications.
 
 **Public snapshot contract** (`/data/fleet.json`, versioned `"v": 1`, ADR-0005):
 `generated_at` + per vessel `{id, name, lat, lon, speed, heading, state[underway|docked|yard|stale], insvc, age_s, dep, arr, left, eta, eta_basis, sched, routes, pos}`.
-Dims: `/data/vessels.json` (class/capacity/years), `/data/terminals.json`
-(20 real + synthetic Eagle Harbor 122).
+Dims: `/data/vessels.json` (class/capacity/years, plus `drawing` -> the
+mirrored WSDOT class profile at `/assets/vessels/<class-slug>.png`),
+`/data/terminals.json` (20 real + synthetic Eagle Harbor 122). The map
+draws terminals from this dim, filtered to the pairs index's live network,
+so a retired terminal (Sidney B.C.) stays in the record without appearing
+on a map of where you can catch a boat today.
+
+Class slugs come from `ClassName`, never `PublicDisplayName`: `Issaquah`
+and `Issaquah 130` share a display name and have different drawings, so a
+display-name key merges two classes.
+
+The dims refresher is token-gated on `cacheflushdate`; `{"mode":
+"force-rebuild"}` is the lever for shipping a CONTRACT change when
+upstream has no reason to flush.
 
 **M2 trip contracts** (all `"v": 1`, ADR-0005 extension; details in
 [trip-planner.md](features/trip-planner.md)): `/data/pairs/index.json`
@@ -236,6 +249,132 @@ flowchart TB
 
 ## ERD
 
-- **Source data ERD** (WSDOT API, as-is): `api-exploration-wsdot-ferries/report.html`, ERD tab.
-- **Product data model ERD**: lands with M1's DynamoDB single-table design and
-  Parquet schemas; will live here.
+**Source data ERD** (WSDOT API, as-is): `api-exploration-wsdot-ferries/report.html`, ERD tab.
+
+**Product data model.** The logical entities, independent of where each is
+stored (DynamoDB items, Parquet columns and published JSON all appear here;
+the storage map follows the diagram).
+
+```mermaid
+erDiagram
+    VESSEL_CLASS ||--o{ VESSEL : "groups"
+    VESSEL ||--o{ FLEET_FIX : "reports"
+    VESSEL ||--o{ SAILING_ACTUAL : "sailed (joined BY NAME)"
+    TERMINAL ||--o{ PAIR : "departs"
+    TERMINAL ||--o{ PAIR : "arrives"
+    PAIR ||--o{ SAILING_SCHEDULED : "publishes"
+    PAIR ||--o{ SAILING_ACTUAL : "accumulates"
+    PAIR ||--o{ CAPACITY_READING : "reports space"
+    PAIR ||--o{ SUBSCRIPTION : "watched by"
+    PAIR ||--o{ PAIR_STATS : "summarises"
+    ROUTE ||--o{ PAIR : "contains"
+    ROUTE ||--o{ ALERT : "disrupted by"
+    SAILING_SCHEDULED ||--o| SAILING_ACTUAL : "reconciles to (or did not sail)"
+
+    VESSEL_CLASS {
+        string slug PK "from ClassName, NOT PublicDisplayName"
+        string display_name "Issaquah 130 and Issaquah both show Issaquah"
+        string drawing_url "mirrored WSDOT profile"
+    }
+    VESSEL {
+        int id PK "VesselID - correct here, corrupt in vesselhistory"
+        string name "the join key for history"
+        string class_slug FK
+        int max_passengers
+        int year_built
+    }
+    TERMINAL {
+        int id PK
+        string name
+        float lat
+        float lon
+        bool synthetic "Eagle Harbor 122; Sidney B.C. 19 retired 2019"
+    }
+    PAIR {
+        int dep PK,FK
+        int arr PK,FK
+        int route_id FK "nullable - pair is the primary dimension"
+        string slug
+    }
+    ROUTE {
+        int id PK
+        string abbrev
+    }
+    FLEET_FIX {
+        int vessel_id FK
+        float lat
+        float lon
+        string state "underway|docked|yard|stale"
+        int age_s "staleness computed at ingest"
+    }
+    SAILING_SCHEDULED {
+        int dep FK
+        int arr FK
+        date service_date
+        int depart_ms "the verified fleet join key"
+        string vessel
+    }
+    SAILING_ACTUAL {
+        string vessel_name FK
+        int departing_terminal_id FK "from slip NAMES via wsf_core.slips"
+        int arriving_terminal_id FK
+        date service_date "Pacific wall clock"
+        string depart_hhmm_local
+        timestamp scheduled_depart
+        timestamp actual_depart "null keeps the row, never inferred cancelled"
+        float delay_min
+    }
+    PAIR_STATS {
+        int dep FK
+        int arr FK
+        string hhmm "slot identity"
+        string basis "slot|hour - degraded below 30 sailings"
+        int n "every figure carries its sample"
+        float ontime_pct
+    }
+    CAPACITY_READING {
+        int dep FK
+        int arr FK
+        int depart_ms
+        int drive_up "spaces left; no percent - reservable is unseen"
+        string level "WSDOT's own green/yellow/red"
+        bool cancelled "live flag, distinct from reconciliation"
+    }
+    ALERT {
+        int id PK
+        int route_ids FK
+        bool all_routes
+    }
+    SUBSCRIPTION {
+        string user_sub PK
+        int dep FK
+        int arr FK
+        string window_start
+        string window_end
+    }
+```
+
+Two joins in that diagram are the project's hard-won ones, and both are
+documented where they are implemented rather than assumed:
+
+- **SAILING_ACTUAL joins VESSEL by NAME**, because `vesselhistory`'s
+  VesselId is corrupt. The feed also answers only to space-stripped names
+  (`WallaWalla`), which is why `wsf_core.vessel_names` exists to put the
+  space back for display.
+- **SAILING_ACTUAL carries slip names, not terminal names** ("Colman" is
+  Seattle). `wsf_core.slips` is the only join path, curated from a scan of
+  all 4,058,477 backfilled rows.
+
+**Where each entity lives**
+
+| Entity | Store |
+|---|---|
+| VESSEL, VESSEL_CLASS, TERMINAL | `/data/vessels.json`, `/data/terminals.json` (dims, token-gated) |
+| PAIR, ROUTE | `/data/pairs/index.json` |
+| FLEET_FIX | DynamoDB `FLEET` items + `/data/fleet.json` |
+| SAILING_SCHEDULED | `/data/pairs/{dep}-{arr}/{date}.json`, DynamoDB `PAIR#` items, archived in `raw/schedule_refresh/` |
+| SAILING_ACTUAL | `analytics/history/year=YYYY/part-0.parquet` |
+| PAIR_STATS | `/data/stats/pairs/{dep}-{arr}.json` + `/data/stats/summary.json` |
+| CAPACITY_READING | `/data/capacity.json` (1 min) + `raw/terminalsailingspace/` |
+| ALERT | `/data/alerts.json`, DynamoDB `ALERTS` items |
+| SUBSCRIPTION | DynamoDB `USER#` + `ROUTE#` mirror items |
