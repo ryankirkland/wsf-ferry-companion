@@ -66,7 +66,7 @@
 
 ## Gotchas (by severity)
 - 🛑 schedule + fares: no past TripDates - window starts at SERVER today (400 outside; sampled window 2026-07-23 -> 2026-12-26). Historical planned data exists only via consumer snapshots.
-- 🛑 terminalsailingspace: current-state only, `[]` overnight (two fetches, 2026-07-24), and only a subset of terminals ever report (~6/20 in a prior daytime check, unverified 2026-07-24) - per-terminal or historical capacity cannot be assumed.
+- 🛑 terminalsailingspace: current-state only, `[]` overnight (two fetches, 2026-07-24). A subset of terminals report: **13 of 20 terminals and 23 of 38 pairs**, measured over 319 archived snapshots / 9,111 departures on 2026-07-31 (this supersedes an earlier unverified "~6/20" from a single daytime check). `DriveUpSpaceCount` is never null; `DriveUpSpaceHexColor` takes exactly three values (#00FF00 7,739 / #FFFF00 962 / #FF0000 410); `ReservableSpaceCount` is null in 8,013 of 9,111, so no percent-full is derivable. Historical capacity still cannot be assumed - it requires self-built snapshots.
 - ⚠️ vesselhistory: join by vessel NAME, never VesselId (0%, n=148); terminals arrive as slip names (0% direct match, n=148).
 - ⚠️ sailings/timeadj stop times: 1900-01-01 sentinel - naive datetime math is off by 126 years; use `/schedule/{date}` for dated timestamps.
 - ⚠️ terminal 122 (Eagle Harbor yard) appears in realtime feeds but has no dimension row - joins drop laid-up vessels (86%, n=21).

@@ -66,10 +66,77 @@ Each of the 7 vessel classes renders its own silhouette, vector-traced
 from WSDOT's official class profile drawings by
 `tools/vessel-icons/build_icons.py` (regenerate with `uv run` on that
 script; output is the committed `web/src/lib/map/vessels/class-icons.ts`).
-Marker widths scale with real vessel length (460' Jumbo Mark II = 44 px
-anchor; 274' Kwa-di Tabil ~26 px). Layers reuse the existing mode tokens
+Marker widths scale with real vessel length from a single anchor,
+`VESSEL_ANCHOR_PX` (460' Jumbo Mark II = the anchor; 274' Kwa-di Tabil
+proportionally smaller). Layers reuse the existing mode tokens
 - hull/win/cabin plus the new `--keel` - so the dusk/night lantern
 windows work per class for free. Vessel->class comes from the dims feed;
 the pool retrofits markers created before dims resolve and falls back to
 the Issaquah silhouette for unknown classes. Reference photos/drawings
 stay out of the repo; only the traced originals ship.
+
+## Legibility pass (2026-07-31)
+
+A phone-viewport walk of the deployed map found the subject of the map was
+the quietest thing on it. Four changes, all measured before and after:
+
+**Vessel scale.** Boats rendered 26-37 px wide and 8-11 px tall on a 390 px
+phone - the traced WSDOT profiles read as pale dashes and the class
+differences were invisible. `VESSEL_ANCHOR_PX` moved 44 -> 68, keeping
+strict length proportion (the reason for tracing real profiles at all).
+The zoomed-out sizes moved with it; a constant left behind would have made
+zooming out a collapse rather than a step.
+
+**Terminals come from the dim.** The map labelled 5 of 20 terminals: the
+anchor table was a hardcoded central-Sound list from the M1 prototype, so
+Clinton and Mukilteo sat unnamed in the DEFAULT view with a ferry docked at
+Clinton. `addTerminalMarkers` now takes the terminals dim, filtered by
+`servedTerminalIds()` to what the live pairs index still sails to - which
+also keeps Sidney B.C. (route ended 2019) off a map of where you can catch
+a boat today. An unreachable pairs index means "no opinion" and draws
+everything, never nothing.
+
+**Labels are zoom-gated.** Twenty DOM labels at the default framing
+overlapped outright (SOUTHWORTH over VASHON, FAUNTLEROY over White
+Center); these are plain markers with no collision engine. Minor terminals
+name themselves from `LABEL_ALL_ZOOM` (11.4); their dots never leave, so a
+terminal is never invisible, only unnamed.
+
+**Attribution.** The boat FAB sat on top of the credits, rendering
+"Terrain: Mapzen via AWS Open Data" as "apzen via AWS Open Data".
+Attribution is a licensing obligation, so on narrow screens it collapses to
+the "i" that MapLibre's compact mode exists for. A Playwright spec asserts
+the two never overlap.
+
+Basemap town labels are also dimmed (55% opacity, 85% size): Woodway and
+SeaTac were rendering brighter than the ferries.
+
+## WSDOT class drawing on the vessel card (2026-07-31)
+
+Tapping a boat shows WSDOT's official profile drawing for its class,
+mirrored into the map-assets bucket by `tools/vessel-drawings/` (script and
+MANIFEST committed, images gitignored - same convention as
+`tools/map-assets/`, and it keeps WSDOT artwork out of a public repo).
+
+Three constraints the data imposed:
+
+- **Slugs come from `ClassName`, never `PublicDisplayName`.** `Issaquah`
+  and `Issaquah 130` both display as "Issaquah" and have different
+  drawings; a display-name key silently merges two classes.
+  `wsf_core.vessel_classes.class_slug` is the one source shared by the
+  mirror script and the published dim.
+- **The white background stays.** These are dark line drawings made for
+  white paper; knocking the background out erases the hull outline on a
+  dusk or night card. The card gives them a light plate instead.
+- **It is a class drawing, not a portrait.** All five Issaquah 130s share
+  one, and `VesselDrawingImg` is null for all 21 vessels, so the caption
+  says "WSDOT class drawing" rather than implying it is that hull.
+
+The drawing sits after the status lines: someone who taps a boat wants to
+know where it is going, and an image above that answer pushes it down the
+card. An image that fails to load removes itself rather than leaving a
+broken frame.
+
+Shipping it needs two credentialed steps - upload the mirror, then
+`{"mode": "force-rebuild"}` on the dims refresher, because a new CONTRACT
+field cannot wait for a WSDOT cacheflush that may be weeks away.
