@@ -9,6 +9,9 @@
 - **F1 asset tooling**: `tools/vessel-icons/` traces the map silhouettes and `tools/vessel-drawings/` mirrors WSDOT's class profile drawings for the vessel card. Both commit the script + MANIFEST and gitignore the images - WSDOT artwork stays out of the repo.
 - **F4/F5 Stats + capacity**: see `docs/features/stats.md` for the sync->transform->stats chain, the two `/data/stats` contracts, and the honesty rules that shape them (window+n on every number, n<30 slot degradation, reconciliation-based cancellation with its floor caveat, labeled collection gaps). Update that file whenever the feature changes.
 
+## Operations
+- **Observability**: `docs/runbooks/observability.md` covers reading application logs (13 Lambda log groups + the EMF metric namespaces), tracking cost (the two budgets, the run-rate command, what July actually decomposed to), and what user activity is and is not measurable - CloudFront access logging is off by design because /account promises no tracking. Update it when monitoring changes.
+
 ## General Guidelines
 - Never use the em dash. Use the plain dash "-" instead.
 - When writing commit messages, NEVER auto-add your agent name as co-author.
