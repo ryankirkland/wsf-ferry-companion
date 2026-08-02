@@ -4,6 +4,7 @@ import {
   capacityFor,
   findSlot,
   formatDelay,
+  formatDriveUp,
   formatPct,
   formatSlotTime,
   hasAnyStats,
@@ -167,5 +168,24 @@ describe("capacity", () => {
   it("flags a reading the poller has not refreshed", () => {
     const old = doc({ generated_at: new Date(now - 600_000).toISOString() });
     expect(capacityFor(old, 3, 7, now, 240_000).stale).toBe(true);
+  });
+});
+
+describe("drive-up space wording", () => {
+  it("prints a plain count when there is room", () => {
+    expect(formatDriveUp(63)).toEqual({ text: "63 spaces", full: false });
+    expect(formatDriveUp(1)).toEqual({ text: "1 space", full: false });
+  });
+
+  it("says Full rather than printing a negative number", () => {
+    // WSF's DriveUpSpaceCount goes negative when more vehicles are queued
+    // than the boat can take - 2.2% of archived records. "-15 spaces" is
+    // not a number of anything; "Full" is the decision the rider needs.
+    expect(formatDriveUp(-15)).toEqual({ text: "Full", full: true });
+    expect(formatDriveUp(0)).toEqual({ text: "Full", full: true });
+  });
+
+  it("distinguishes an unpublished count from a full boat", () => {
+    expect(formatDriveUp(null)).toEqual({ text: "not published", full: false });
   });
 });

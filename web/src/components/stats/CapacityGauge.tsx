@@ -10,7 +10,7 @@
 // separate pool we cannot see.
 
 import { CAPACITY_STALE_MS } from "@/config";
-import { capacityFor } from "@/lib/stats/reliability";
+import { capacityFor, formatDriveUp } from "@/lib/stats/reliability";
 import type { CapacityDoc, CapacitySailing } from "@/lib/stats/types";
 import { soundStamp, soundTimeShort } from "@/lib/time/sound-time";
 import styles from "./stats.module.css";
@@ -114,8 +114,11 @@ export function CapacityGauge({
 function CapacityRow({ sailing }: { sailing: CapacitySailing }) {
   const level = sailing.level;
   const levelClass = level ? LEVEL_CLASS[level] : styles.unknown;
+  const spaces = formatDriveUp(sailing.drive_up);
   const max = sailing.max_space ?? 0;
-  const left = sailing.drive_up ?? 0;
+  // A negative count means queued vehicles exceed the boat; the meter
+  // floors at empty rather than inverting.
+  const left = Math.max(0, sailing.drive_up ?? 0);
   // The meter shows how much room is LEFT, which is the thing being counted.
   const pct = max > 0 ? Math.max(2, Math.min(100, (left / max) * 100)) : 0;
 
@@ -130,8 +133,8 @@ function CapacityRow({ sailing }: { sailing: CapacitySailing }) {
         </span>
       )}
       <span className={`${styles.spaces} ${levelClass}`}>
-        {sailing.drive_up === null ? (
-          <span className={styles.spacesLabel}>not published</span>
+        {spaces.full || sailing.drive_up === null ? (
+          <span className={spaces.full ? undefined : styles.spacesLabel}>{spaces.text}</span>
         ) : (
           <>
             {sailing.drive_up}

@@ -118,3 +118,20 @@ export function capacityFor(
   const sailings = (doc.pairs[`${dep}-${arr}`] ?? []).filter((s) => s.depart_ms >= nowMs - 300_000);
   return { sailings, reporting: true, feedQuiet, stale, asOfMs };
 }
+
+/** How many drive-up spaces to show for a sailing.
+ *
+ * WSF's DriveUpSpaceCount goes NEGATIVE when more vehicles are queued than
+ * the boat can take - 197 of 9,111 archived records (2.2%), always with
+ * their own red fullness colour. Printing that raw gives a rider
+ * "-15 spaces", which is not a number of anything. At or below zero the
+ * honest word is "Full": the count still says the sailing cannot take you,
+ * which is the decision the rider is making.
+ *
+ * The contract keeps WSF's raw value; only the presentation changes.
+ */
+export function formatDriveUp(spaces: number | null): { text: string; full: boolean } {
+  if (spaces === null) return { text: "not published", full: false };
+  if (spaces <= 0) return { text: "Full", full: true };
+  return { text: `${spaces} ${spaces === 1 ? "space" : "spaces"}`, full: false };
+}
