@@ -79,10 +79,17 @@ Two amendments from build: statistics are keyed on the terminal **pair**, with r
 - Route pages answer "is MY usual sailing typically late?" (time-of-day granularity).
 
 ### F5. Terminal capacity views
-Live drive-up space per upcoming departure for the terminals that report it (Seattle, Bainbridge, Bremerton, Edmonds, Mukilteo, Clinton). Everywhere else: an honest "WSF does not publish this for this terminal."
+Live drive-up space per upcoming departure for the terminals that report it. Everywhere else: an honest "WSF does not publish this for this terminal."
+
+**Amended 2026-08-01, both changes forced by measurement** (319 archived snapshots / 9,111 departures, 2026-07-31):
+
+1. **Coverage is 13 terminals, not 6.** The original list (Seattle, Bainbridge, Bremerton, Edmonds, Mukilteo, Clinton) came from a single unverified daytime check. The feed actually reports for 13 of 20 terminals and 23 of the 38 published pairs. The other 15 pairs still need the honest-absence copy, so the requirement is unchanged in spirit - only the numbers were wrong.
+
+2. **Percentage full is NOT published, and cannot honestly be.** `DriveUpSpaceCount` is spaces remaining for drive-up traffic; `ReservableSpaceCount` is a separate inventory that is null in 8,013 of 9,111 records. Without knowing reserved capacity there is no denominator, so any "% full" would be arithmetic over a number we cannot see. We publish **spaces remaining** plus WSF's own three-level fullness signal (their `DriveUpSpaceHexColor`, passed through rather than reinvented). This is a deliberate deviation from the acceptance criterion below: the criterion asked for a number the data does not support.
 
 *Acceptance criteria*
-- Capacity gauges show percentage full with the departure they refer to; never shown for non-reporting terminals.
+- Capacity shows **spaces remaining** for the departure it refers to, with WSF's own fullness level; never shown for non-reporting terminals, and never a computed percentage.
+- A terminal that publishes nothing says so ("does not report drive-up space… not a sign the lot is full"), and is distinguished from the whole feed being quiet, which it is every night.
 - Data older than a few minutes is labeled stale, not presented as live.
 
 ## 5. Service level objectives (draft - confirm in Phase C)
