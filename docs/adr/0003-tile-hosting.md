@@ -63,3 +63,39 @@ proven against it; Planetiler emits **OpenMapTiles-schema** tiles - the same
 toolchain OpenFreeMap runs - so the style fork works unchanged. The S3 +
 Lambda + CloudFront serving pattern, internal posture, and cost envelope are
 unchanged. Build/refresh/switch-test procedure: `tools/pmtiles/RUNBOOK.md`.
+
+## Decision at the M4 exit review (2026-08-01): stay on OpenFreeMap
+
+The standing item from step 4 above - "revisit at M3 exit" - carried
+through M3 and M4 without being written down. Closing it now.
+
+**Recommendation: keep OpenFreeMap primary; keep the self-hosted PMTiles
+path armed and tested.** No change to what is deployed.
+
+Evidence gathered 2026-08-01:
+
+- **No observed instability.** The map has served ferrysound.com
+  continuously since 2026-07-29. A 10-tile probe across zooms 8-12 returned
+  10/10. The client already carries the tripwire that would tell us
+  otherwise: `controller.ts` counts tile errors in a rolling 60-second
+  window and raises a non-fatal `degraded` event at 8, which surfaces the
+  degraded banner. It has not fired in normal operation.
+- **The fallback is not theoretical.** `/tiles/*` answers 200 today, and
+  the switch has been exercised end to end (`tools/pmtiles/RUNBOOK.md`).
+  Switching is a config change to the style URL - a deploy, not a
+  migration - so the cost of being wrong is one deploy.
+- **The cost-of-reliability trigger has not arrived.** That trigger was
+  "real users depending on alerts". There is currently 1 account and 2
+  subscriptions, both mine. Promoting a ~$2/month always-on dependency to
+  serve one user would be paying for reliability nobody is relying on yet.
+
+**Revisit when any of these is true**, rather than at a date:
+
+1. The degraded banner fires in normal operation, or tile errors appear in
+   a way users would notice.
+2. Subscriber count reaches double digits - i.e. strangers depend on this.
+3. OpenFreeMap announces funding or availability changes.
+
+The honest summary: this is the same decision as before, now with evidence
+behind it instead of an unexamined default, and with named triggers so it
+does not quietly carry forward a third time.

@@ -140,3 +140,15 @@ def test_all_routes_alert_reaches_every_route_sub(aws, sends):
     subscribe("u-hit", "hit@example.com", 7, 3, "13:00", "19:00")
     result = run([alert(route_ids=(), all_routes=True, text="Systemwide notice.")])
     assert result["sent"] == 1  # fallback window rule applies (14:05 in 11:00-19:00)
+
+
+def test_every_alert_cites_the_wsf_bulletin_it_came_from(aws, sends):
+    """PRD F3 acceptance: 'every sent alert links to the source WSF
+    bulletin'. A delay email a rider cannot trace back to WSF is a claim
+    with nothing behind it."""
+    subscribe("u-cite", "cite@example.com", 7, 3, "13:00", "19:00")
+    run([alert(id=4242, route_ids=(5,), text="The 1405 SEA>BBI is cancelled.")])
+    ((_to, mime),) = sends
+    body = mime.decode()
+    assert "Source: WSF bulletin 4242" in body
+    assert "wsdot.wa.gov" in body
