@@ -163,9 +163,14 @@ assumption:
   `#00FF00` plenty (7,739), `#FFFF00` filling (962), `#FF0000` full (410) - which is WSF's own
   fullness judgment, passed through rather than reinvented. An unrecognized code yields a null
   level and the raw count, never a guessed level.
-- **No percent-full is published.** Reservable space is a separate inventory, null in 8,013 of
-  9,111 records, so a percentage would be arithmetic over a number we cannot see. Spaces
-  remaining is the honest figure.
+- **No percent-full is published - though not for lack of a total.** `MaxSpaceCount` is present
+  in 100% of records, so `drive_up / max` is arithmetically available. It is withheld because
+  the two fields measure different things: drive-up availability over a total that includes
+  reservable inventory we cannot see (`ReservableSpaceCount` appears in 220 of 9,111). The
+  ratio would imply we know how full the boat is. Spaces remaining is also more actionable.
+- **The count goes negative** in 197 of 9,111 records (2.2%) when queued vehicles exceed the
+  boat, always carrying WSF's own red colour. The contract keeps the raw value; the page
+  renders "Full", because "-15 spaces" is not a number of anything.
 - Each departure carries a live `IsCancelled` flag, passed through and kept distinct from the
   historical reconciliation above.
 

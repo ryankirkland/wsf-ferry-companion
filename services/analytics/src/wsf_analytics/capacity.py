@@ -16,9 +16,15 @@ a static file, never the upstream API). Measured over 319 snapshots /
   exactly three values, which is the fullness judgment they already make
   and we pass through rather than invent: #00FF00 plenty (7,739),
   #FFFF00 filling (962), #FF0000 full (410).
-- Reservable space is a separate inventory and usually absent
-  (ReservableSpaceCount null in 8,013 of 9,111), so no percent-full is
-  published: spaces remaining is the honest number.
+- MaxSpaceCount IS present (100% of records), so a percentage is
+  arithmetically possible. It is withheld because it would divide
+  drive-up availability by a total that includes reservable inventory we
+  cannot see (ReservableSpaceCount appears in 220 of 9,111): the ratio
+  would imply we know how full the boat is. Spaces remaining is published
+  instead, and is the more actionable number besides.
+- DriveUpSpaceCount goes NEGATIVE (197 of 9,111, 2.2%) when queued
+  vehicles exceed the boat. The contract preserves WSF's raw value -
+  ground truth - and the page renders it as "Full".
 - Each departure carries a live IsCancelled flag - passed through, and
   distinct from the historical reconciliation in reconcile.py.
 """

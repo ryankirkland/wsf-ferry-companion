@@ -85,7 +85,9 @@ Live drive-up space per upcoming departure for the terminals that report it. Eve
 
 1. **Coverage is 13 terminals, not 6.** The original list (Seattle, Bainbridge, Bremerton, Edmonds, Mukilteo, Clinton) came from a single unverified daytime check. The feed actually reports for 13 of 20 terminals and 23 of the 38 published pairs. The other 15 pairs still need the honest-absence copy, so the requirement is unchanged in spirit - only the numbers were wrong.
 
-2. **Percentage full is NOT published, and cannot honestly be.** `DriveUpSpaceCount` is spaces remaining for drive-up traffic; `ReservableSpaceCount` is a separate inventory that is null in 8,013 of 9,111 records. Without knowing reserved capacity there is no denominator, so any "% full" would be arithmetic over a number we cannot see. We publish **spaces remaining** plus WSF's own three-level fullness signal (their `DriveUpSpaceHexColor`, passed through rather than reinvented). This is a deliberate deviation from the acceptance criterion below: the criterion asked for a number the data does not support.
+2. **Percentage full is NOT published - but not because we lack a total.** `MaxSpaceCount` (vessel vehicle capacity) is present in 100% of records, so `drive_up / max` is arithmetically available. It is withheld because the fields measure different things: `DriveUpSpaceCount` is what remains for drive-up traffic, while `MaxSpaceCount` includes reservable inventory we cannot see (`ReservableSpaceCount` appears in only 220 of 9,111 records). A ratio of the two would imply we know how full the boat is. The absolute count is also more actionable - "3 spaces left" is unambiguous where "2% available" is not. This is a deliberate deviation from the criterion below.
+
+3. **The count goes negative** in 2.2% of records (197 of 9,111) when more vehicles are queued than the boat can take. The contract keeps WSF's raw value; the page renders **"Full"**, since "-15 spaces" is not a number of anything.
 
 *Acceptance criteria*
 - Capacity shows **spaces remaining** for the departure it refers to, with WSF's own fullness level; never shown for non-reporting terminals, and never a computed percentage.
