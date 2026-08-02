@@ -57,3 +57,41 @@ and the default framing. These two need more than a tuned constant:
   above anything a rider came for. Candidate for the drawer, leaving the
   masthead and clock. Deliberately not changed unilaterally: it was a
   deliberate design-phase choice and it is Ryan's taste to spend.
+
+## Open question, needs one field observation (2026-08-02)
+
+**What does a negative `DriveUpSpaceCount` mean?** WSF emits it in 2.2% of
+records (197 of 9,111 archived; range down to -31), always with their own
+red fullness colour. The page currently renders "Full" and says nothing
+about the magnitude, because the magnitude's meaning is unverified.
+
+Ryan's hypothesis: the boat is full AND that many more cars are already in
+line for the next one. If true it is genuinely valuable - on Edmonds /
+Kingston a rider can sit through three boats' worth of wait, and "15 cars
+ahead of you" changes whether you drive to the terminal at all.
+
+What the archive shows, which does not settle it:
+
+- One sailing traced poll-by-poll (Coupeville -> Port Townsend 19:30) went
+  `-8, -3, -4, -3, -2` as departure approached: fluctuating and drifting
+  TOWARD zero, not deepening. A pure queue tally would more likely hold or
+  grow.
+- The overflow does not land cleanly on the next sailing: when Coupeville
+  showed -8 of 62, the next boat showed 28 of 62 - already 34 committed,
+  far more than the 8. Across all 34 such cases the next sailing was never
+  untouched.
+
+Candidate meanings, indistinguishable from the data: cars queued beyond
+capacity; an oversold count including reservations; a counting artifact
+while a boat loads. The endpoint is undocumented.
+
+**The check:** at a terminal during a real backup, open the pair page and
+compare our number against the lane. Does the count match cars-past-the-
+cutoff, or something else? One observation decides it.
+
+**If confirmed**, the copy becomes something like "Full - about 15 vehicles
+ahead for the next boat", and `formatDriveUp` in `lib/stats/reliability.ts`
+is the single place that changes. **If not**, "Full" stays and this note
+records why - which is the same discipline that produced the slip map, the
+join-by-name rule and the space-stripped vessel names: measured before
+encoded.
