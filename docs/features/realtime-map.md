@@ -140,3 +140,51 @@ broken frame.
 Shipping it needs two credentialed steps - upload the mirror, then
 `{"mode": "force-rebuild"}` on the dims refresher, because a new CONTRACT
 field cannot wait for a WSDOT cacheflush that may be weeks away.
+
+## Inline route schedule on the vessel card (2026-08-03)
+
+"Next sailings" on `VesselCard` used to be a plain link out to the full
+`/trip/{pair}` planner page, abandoning the map. Tapping it now expands the
+card in place: a sticky toggle row (the same label, now with a chevron)
+reveals a scrollable schedule section underneath the existing name/status/
+drawing content, built entirely from F2's existing pieces -
+`useTripData`/`buildDayView`/`computeSignal`/`DepartureList`/`DateStrip` -
+via a new `VesselSchedule` component
+(`web/src/components/vessel/VesselSchedule.tsx`). Zero new backend or data
+work; this is a client-side reuse of a pipeline that already ships.
+
+**Scope is the vessel's current route, not a cross-route boat schedule.**
+Ryan's call: riders think "what's the whole Bremerton-Seattle schedule
+today," not "everywhere this hull goes." The pair is fixed to whatever
+`PAIRS` lookup matched when the card opened (same lookup the old link
+used); if the boat swaps routes while the card stays open, the schedule
+does not follow it live - a documented limitation, not a bug. A boat with
+no determinable current pair (yard, out of service) shows no control at
+all, unchanged from before.
+
+**Day range is today..+13**, the same horizon and the same DateStrip
+component the trip planner uses, so an out-of-range date degrades exactly
+the same way. Defaults to today on every open - expansion state and the
+selected day both reset when a different vessel is selected (React's
+"adjust state during render" pattern, not an effect, so it never fires a
+redundant render): the day last browsed for one boat must never bleed into
+the next boat you tap.
+
+**Only the toggle button is sticky**, not the date strip beneath it - it
+pins to the top of the schedule's own scroll container
+(`.scheduleWrap[data-expanded="true"]`, capped at `min(50vh, 420px)`) so
+the collapse control is reachable at any scroll depth, matching Ryan's
+explicit ask ("no matter how far the user scrolls there's just always that
+chevron there"). No gesture library: this is a tap-triggered expand, not a
+finger-drag sheet - "swipe up" in the original ask described intent, not a
+literal drag physics (confirmed with Ryan).
+
+**Found and fixed while building this**: a boat with no class drawing
+renders a shorter collapsed card, short enough that the "Next sailings"
+toggle landed in the boat FAB's own bottom-left footprint. The FAB
+(`z-index: 30`) was drawing its circle over the toggle's label because the
+card's `z-index: 26` lost that fight. An open bottom sheet should cover the
+chrome underneath it, not contend with it for the same pixels - the card's
+`z-index` moved to 31 (still under the nav drawer/backdrop at 39/40).
+Guarded by a Playwright regression test alongside the existing
+FAB-vs-attribution one.

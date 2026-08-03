@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   getTerminalDims,
@@ -8,9 +7,11 @@ import {
   type TerminalDim,
   type VesselDim,
 } from "@/lib/data/dims";
+import type { FleetUpdate } from "@/lib/data/fleet-poller";
 import { PAIRS } from "@/lib/trip/pairs";
 import type { VesselFix } from "@/lib/data/types";
 import { asOf, soundClock } from "@/lib/time/sound-time";
+import { VesselSchedule } from "./VesselSchedule";
 import styles from "./vessel-card.module.css";
 
 function runLine(fix: VesselFix, terms: Map<number, TerminalDim> | null): string {
@@ -82,9 +83,28 @@ function delayLine(fix: VesselFix): { text: string; lateMin: number } | null {
   return null;
 }
 
-export function VesselCard({ fix, onClose }: { fix: VesselFix; onClose: () => void }) {
+export function VesselCard({
+  fix,
+  fleet,
+  onClose,
+}: {
+  fix: VesselFix;
+  fleet: FleetUpdate;
+  onClose: () => void;
+}) {
   const [dim, setDim] = useState<VesselDim | null>(null);
   const [terms, setTerms] = useState<Map<number, TerminalDim> | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  // A different boat means a different route (or none) - the schedule
+  // always reopens on today for whichever boat is now selected, never the
+  // day last browsed for the previous one. Adjusted during render (React's
+  // "resetting state when a prop changes" pattern), not an effect, so it
+  // never fires a redundant extra render.
+  const [prevFixId, setPrevFixId] = useState(fix.id);
+  if (fix.id !== prevFixId) {
+    setPrevFixId(fix.id);
+    setExpanded(false);
+  }
 
   useEffect(() => {
     let alive = true;
@@ -126,15 +146,28 @@ export function VesselCard({ fix, onClose }: { fix: VesselFix; onClose: () => vo
         </p>
       )}
       {(() => {
-        // The card must never be a dead end: link to this run's schedule.
+        // The card must never be a dead end: an inline look at this run's
+        // schedule, expanded in place rather than navigating away.
         const entry = Object.entries(PAIRS).find(
           ([, e]) => e.dep === fix.dep && e.arr === fix.arr,
         );
-        return entry ? (
-          <Link className={styles.tripLink} href={`/trip/${entry[0]}`}>
-            Next sailings: {entry[1].depName} → {entry[1].arrName}
-          </Link>
-        ) : null;
+        if (!entry) return null;
+        const [, pair] = entry;
+        return (
+          <div className={styles.scheduleWrap} data-expanded={expanded} data-testid="schedule-wrap">
+            <button
+              className={styles.tripLink}
+              onClick={() => setExpanded((e) => !e)}
+              aria-expanded={expanded}
+            >
+              Next sailings: {pair.depName} → {pair.arrName}
+              <span className={styles.chevron} aria-hidden>
+                {expanded ? "⌃" : "⌄"}
+              </span>
+            </button>
+            {expanded && <VesselSchedule entry={pair} fleet={fleet} />}
+          </div>
+        );
       })()}
     </aside>
   );
