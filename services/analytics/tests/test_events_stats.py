@@ -150,3 +150,110 @@ def test_never_writes_under_the_public_data_bucket(aws, monkeypatch):
     events_stats.lambda_handler({}, None)
     objects = aws["s3"].list_objects_v2(Bucket="wsf-test-data").get("Contents", [])
     assert not any(o["Key"].startswith("analytics/") for o in objects)
+
+
+def test_visitor_identity_queries_exclude_ambient_traffic():
+    # A wall tablet left on for hours/days must not inflate unique/returning
+    # visitor counts - see docs/features/site-analytics.md.
+    assert "NOT ambient" in events_stats._monthly_totals("2026-08-01", "2026-08-31")
+    assert "NOT ambient" in events_stats._returning_visitors("2026-08-01", "2026-08-31")
+
+
+class RangeAwareAthena:
+    """Fake Athena that dispatches on query kind (totals/returning/other)
+    AND on the DATE bounds embedded in the SQL, so a test can tell apart
+    the current-month rolling query from the closed-month finalizing query
+    - both share the same query shape as FakeAthena's key, but must cover
+    different date ranges."""
+
+    def __init__(self, rows_by_key, **_):
+        self.rows_by_key = rows_by_key
+        self.bytes_scanned = 100
+        self.seen = []
+
+    def query(self, sql: str):
+        self.seen.append(sql)
+        if "unique_visitors" in sql:
+            kind = "totals"
+        elif "returning_visitors" in sql:
+            kind = "returning"
+        elif "pageviews" in sql:
+            return [{"pageviews": 0, "ambient_pageviews": 0, "clicks": 0}]
+        else:
+            return []
+        for (k, since, through), rows in self.rows_by_key.items():
+            if k == kind and f"DATE '{since}'" in sql and f"DATE '{through}'" in sql:
+                return rows
+        return [{"unique_visitors": 0, "days_covered": 0}] if kind == "totals" else [
+            {"returning_visitors": 0}
+        ]
+
+
+def test_the_first_of_the_month_finalizes_the_month_that_just_closed(aws, monkeypatch):
+    # Sept 1 2026 - August (31 days) just closed. Its last rolling write,
+    # made the night of Aug 31, only covered midnight-to-run-time. This run
+    # must overwrite August's file with the complete month, using Aug 31 -
+    # now fully elapsed - as the upper bound, while still publishing
+    # September's fresh (intentionally partial) rolling file too.
+    fixed_pacific = datetime(2026, 9, 1, 4, 10, tzinfo=events_stats.SOUND_TZ)
+
+    class FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return fixed_pacific if tz is events_stats.SOUND_TZ else datetime.now(tz)
+
+    monkeypatch.setattr(events_stats, "datetime", FixedDatetime)
+
+    holder = {}
+
+    def factory(**kwargs):
+        holder["athena"] = RangeAwareAthena(
+            {
+                ("totals", "2026-08-01", "2026-08-31"): [
+                    {"unique_visitors": 77, "days_covered": 31}
+                ],
+                ("returning", "2026-08-01", "2026-08-31"): [{"returning_visitors": 12}],
+                ("totals", "2026-09-01", "2026-09-01"): [
+                    {"unique_visitors": 3, "days_covered": 1}
+                ],
+                ("returning", "2026-09-01", "2026-09-01"): [{"returning_visitors": 0}],
+            },
+            **kwargs,
+        )
+        return holder["athena"]
+
+    monkeypatch.setattr(events_stats, "Athena", factory)
+
+    events_stats.lambda_handler({}, None)
+
+    closed = read_json(aws, "wsf-test-raw", "analytics/site_events_monthly/month=2026-08.json")
+    assert closed["month"] == "2026-08"
+    assert closed["unique_visitors"] == 77
+    assert closed["returning_visitors"] == 12
+    assert closed["days_covered"] == 31
+
+    current = read_json(aws, "wsf-test-raw", "analytics/site_events_monthly/month=2026-09.json")
+    assert current["month"] == "2026-09"
+    assert current["unique_visitors"] == 3
+    assert current["returning_visitors"] == 0
+    assert current["days_covered"] == 1
+
+
+def test_mid_month_runs_do_not_touch_the_prior_month(aws, monkeypatch):
+    fixed_pacific = datetime(2026, 9, 15, 4, 10, tzinfo=events_stats.SOUND_TZ)
+
+    class FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return fixed_pacific if tz is events_stats.SOUND_TZ else datetime.now(tz)
+
+    monkeypatch.setattr(events_stats, "datetime", FixedDatetime)
+    install(monkeypatch, BASE_ROWS)
+
+    events_stats.lambda_handler({}, None)
+
+    objects = aws["s3"].list_objects_v2(
+        Bucket="wsf-test-raw", Prefix="analytics/site_events_monthly/"
+    ).get("Contents", [])
+    keys = {o["Key"] for o in objects}
+    assert keys == {"analytics/site_events_monthly/month=2026-09.json"}

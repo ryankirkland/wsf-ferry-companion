@@ -70,12 +70,21 @@ the method supports.
   cover an arbitrary selected date range - they're computed monthly by construction (see
   ADR-0007), and the dashboard shows `days_covered` alongside them so a partial month reads as
   partial, not as a full month's number.
+- **The just-closed month's `days_covered` is only trustworthy after the 1st of the next
+  month.** A month's last rolling write happens the night of its own final day and only covers
+  midnight-to-run-time for that day - the same partial-day gap the daily rollup avoids by
+  always waiting for "yesterday" to fully elapse. On the 1st of the next month, one extra
+  finalizing query overwrites that month's file with its true, fully-elapsed totals; every
+  write before that is an intentionally partial, in-progress snapshot (the "stays fresh as the
+  month progresses" tradeoff).
 - **A day or month with no summary file yet is shown as "no data," never as a silent zero** -
   the admin API returns `missing_days`/`missing_months` explicitly rather than letting an
   absent file collapse into an empty count.
-- **Ambient (`/ambient`) page views are counted and shown separately** from other traffic, not
-  blended into visitor trend or engagement numbers - a wall tablet polling for hours would
-  otherwise dominate and misrepresent "how many people visit."
+- **Ambient (`/ambient`) page views are counted and shown separately** from other traffic in
+  the visit-trend chart, and are excluded entirely from unique/returning visitor counts
+  (`NOT ambient` in both queries) - a wall tablet polling for hours would otherwise dominate
+  the pageview total and, left in the visitor-identity queries, would be guaranteed to look
+  like a returning visitor every month it stayed plugged in.
 - **Geography is labeled approximate.** IP-derived coarse geo (via CloudFront's edge
   resolution, no third-party GeoIP call) can misplace VPN, mobile-carrier-NAT, or data-center
   traffic - the dashboard says so rather than presenting country/region/city as authoritative.

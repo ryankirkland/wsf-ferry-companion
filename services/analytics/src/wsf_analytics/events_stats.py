@@ -12,6 +12,14 @@ One nightly schedule (no upstream Lambda chains into this one) recomputes:
 - the CURRENT Pacific month's rolling rollup, so unique/returning visitor
   counts stay fresh as the month progresses rather than only updating
   once the month closes.
+- on the 1st of the month only, a one-time finalizing overwrite of the
+  month that just closed, over its full (now fully-elapsed) date range -
+  otherwise that month's last rolling write, made on its own final night,
+  would permanently understate its own last day forever.
+
+Unique/returning visitor queries exclude ambient (wall-tablet) traffic -
+a `/ambient` session running for hours/days would otherwise dominate and
+misrepresent "how many people visit."
 """
 
 import json
@@ -81,17 +89,19 @@ def _by_geo(day: str) -> str:
 
 
 def _monthly_totals(since: str, through: str) -> str:
+    # NOT ambient: a wall tablet polling for hours/days must not count as a
+    # unique or returning visitor - see docs/features/site-analytics.md.
     return f"""
     SELECT count(DISTINCT visitor_hash) AS unique_visitors,
            count(DISTINCT dt) AS days_covered
-    FROM site_events WHERE dt BETWEEN DATE '{since}' AND DATE '{through}'"""
+    FROM site_events WHERE dt BETWEEN DATE '{since}' AND DATE '{through}' AND NOT ambient"""
 
 
 def _returning_visitors(since: str, through: str) -> str:
     return f"""
     SELECT count(*) AS returning_visitors FROM (
       SELECT visitor_hash FROM site_events
-      WHERE dt BETWEEN DATE '{since}' AND DATE '{through}'
+      WHERE dt BETWEEN DATE '{since}' AND DATE '{through}' AND NOT ambient
       GROUP BY visitor_hash HAVING count(DISTINCT dt) >= 2
     )"""
 
@@ -150,6 +160,31 @@ def lambda_handler(event, context):
         "days_covered": month_totals["days_covered"] or 0,
     }
     _publish(s3, raw_bucket, f"{MONTHLY_PREFIX}month={month_str}.json", monthly)
+
+    if today.day == 1:
+        # The month that just ended had its last rolling write on its own
+        # final night, covering that day only midnight-to-run-time - the
+        # same partial-day gap the daily rollup avoids by always waiting
+        # for "yesterday" to fully elapse. Now that day has fully elapsed,
+        # so close the book on that month with one finalizing overwrite.
+        closed_end = today - timedelta(days=1)
+        closed_start = closed_end.replace(day=1)
+        closed_str = closed_end.strftime("%Y-%m")
+        (closed_totals,) = athena.query(
+            _monthly_totals(closed_start.isoformat(), closed_end.isoformat())
+        )
+        (closed_returning,) = athena.query(
+            _returning_visitors(closed_start.isoformat(), closed_end.isoformat())
+        )
+        closed_monthly = {
+            "v": 1,
+            "generated_at": generated_at,
+            "month": closed_str,
+            "unique_visitors": closed_totals["unique_visitors"] or 0,
+            "returning_visitors": closed_returning["returning_visitors"] or 0,
+            "days_covered": closed_totals["days_covered"] or 0,
+        }
+        _publish(s3, raw_bucket, f"{MONTHLY_PREFIX}month={closed_str}.json", closed_monthly)
 
     counts = {
         "EventsStatsPublished": 1,
