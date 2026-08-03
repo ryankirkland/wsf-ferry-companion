@@ -69,7 +69,10 @@ the method supports.
 - **Unique/returning visitor counts are always labeled by month**, never presented as if they
   cover an arbitrary selected date range - they're computed monthly by construction (see
   ADR-0007), and the dashboard shows `days_covered` alongside them so a partial month reads as
-  partial, not as a full month's number.
+  partial, not as a full month's number. `days_covered` counts any day with event data at all,
+  ambient included - it answers "how far has this aggregation progressed," not "how many days
+  had real visitors," so the ambient exclusion below is scoped (via a `FILTER`) to
+  `unique_visitors` only and never touches `days_covered`.
 - **The just-closed month's `days_covered` is only trustworthy after the 1st of the next
   month.** A month's last rolling write happens the night of its own final day and only covers
   midnight-to-run-time for that day - the same partial-day gap the daily rollup avoids by

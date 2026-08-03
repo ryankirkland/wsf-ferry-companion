@@ -89,12 +89,16 @@ def _by_geo(day: str) -> str:
 
 
 def _monthly_totals(since: str, through: str) -> str:
-    # NOT ambient: a wall tablet polling for hours/days must not count as a
-    # unique or returning visitor - see docs/features/site-analytics.md.
+    # FILTER (not a blanket WHERE): the ambient exclusion must apply only to
+    # unique_visitors - a wall tablet polling for hours/days must not count
+    # as a unique or returning visitor, see docs/features/site-analytics.md
+    # - and not to days_covered, which tracks how far the aggregation window
+    # has progressed (any event, ambient included) rather than how many days
+    # had real human traffic.
     return f"""
-    SELECT count(DISTINCT visitor_hash) AS unique_visitors,
+    SELECT count(DISTINCT visitor_hash) FILTER (WHERE NOT ambient) AS unique_visitors,
            count(DISTINCT dt) AS days_covered
-    FROM site_events WHERE dt BETWEEN DATE '{since}' AND DATE '{through}' AND NOT ambient"""
+    FROM site_events WHERE dt BETWEEN DATE '{since}' AND DATE '{through}'"""
 
 
 def _returning_visitors(since: str, through: str) -> str:

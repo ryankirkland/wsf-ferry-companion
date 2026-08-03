@@ -159,6 +159,20 @@ def test_visitor_identity_queries_exclude_ambient_traffic():
     assert "NOT ambient" in events_stats._returning_visitors("2026-08-01", "2026-08-31")
 
 
+def test_monthly_days_covered_counts_every_day_not_just_non_ambient_days():
+    # days_covered answers "how far has this aggregation window progressed,"
+    # not "how many days had non-ambient traffic" - the ambient exclusion
+    # must be scoped to the unique_visitors FILTER only. If it leaked into
+    # the shared WHERE clause instead, a day with zero human traffic
+    # (plausible for a low-traffic personal site with an always-on wall
+    # tablet) would silently drop out of days_covered and understate how
+    # much of the month the summary actually spans.
+    sql = events_stats._monthly_totals("2026-08-01", "2026-08-31")
+    assert "count(DISTINCT visitor_hash) FILTER (WHERE NOT ambient)" in sql
+    where_clause = sql.split("FROM site_events")[1]
+    assert "ambient" not in where_clause
+
+
 class RangeAwareAthena:
     """Fake Athena that dispatches on query kind (totals/returning/other)
     AND on the DATE bounds embedded in the SQL, so a test can tell apart
