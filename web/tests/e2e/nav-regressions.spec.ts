@@ -38,8 +38,10 @@ test("trip vessel chip deep-links to a selected boat on the map", async ({ page 
   const card = page.getByTestId("vessel-card");
   await expect(card).toBeVisible({ timeout: 20_000 });
   await expect(card).toContainText(target.name);
-  // And the card is not a dead end: it links onward to the run's schedule.
-  await expect(card.getByRole("link", { name: /Next sailings/ })).toBeVisible();
+  // And the card is not a dead end: "Next sailings" expands the schedule
+  // inline rather than navigating away (see vessel-schedule.spec.ts).
+  await expect(card.getByRole("button", { name: /Next sailings/ })).toBeVisible();
+  await expect(page).toHaveURL(/\/\?vessel=/); // still on the map, no navigation
 });
 
 test("drawer offers sign-in to a signed-out visitor", async ({ page }) => {

@@ -10,6 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { TRIP_HORIZON_DAYS } from "@/config";
 import { useFleet } from "@/hooks/use-fleet";
+import { useNow } from "@/hooks/use-now";
 import { usePairStats } from "@/hooks/use-pair-stats";
 import { useMode } from "@/hooks/use-mode";
 import { useTripData } from "@/hooks/use-trip-data";
@@ -30,15 +31,6 @@ import { FaresPanel } from "./FaresPanel";
 import styles from "./trip.module.css";
 
 const YOUR_RUN_KEY = "fs.your-run";
-
-function useNow(intervalMs: number): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), intervalMs);
-    return () => window.clearInterval(timer);
-  }, [intervalMs]);
-  return now;
-}
 
 export function TripView({ slug }: { slug: string }) {
   useMode(); // keeps the Sound-time day/dusk/night stamp alive on this page

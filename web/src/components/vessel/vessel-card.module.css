@@ -1,6 +1,12 @@
 .card {
   position: absolute;
-  z-index: 26;
+  /* Above the boat FAB (z-index 30, nav.module.css): a boat with no class
+   * drawing (shorter card) puts the schedule toggle in the FAB's own
+   * bottom-left footprint, and the FAB used to win, drawing its circle over
+   * the toggle's label. An open bottom sheet should cover the chrome below
+   * it, not fight it for the same pixels. Still under the nav drawer/
+   * backdrop (39/40), which must stay on top of everything. */
+  z-index: 31;
   background: var(--card);
   border: 1px solid var(--card-line);
   color: var(--ink);
@@ -80,17 +86,52 @@
   font-size: 0.85rem;
 }
 
-.tripLink {
-  display: inline-block;
+.scheduleWrap {
   margin-top: 0.6rem;
+}
+
+.scheduleWrap[data-expanded="true"] {
+  max-height: min(50vh, 420px);
+  overflow-y: auto;
+  /* Anchors the sticky toggle below to this box, not the page. */
+  position: relative;
+}
+
+.tripLink {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
   color: var(--accent);
   font-weight: 650;
   font-size: 0.88rem;
-  text-decoration: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.scheduleWrap[data-expanded="true"] .tripLink {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--card);
+  padding-bottom: 0.4rem;
 }
 
 .tripLink:hover {
   text-decoration: underline;
+}
+
+.chevron {
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+}
+
+.scheduleBody {
+  padding-top: 0.2rem;
 }
 
 /* WSDOT's class drawing.

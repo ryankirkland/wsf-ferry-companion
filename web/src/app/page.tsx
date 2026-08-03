@@ -39,7 +39,9 @@ export default function Home() {
       <MapView mode={mode} fleet={fleet} onVesselClick={onVesselClick} />
       <TopBar pref={pref} onModeChange={setPref} />
       <BoatFab />
-      {selected && <VesselCard fix={selected} onClose={() => setSelectedId(null)} />}
+      {selected && (
+        <VesselCard fix={selected} fleet={fleet} onClose={() => setSelectedId(null)} />
+      )}
     </main>
   );
 }
