@@ -30,3 +30,21 @@ variable "notify_api_invoke_arn" {
 variable "notify_api_function_name" {
   type = string
 }
+
+variable "events_invoke_arn" {
+  description = "Site-analytics collector Lambda invoke ARN (module analytics)."
+  type        = string
+}
+
+variable "events_function_name" {
+  type = string
+}
+
+variable "events_admin_invoke_arn" {
+  description = "Site-analytics admin-read Lambda invoke ARN (module analytics)."
+  type        = string
+}
+
+variable "events_admin_function_name" {
+  type = string
+}

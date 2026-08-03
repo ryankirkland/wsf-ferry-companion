@@ -91,7 +91,12 @@ export function PairPicker() {
             ))}
           </select>
         </label>
-        <button className={styles.go} onClick={go} disabled={to === ""}>
+        <button
+          className={styles.go}
+          data-analytics-label="trip-search-submit"
+          onClick={go}
+          disabled={to === ""}
+        >
           Next sailings
         </button>
       </div>

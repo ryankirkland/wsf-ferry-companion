@@ -56,6 +56,18 @@ resource "aws_cognito_user_pool" "users" {
   }
 }
 
+# Site-analytics dashboard gate (/admin/analytics): every signed-in user
+# is a valid alert subscriber, but only members of this group may read
+# analytics. No Terraform resource adds Ryan to it - the user doesn't
+# necessarily exist at plan time (he signs up through the app like
+# anyone else) - see docs/features/site-analytics.md for the one-time
+# `aws cognito-idp admin-add-user-to-group` step after first sign-up.
+resource "aws_cognito_user_group" "admins" {
+  name         = "Admins"
+  user_pool_id = aws_cognito_user_pool.users.id
+  description  = "Gates /admin/analytics. Membership is manual - see docs/features/site-analytics.md."
+}
+
 resource "aws_cognito_user_pool_client" "web" {
   name         = "wsf-prod-web"
   user_pool_id = aws_cognito_user_pool.users.id

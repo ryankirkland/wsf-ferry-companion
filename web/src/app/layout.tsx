@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { ConsentBanner } from "@/components/analytics/ConsentBanner";
+import { PageviewTracker } from "@/components/analytics/PageviewTracker";
 import "@/styles/tokens.css";
 import "./globals.css";
 
@@ -43,7 +45,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: modeScript }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <PageviewTracker />
+        <ConsentBanner />
+      </body>
     </html>
   );
 }

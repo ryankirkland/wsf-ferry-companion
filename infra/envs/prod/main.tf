@@ -1,9 +1,19 @@
+# api.<domain_name> - computed here rather than read from module.api's
+# output, so that static_site (which analytics reads the data bucket
+# from) never forms a module dependency on api (which reads analytics'
+# Lambda outputs). module.api derives the identical string internally;
+# see infra/modules/api/apigw.tf's own local.api_domain.
+locals {
+  api_domain = "api.${var.domain_name}"
+}
+
 module "static_site" {
   source = "../../modules/static-site"
 
-  domain_name         = var.domain_name
-  zone_id             = aws_route53_zone.main.zone_id
-  tiles_origin_domain = module.tiles_fallback.function_url_domain
+  domain_name              = var.domain_name
+  zone_id                  = aws_route53_zone.main.zone_id
+  tiles_origin_domain      = module.tiles_fallback.function_url_domain
+  events_api_origin_domain = local.api_domain
 
   providers = {
     aws           = aws
@@ -30,6 +40,11 @@ module "api" {
   cognito_web_client_id      = module.notify.web_client_id
   notify_api_invoke_arn      = module.notify.api_lambda_invoke_arn
   notify_api_function_name   = module.notify.api_lambda_function_name
+
+  events_invoke_arn          = module.analytics.events_lambda_invoke_arn
+  events_function_name       = module.analytics.events_lambda_function_name
+  events_admin_invoke_arn    = module.analytics.events_admin_lambda_invoke_arn
+  events_admin_function_name = module.analytics.events_admin_lambda_function_name
 }
 
 # M4 analytics: history collectors + Glue/Athena catalog (ADR-0001).
