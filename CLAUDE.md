@@ -8,9 +8,10 @@
 - **F2 Trip planner**: see `docs/features/trip-planner.md` for the four `/data` contracts, the verified (VesselID, depart_ms) join, signal-engine honesty rules, and the fares/timeadj traps. Update that file whenever the feature changes.
 - **F1 asset tooling**: `tools/vessel-icons/` traces the map silhouettes and `tools/vessel-drawings/` mirrors WSDOT's class profile drawings for the vessel card. Both commit the script + MANIFEST and gitignore the images - WSDOT artwork stays out of the repo.
 - **F4/F5 Stats + capacity**: see `docs/features/stats.md` for the sync->transform->stats chain, the two `/data/stats` contracts, and the honesty rules that shape them (window+n on every number, n<30 slot degradation, reconciliation-based cancellation with its floor caveat, labeled collection gaps). Update that file whenever the feature changes.
+- **Site analytics**: see `docs/features/site-analytics.md` (and ADR-0007) for the beacon->collector->nightly-aggregate->`/admin/analytics` pipeline, the visitor-hash and coarse-geo privacy rules, the Cognito `Admins`-group gate, and the consent/opt-out copy. Update that file whenever the feature changes.
 
 ## Operations
-- **Observability**: `docs/runbooks/observability.md` covers reading application logs (13 Lambda log groups + the EMF metric namespaces), tracking cost (the two budgets, the run-rate command, what July actually decomposed to), and what user activity is and is not measurable - CloudFront access logging is off by design because /account promises no tracking. Update it when monitoring changes.
+- **Observability**: `docs/runbooks/observability.md` covers reading application logs (13 Lambda log groups + the EMF metric namespaces), tracking cost (the two budgets, the run-rate command, what July actually decomposed to), and user activity - homegrown site analytics (see above) now covers page views, clicks, referrers, and coarse geography; CloudFront access logging itself remains off (the analytics pipeline is a separate first-party beacon, not raw request logs, and never persists IPs). Update it when monitoring changes.
 
 ## General Guidelines
 - Never use the em dash. Use the plain dash "-" instead.

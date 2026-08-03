@@ -175,7 +175,12 @@ resource "aws_iam_role_policy" "scheduler" {
     Statement = [{
       Effect   = "Allow"
       Action   = "lambda:InvokeFunction"
-      Resource = [aws_lambda_function.sync.arn, aws_lambda_function.capacity.arn, aws_lambda_function.stats.arn]
+      Resource = [
+        aws_lambda_function.sync.arn,
+        aws_lambda_function.capacity.arn,
+        aws_lambda_function.stats.arn,
+        aws_lambda_function.events_stats.arn,
+      ]
     }]
   })
 }

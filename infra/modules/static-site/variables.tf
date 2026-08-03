@@ -13,3 +13,8 @@ variable "tiles_origin_domain" {
   type        = string
   default     = null
 }
+
+variable "events_api_origin_domain" {
+  description = "API Gateway custom domain (module api's api_domain) fronted for /v1/events so CloudFront resolves viewer geography and forwards it to the collector Lambda."
+  type        = string
+}

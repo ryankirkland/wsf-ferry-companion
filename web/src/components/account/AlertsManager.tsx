@@ -233,7 +233,12 @@ function Manager({
           </label>
         </div>
 
-        <button className={tripStyles.go} onClick={() => void add()} disabled={busy || !slug || start >= end}>
+        <button
+          className={tripStyles.go}
+          data-analytics-label="subscribe-cta"
+          onClick={() => void add()}
+          disabled={busy || !slug || start >= end}
+        >
           {busy ? "Saving…" : "Subscribe"}
         </button>
         {start >= end && <span className={styles.hint}>The window must start before it ends.</span>}

@@ -5,7 +5,7 @@ Living document - updated every time deployed infrastructure changes
 (serverless lakehouse), [ADR-0003](adr/0003-tile-hosting.md) (tiles),
 [ADR-0004](adr/0004-state-backend-and-ci.md) (state + CI).
 
-## Deployed today (M0 skeleton + M1 map + M2 trip planner + M3 alerts + M4 analytics)
+## Deployed today (M0 skeleton + M1 map + M2 trip planner + M3 alerts + M4 analytics + site analytics)
 
 ```mermaid
 flowchart LR
@@ -29,6 +29,14 @@ flowchart LR
         SYNC -- "touched years" --> XF[Lambda transform<br/>dedup + Pacific service year]
         XF -- "on success" --> ST[Lambda stats<br/>Athena suite + reconciliation]
         EB2 -. "05:15 catch-up" .-> ST
+    end
+
+    subgraph siteanalytics [Site analytics - live]
+        BEACON([Browser beacon<br/>pageview + tagged clicks]) -- "POST /v1/events<br/>via CloudFront, geo headers" --> EVL[Lambda events collector<br/>hashes+drops IP, geo from CF headers]
+        EB3[EventBridge Scheduler<br/>04:10 PT nightly] --> EVS[Lambda events-stats<br/>Athena over raw JSON]
+        EVS -- "private daily + monthly JSON" --> RAW
+        ADMIN([Ryan, signed in]) -- "GET /v1/admin/analytics<br/>JWT + Admins group" --> EVA[Lambda events-admin]
+        EVA --> DASH[/admin/analytics dashboard]
     end
 
     subgraph usw2 [AWS us-west-2]
@@ -76,7 +84,13 @@ flowchart LR
     CF -- "/data/* (5s TTL)" --> DATA
     CF -- "/assets/*" --> ASSETS
     CF -. "/tiles/* (fallback)" .-> TLAMBDA --> TILES
+    CF -- "/v1/events (CachingDisabled,<br/>geo headers forwarded)" --> AGW
     U -- HTTPS --> AGW --> HELLO
+    U -.-> BEACON
+    AGW --> EVL
+    EVL --> RAW
+    RAW --> GLUE
+    AGW --> EVA
     OFM[OpenFreeMap tiles] -.-> U
 ```
 
@@ -90,15 +104,17 @@ path). Deploys via `web-deploy.yml` two-pass sync + invalidation. Tiles
 come from the OpenFreeMap public instance; the PMTiles fallback behind
 `/tiles/*` is the tested escape hatch (ADR-0003 as amended).
 
-Alarms (16, all to the `wsf-prod-alarms` SNS topic). Ingest (8):
+Alarms (17, all to the `wsf-prod-alarms` SNS topic). Ingest (8):
 poller-gap (the SLO alarm), auth-failure (400+Message canary),
 empty-fleet, three Lambda-error alarms, schedule-refresh-errors,
-pairs-stale. Notify (1): notifier-errors. Analytics (7):
+pairs-stale. Notify (1): notifier-errors. Analytics (8):
 stats-not-fresh (the F4 freshness SLO - missing data breaches),
-stats-data-lag, unmapped-slip, history-failures, empty-night, and
-Lambda-error alarms for transform and stats. Six sit past the 10-alarm
-free tier (~$0.60/mo) - accepted deliberately, because each detects a
-failure whose signature is silence. Account-level
+stats-data-lag, unmapped-slip, history-failures, empty-night,
+Lambda-error alarms for transform and stats, and events-stats-errors
+(site analytics' nightly rollup - same "silence means broken" pattern).
+Seven sit past the 10-alarm free tier (~$0.70/mo) - accepted
+deliberately, because each detects a failure whose signature is
+silence. Account-level
 (bootstrap stack): Terraform state bucket with native lockfile, GitHub
 OIDC provider, plan/apply CI roles, $15 budget with three email
 notifications.
@@ -195,6 +211,18 @@ file name. `/data/capacity.json` (minute-fresh, pair-keyed drive-up space +
 Scale as of 2026-07-30: **3,493,725 sailings, 2002-03-01 to 2026-07-30, 30
 vessels, 25 partitions, ~46 MB Parquet**; a full nightly Athena suite scans
 ~237 MB (~$0.0012).
+
+**Site analytics store** (same raw bucket, `raw/site_events/` +
+`analytics/site_events_daily|monthly/` prefixes; full rationale in
+[site-analytics.md](features/site-analytics.md) and
+[ADR-0007](adr/0007-site-analytics.md)). Unlike every other `analytics/`
+prefix, the daily/monthly rollups are **private** - never CloudFront-served
+- because this is the one dataset that must stay behind the Cognito
+`Admins` gate rather than published as a public `/data/*.json` contract.
+Raw events (`event_type, path, referrer_host, label, ambient, country,
+region, city, visitor_hash, received_at`) are read directly as JSON via a
+Glue table with daily partition projection - no Parquet transform stage,
+since this dataset's volume doesn't justify one.
 
 ## Deploy pipeline
 
@@ -345,6 +373,18 @@ erDiagram
         int route_ids FK
         bool all_routes
     }
+    SITE_EVENT {
+        string event_type PK "pageview|click"
+        string path
+        string referrer_host "hostname only, never full URL"
+        string label "click target; null for pageviews"
+        bool ambient "true on /ambient - kept separate from visitor stats"
+        string country "coarse, CloudFront-resolved"
+        string region
+        string city
+        string visitor_hash "SHA-256(month+ip+ua); IP never stored"
+        timestamp received_at "server clock, never client-supplied"
+    }
     SUBSCRIPTION {
         string user_sub PK
         int dep FK
@@ -364,6 +404,11 @@ documented where they are implemented rather than assumed:
 - **SAILING_ACTUAL carries slip names, not terminal names** ("Colman" is
   Seattle). `wsf_core.slips` is the only join path, curated from a scan of
   all 4,058,477 backfilled rows.
+
+SITE_EVENT has no relationship lines above - deliberately. It never joins
+to VESSEL, PAIR, or SUBSCRIPTION, and never carries a Cognito `sub`, even
+for a signed-in alert subscriber clicking around the app (ADR-0007). It
+is the one entity in this model designed to stay unlinkable.
 
 **Where each entity lives**
 

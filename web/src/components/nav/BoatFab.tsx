@@ -75,7 +75,7 @@ export function BoatFab() {
           </button>
         </div>
         <nav className={styles.links}>
-          <Link href="/trip" onClick={() => setOpen(false)}>
+          <Link href="/trip" data-analytics-label="nav-trip" onClick={() => setOpen(false)}>
             Trip planner
             <span>Next sailings, live status, fares</span>
           </Link>
@@ -85,29 +85,33 @@ export function BoatFab() {
               <span>Straight to your crossing</span>
             </Link>
           )}
-          <Link href="/calendar" onClick={() => setOpen(false)}>
+          <Link href="/calendar" data-analytics-label="nav-calendar" onClick={() => setOpen(false)}>
             Service calendar
             <span>Scheduled cancellations, months ahead</span>
           </Link>
-          <Link href="/stats" onClick={() => setOpen(false)}>
+          <Link href="/stats" data-analytics-label="nav-stats" onClick={() => setOpen(false)}>
             On-time record
             <span>24 years of departures, by route and boat</span>
           </Link>
-          <Link href="/alerts" onClick={() => setOpen(false)}>
+          <Link href="/alerts" data-analytics-label="nav-alerts" onClick={() => setOpen(false)}>
             Email alerts
             <span>Your crossing, your window, one email</span>
           </Link>
-          <Link href="/ambient" onClick={() => setOpen(false)}>
+          <Link href="/ambient" data-analytics-label="ambient-toggle" onClick={() => setOpen(false)}>
             Ambient mode
             <span>The Sound on a wall, all day</span>
           </Link>
           {auth.status === "in" ? (
-            <Link href="/alerts" onClick={() => setOpen(false)}>
+            <Link href="/alerts" data-analytics-label="nav-account" onClick={() => setOpen(false)}>
               Account
               <span>{auth.email}</span>
             </Link>
           ) : (
-            <Link href="/account?next=/alerts" onClick={() => setOpen(false)}>
+            <Link
+              href="/account?next=/alerts"
+              data-analytics-label="nav-account"
+              onClick={() => setOpen(false)}
+            >
               Sign in
               <span>Create an account for email alerts</span>
             </Link>

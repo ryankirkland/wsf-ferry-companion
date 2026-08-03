@@ -83,6 +83,88 @@ resource "aws_glue_catalog_table" "history" {
   }
 }
 
+resource "aws_glue_catalog_table" "site_events" {
+  database_name = aws_glue_catalog_database.analytics.name
+  name          = "site_events"
+  table_type    = "EXTERNAL_TABLE"
+
+  parameters = {
+    EXTERNAL       = "TRUE"
+    classification = "json"
+
+    "projection.enabled"   = "true"
+    "projection.dt.type"   = "date"
+    "projection.dt.format" = "yyyy-MM-dd"
+    # Tripwire: same shape as the history table's year range above -
+    # events outside this window silently vanish from queries.
+    "projection.dt.range"         = "2026-08-01,NOW"
+    "projection.dt.interval"      = "1"
+    "projection.dt.interval.unit" = "DAYS"
+    "storage.location.template"   = "s3://${var.raw_bucket_name}/raw/site_events/dt=$${dt}/"
+  }
+
+  partition_keys {
+    name = "dt"
+    type = "string"
+  }
+
+  storage_descriptor {
+    location      = "s3://${var.raw_bucket_name}/raw/site_events/"
+    input_format  = "org.apache.hadoop.mapred.TextInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+
+    ser_de_info {
+      serialization_library = "org.openx.data.jsonserde.JsonSerDe"
+    }
+
+    # One JSON object per raw event object (the collector Lambda writes
+    # one S3 object per request, not batched NDJSON). received_at stays
+    # a string - Athena's JSON SerDe is brittle against ISO8601 UTC
+    # offsets under the native timestamp type, so queries cast explicitly
+    # with from_iso8601_timestamp() rather than trusting silent nulls.
+    columns {
+      name = "event_type"
+      type = "string"
+    }
+    columns {
+      name = "path"
+      type = "string"
+    }
+    columns {
+      name = "referrer_host"
+      type = "string"
+    }
+    columns {
+      name = "label"
+      type = "string"
+    }
+    columns {
+      name = "ambient"
+      type = "boolean"
+    }
+    columns {
+      name = "country"
+      type = "string"
+    }
+    columns {
+      name = "region"
+      type = "string"
+    }
+    columns {
+      name = "city"
+      type = "string"
+    }
+    columns {
+      name = "visitor_hash"
+      type = "string"
+    }
+    columns {
+      name = "received_at"
+      type = "string"
+    }
+  }
+}
+
 resource "aws_s3_bucket" "athena_results" {
   bucket = "wsf-prod-athena-results-${data.aws_caller_identity.current.account_id}"
 }

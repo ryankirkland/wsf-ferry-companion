@@ -66,3 +66,10 @@ export const pairStatsPath = (dep: number, arr: number) => `/data/stats/pairs/${
 export const CAPACITY_STALE_MS = 240_000;
 export const STATS_REFRESH_MS = 3_600_000;
 export const CAPACITY_POLL_MS = 60_000;
+
+// M5 site analytics. EVENTS_PATH is relative - it goes through the same
+// CloudFront distribution as the page itself, NOT API_ORIGIN, so CloudFront
+// can attach geo headers server-side. Must stay a same-origin relative path.
+export const EVENTS_PATH = "/v1/events";
+// Cross-origin like /v1/subscriptions, since it doesn't need geo resolution.
+export const ADMIN_ANALYTICS_PATH = "/v1/admin/analytics";

@@ -175,8 +175,10 @@ export function AccountView() {
         </form>
 
         <p className={tripStyles.footNote}>
-          Accounts exist for one thing: verified-email alert subscriptions. No tracking, no
-          newsletters - just your boats.
+          Accounts exist for one thing: verified-email alert subscriptions - no newsletters. We do
+          log anonymous page visits and clicks sitewide (never tied to your account, never for
+          advertising) to catch bugs and understand traffic; you can opt out from the banner shown
+          on your first visit.
         </p>
       </div>
     </main>

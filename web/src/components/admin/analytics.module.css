@@ -1,0 +1,237 @@
+/* Admin analytics dashboard - same Paper Sound card/ink/accent tokens and
+ * hand-rolled bar-chart language as /stats (see stats/overview.module.css),
+ * because this is still a reading column, not a dashboard-library dashboard. */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 0.8rem;
+  padding: 0.9rem 1rem;
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.6rem;
+}
+
+.absent {
+  background: var(--card);
+  border: 1px dashed var(--card-line);
+  border-radius: 0.8rem;
+  padding: 0.85rem 1rem;
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  margin-top: 0.6rem;
+}
+
+.rangeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.6rem;
+}
+
+.rangeRow label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  font-weight: 650;
+}
+
+.rangeRow input {
+  font: inherit;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--card-line);
+  border-radius: 0.5rem;
+  background: var(--card);
+  color: var(--ink);
+}
+
+/* ---- stat tiles ---- */
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.tile {
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 0.8rem;
+  padding: 0.9rem 1rem;
+}
+
+.tileValue {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.tileLabel {
+  margin-top: 0.3rem;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  line-height: 1.4;
+}
+
+/* ---- section chrome, shared look with /stats ---- */
+
+.section {
+  margin: 1.6rem 0 0;
+}
+
+.sectionTitle {
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin: 0 0 0.2rem;
+}
+
+.lede {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  margin: 0 0 0.5rem;
+  line-height: 1.45;
+}
+
+.foot {
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  margin: 0.7rem 0 0;
+}
+
+/* ---- day chart: two-segment bars, ambient stacked lighter on top ---- */
+
+.dayChart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.16rem;
+  height: 8rem;
+  margin-top: 0.5rem;
+}
+
+.dayCol {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.dayBarTrack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: color-mix(in srgb, var(--ink-soft) 8%, transparent);
+  border-radius: 0.2rem 0.2rem 0 0;
+}
+
+.dayBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--accent);
+  border-radius: 0.2rem 0.2rem 0 0;
+  min-height: 1px;
+}
+
+.dayBarAmbient {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: color-mix(in srgb, var(--accent) 35%, var(--card));
+  border-radius: 0.2rem 0.2rem 0 0;
+}
+
+/* ---- horizontal bar lists (top pages / clicks / referrers) ---- */
+
+.barList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: minmax(6rem, 1fr) 8rem auto;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.84rem;
+}
+
+.barLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barTrack {
+  position: relative;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink-soft) 18%, transparent);
+  overflow: hidden;
+}
+
+.barFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.barCount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+  min-width: 2.6rem;
+}
+
+/* ---- geography ---- */
+
+.geoTable {
+  margin-top: 0.5rem;
+  border: 1px solid var(--card-line);
+  border-radius: 0.8rem;
+  overflow: hidden;
+  background: var(--card);
+}
+
+.geoRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.5rem 0.85rem;
+  border-top: 1px solid var(--card-line);
+  font-size: 0.86rem;
+}
+
+.geoRow:first-child {
+  border-top: none;
+}
+
+.geoPlace {
+  color: var(--ink);
+}
+
+.geoCount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 34rem) {
+  .tiles {
+    grid-template-columns: 1fr;
+  }
+
+  .barRow {
+    grid-template-columns: minmax(4.5rem, 1fr) 5rem auto;
+  }
+}

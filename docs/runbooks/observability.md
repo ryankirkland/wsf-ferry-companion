@@ -177,14 +177,36 @@ aws ce get-cost-and-usage --region us-east-1 \
 
 ## 3. User activity
 
-**This is the honest one: there is almost none, by construction.**
+**Updated 2026-08-03: this used to be the honest "almost none, by
+construction" section. It no longer is** - see
+`docs/features/site-analytics.md` and ADR-0007 for the full pipeline.
+CloudFront **access logging is still disabled** (unchanged - that
+decision stands on its own merits, see below), but a first-party beacon
+now records page views, clicks, referrers, and coarse geography, rolled
+up nightly into a Cognito-gated `/admin/analytics` dashboard.
+`/account`'s "No tracking" line is gone; the replacement copy states
+plainly what is collected and offers an opt-out.
 
-CloudFront **access logging is disabled**, so there is no per-request
-record anywhere. No page views, no unique visitors, no geography, no
-"which pair pages do people actually open". That is not an oversight to
-quietly fix - `/account` currently tells users *"No tracking, no
-newsletters - just your boats."* Turning on behavioural analytics would
-make that copy false.
+**Where to look**: `/admin/analytics` (signed in as the account added to
+the Cognito `Admins` group - see `docs/features/site-analytics.md` for
+the one-time setup step) for visit trend, top pages, top-clicked
+elements, referrers, geography, and unique/returning visitor counts. The
+raw event stream lives at `raw/site_events/dt=<date>/*.json` in the raw
+bucket if you ever need to query it directly with Athena
+(`wsf_prod_analytics.site_events`); the nightly rollup Lambda is
+`wsf-prod-analytics-events-stats` (04:10 PT), and its private summary
+JSON lives under `analytics/site_events_daily/` and
+`analytics/site_events_monthly/` in the same bucket - deliberately NOT
+in the public data bucket, since this is the one dataset in the project
+that must stay behind auth.
+
+**Why CloudFront access logging is still off**: nothing about building
+first-party analytics changed the tradeoff that made it off in the
+first place (raw-IP retention, S3 storage/lifecycle for a dataset
+nobody queries). The beacon pipeline gets what was actually wanted
+(clicks, which server logs can't see at all) while hashing and
+discarding the IP at ingestion instead of storing it - a stricter
+privacy posture than turning CloudFront logging on would have been.
 
 ### What you can see today
 
@@ -222,23 +244,18 @@ aws dynamodb scan --table-name wsf-prod-hot \
 `AlertEmailLatency` and the SES bounce/complaint path via
 `wsf-prod-notify-suppress`.
 
-### If you want more, three honest options
+### Historical note: the options this runbook used to weigh
 
-1. **CloudFront standard logs to S3** (~free; you pay S3 storage). Gives
-   per-request path, status, cache hit, coarse geography, referrer - then
-   query with Athena, which this project already runs. This is
-   *server-side request logging*, not cross-site tracking, but it does
-   record IP addresses, so the `/account` copy should be revised to say
-   what is kept and for how long, and a lifecycle rule should expire it.
-2. **A privacy-preserving counter** - a tiny endpoint recording page
-   *paths* with no identifiers at all, keeping the "no tracking" promise
-   literally true. More work, weaker data.
-3. **Leave it.** For a portfolio project whose thesis is honesty, "we do
-   not measure our users" is a defensible position, and CloudFront's
-   aggregate metrics already tell you whether anyone is out there.
-
-My recommendation is (1) **with the copy updated in the same change** -
-never one without the other.
+As of 2026-08-01 this section listed three options - CloudFront logs,
+a privacy-preserving counter, or leaving it alone - and recommended
+CloudFront logs with a copy change. Ryan instead asked for click
+tracking (which CloudFront logs can't provide at all) plus geography
+and a dashboard, so what got built (`docs/features/site-analytics.md`,
+ADR-0007) is closer in spirit to option 2 but considerably more capable
+- a first-party beacon rather than raw request logs, with the IP hashed
+and discarded at ingestion rather than ever stored. Kept here as
+context for why the pipeline looks the way it does, not as an open
+question anymore.
 
 ---
 
@@ -246,3 +263,6 @@ never one without the other.
 
 - 2026-08-01: written after the July budget alert, with the two-budget
   discrepancy and the disabled access logging both surfaced as findings.
+- 2026-08-03: section 3 rewritten - homegrown site analytics shipped
+  (`docs/features/site-analytics.md`, ADR-0007), so "almost no user
+  activity is measurable" is no longer true.
