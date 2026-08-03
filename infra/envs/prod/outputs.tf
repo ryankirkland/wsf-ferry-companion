@@ -37,3 +37,8 @@ output "raw_bucket" {
   description = "Raw archive bucket."
   value       = module.ingest.raw_bucket
 }
+
+output "user_pool_id" {
+  description = "Cognito user pool ID - needed for the one-time `admin-add-user-to-group` step that grants /admin/analytics access (docs/features/site-analytics.md)."
+  value       = module.notify.user_pool_id
+}
