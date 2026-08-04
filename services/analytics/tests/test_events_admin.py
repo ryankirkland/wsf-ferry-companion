@@ -74,9 +74,7 @@ def test_403_when_admins_group_absent(aws):
 
 
 def test_403_when_claim_missing_entirely(aws):
-    resp = events_admin.lambda_handler(
-        _event({}, {"from": "2026-08-01", "to": "2026-08-01"}), None
-    )
+    resp = events_admin.lambda_handler(_event({}, {"from": "2026-08-01", "to": "2026-08-01"}), None)
     assert resp["statusCode"] == 403
 
 
