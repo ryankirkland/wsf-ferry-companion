@@ -27,8 +27,10 @@ def _event(body, headers=None, source_ip="203.0.113.9"):
 
 
 def _written_doc(aws):
-    objs = aws["s3"].list_objects_v2(Bucket="wsf-test-raw", Prefix="raw/site_events/").get(
-        "Contents", []
+    objs = (
+        aws["s3"]
+        .list_objects_v2(Bucket="wsf-test-raw", Prefix="raw/site_events/")
+        .get("Contents", [])
     )
     assert len(objs) == 1
     body = aws["s3"].get_object(Bucket="wsf-test-raw", Key=objs[0]["Key"])["Body"].read()
@@ -127,9 +129,7 @@ def test_missing_referrer_is_direct(aws):
 
 
 def test_unparseable_referrer_is_direct(aws):
-    events.lambda_handler(
-        _event({"type": "pageview", "path": "/", "referrer": "not-a-url"}), Ctx()
-    )
+    events.lambda_handler(_event({"type": "pageview", "path": "/", "referrer": "not-a-url"}), Ctx())
     assert _written_doc(aws)["referrer_host"] == "direct"
 
 
@@ -166,9 +166,7 @@ def test_click_with_label_is_collected(aws):
 
 
 def test_label_over_max_length_is_rejected(aws):
-    resp = events.lambda_handler(
-        _event({"type": "click", "path": "/", "label": "x" * 61}), Ctx()
-    )
+    resp = events.lambda_handler(_event({"type": "click", "path": "/", "label": "x" * 61}), Ctx())
     assert resp["statusCode"] == 400
 
 
@@ -178,9 +176,7 @@ def test_ambient_defaults_false(aws):
 
 
 def test_ambient_true_is_preserved(aws):
-    events.lambda_handler(
-        _event({"type": "pageview", "path": "/ambient", "ambient": True}), Ctx()
-    )
+    events.lambda_handler(_event({"type": "pageview", "path": "/ambient", "ambient": True}), Ctx())
     assert _written_doc(aws)["ambient"] is True
 
 
@@ -196,9 +192,7 @@ def test_path_missing_leading_slash_is_rejected(aws):
 
 
 def test_path_over_max_length_is_rejected(aws):
-    resp = events.lambda_handler(
-        _event({"type": "pageview", "path": "/" + "a" * 200}), Ctx()
-    )
+    resp = events.lambda_handler(_event({"type": "pageview", "path": "/" + "a" * 200}), Ctx())
     assert resp["statusCode"] == 400
 
 

@@ -129,6 +129,17 @@ def test_second_run_with_same_tokens_noops(aws, monkeypatch, fake):
     assert fake.pair_calls == calls_after_first  # no upstream schedule refetch
 
 
+def test_decision_log_reflects_token_gating(aws, monkeypatch, fake, capsys):
+    _run(monkeypatch, fake)
+    first_decision = json.loads(capsys.readouterr().out.strip().splitlines()[0])
+    assert first_decision["ScheduleRefreshDecision"]["will_rebuild_horizon"] is True
+
+    _run(monkeypatch, fake)
+    second_decision = json.loads(capsys.readouterr().out.strip().splitlines()[0])
+    assert second_decision["ScheduleRefreshDecision"]["schedule_token_moved"] is False
+    assert second_decision["ScheduleRefreshDecision"]["will_rebuild_horizon"] is False
+
+
 def test_fares_publish_when_token_moves(aws, monkeypatch, fake):
     _run(monkeypatch, fake)
     assert fake.fares_calls == 1

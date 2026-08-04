@@ -198,9 +198,11 @@ class RangeAwareAthena:
         for (k, since, through), rows in self.rows_by_key.items():
             if k == kind and f"DATE '{since}'" in sql and f"DATE '{through}'" in sql:
                 return rows
-        return [{"unique_visitors": 0, "days_covered": 0}] if kind == "totals" else [
-            {"returning_visitors": 0}
-        ]
+        return (
+            [{"unique_visitors": 0, "days_covered": 0}]
+            if kind == "totals"
+            else [{"returning_visitors": 0}]
+        )
 
 
 def test_the_first_of_the_month_finalizes_the_month_that_just_closed(aws, monkeypatch):
@@ -227,9 +229,7 @@ def test_the_first_of_the_month_finalizes_the_month_that_just_closed(aws, monkey
                     {"unique_visitors": 77, "days_covered": 31}
                 ],
                 ("returning", "2026-08-01", "2026-08-31"): [{"returning_visitors": 12}],
-                ("totals", "2026-09-01", "2026-09-01"): [
-                    {"unique_visitors": 3, "days_covered": 1}
-                ],
+                ("totals", "2026-09-01", "2026-09-01"): [{"unique_visitors": 3, "days_covered": 1}],
                 ("returning", "2026-09-01", "2026-09-01"): [{"returning_visitors": 0}],
             },
             **kwargs,
@@ -266,8 +266,10 @@ def test_mid_month_runs_do_not_touch_the_prior_month(aws, monkeypatch):
 
     events_stats.lambda_handler({}, None)
 
-    objects = aws["s3"].list_objects_v2(
-        Bucket="wsf-test-raw", Prefix="analytics/site_events_monthly/"
-    ).get("Contents", [])
+    objects = (
+        aws["s3"]
+        .list_objects_v2(Bucket="wsf-test-raw", Prefix="analytics/site_events_monthly/")
+        .get("Contents", [])
+    )
     keys = {o["Key"] for o in objects}
     assert keys == {"analytics/site_events_monthly/month=2026-09.json"}
