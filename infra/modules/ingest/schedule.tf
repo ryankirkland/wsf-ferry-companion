@@ -1,6 +1,15 @@
-# M2: the schedule/fares refresher. rate(15 min) with a 600 s timeout -
-# overlap structurally impossible; most runs are ~1.5 s token checks, a
-# horizon rebuild is ~3-4 min of politely-spaced upstream calls.
+# M2: the schedule/fares refresher. rate(15 min) with an 840 s timeout -
+# still well inside the 900 s spacing, so overlap with the NEXT scheduled
+# run stays structurally impossible. Bumped from 600 s on 2026-08-04: the
+# token-gate that's meant to make most runs cheap token checks isn't
+# skipping rebuilds (see wsf-prod-schedule-refresh-errors postmortem, task
+# 40) - every run does a full 532-call horizon rebuild, which in practice
+# takes 470-520 s, leaving too little margin under 600 s. 840 s buys real
+# headroom while the token-gate bug itself is tracked separately. No async
+# retry (see event_invoke_config below): a timed-out run should surface as
+# ONE alarm-worthy error, not be silently re-run by Lambda's default retry
+# and double-count against the alarm (that doubling is what turned a
+# single slow run into the "1 error/hour" trip on 2026-08-03).
 
 data "aws_iam_policy_document" "schedule_refresh" {
   statement {
@@ -57,7 +66,7 @@ resource "aws_lambda_function" "schedule_refresh" {
   filename         = var.lambda_zip_path
   source_code_hash = filebase64sha256(var.lambda_zip_path)
   memory_size      = 256
-  timeout          = 600
+  timeout          = 840
 
   environment {
     variables = {
@@ -70,6 +79,20 @@ resource "aws_lambda_function" "schedule_refresh" {
   }
 
   depends_on = [aws_cloudwatch_log_group.schedule_refresh]
+}
+
+# EventBridge invokes Lambda targets asynchronously, and Lambda's own
+# async-invoke error handling (separate from the Scheduler retry_policy
+# below, which only covers the Invoke API call itself) defaults to 2
+# automatic retries on ANY function error, including a timeout. Without
+# this, a single slow horizon rebuild that times out gets silently re-run
+# up to twice more - tripling wasted compute against an upstream we're
+# supposed to be polite to, and recording multiple Lambda Errors
+# datapoints for what is one incident (confirmed 2026-08-03: the same
+# request ID timed out twice in a row before a third attempt succeeded).
+resource "aws_lambda_function_event_invoke_config" "schedule_refresh" {
+  function_name          = aws_lambda_function.schedule_refresh.function_name
+  maximum_retry_attempts = 0
 }
 
 resource "aws_scheduler_schedule" "schedule_refresh" {

@@ -1,7 +1,7 @@
 """Schedule/fares refresher Lambda: materializes the M2 trip contracts.
 
-rate(15 minutes), timeout 600 s < spacing -> overlap impossible. Each run
-is a cheap token check; rebuilds happen only when:
+rate(15 minutes), timeout 840 s < 900 s spacing -> overlap impossible. Each
+run is INTENDED to be a cheap token check, with a full rebuild only when:
 - the schedule cacheflushdate token moves        -> full horizon rebuild
 - the fares token moves                          -> fares files only
 - the horizon window rolls (new day at the edge) -> just the new date
@@ -12,6 +12,21 @@ is a cheap token check; rebuilds happen only when:
   ignoring tokens - the operational lever after builder-logic changes
   (e.g. a quirk fix) that must reach the published files before the next
   upstream token change.
+
+KNOWN ISSUE (task 40, 2026-08-04): production has been doing a full
+532-call horizon rebuild on EVERY 15-minute run since this shipped
+2026-07-29, not just on token moves - `cacheflushdate` looks like it
+echoes request time rather than a stable last-changed stamp (unverified
+live; the exploration samples for four sub-APIs each differ by roughly
+the gap between when each was probed). That's almost certainly why a
+routine run occasionally blows the timeout: a 532-call rebuild has been
+eating ~470-520 s out of the budget on every single run instead of just
+when the schedule actually changes. Tracked separately from the timeout
+fix (which bought headroom via a longer timeout + no async retry) because
+the right stable gating signal - ScheduleID/ScheduleName off the pair
+envelope is one candidate - needs a live probe to confirm before changing
+gating behavior. The decision log below (`ScheduleRefreshDecision`) is
+the diagnostic instrument for that investigation.
 
 Everything fetched is archived raw (fetch-time keys): upstream cannot serve
 past dates, so this archive is the only history - load-bearing for M4.
@@ -112,10 +127,26 @@ def lambda_handler(event, context):
     counts = {"PairDatesPublished": 0, "FaresPublished": 0}
 
     force = mode == "force-rebuild"
+    schedule_token_moved = schedule_token != stored_sched_token
+    print(
+        json.dumps(
+            {
+                "ScheduleRefreshDecision": {
+                    "mode": mode,
+                    "schedule_token_moved": schedule_token_moved,
+                    "fares_token_moved": fares_token != stored_fares_token,
+                    "stored_from": stored_from,
+                    "today": today.isoformat(),
+                    "will_rebuild_horizon": mode != "today-refresh"
+                    and (force or schedule_token_moved or stored_from is None),
+                }
+            }
+        )
+    )
     if mode == "today-refresh":
         counts["PairDatesPublished"] = _refresh_today(client, table, s3, today)
     else:
-        if force or schedule_token != stored_sched_token or stored_from is None:
+        if force or schedule_token_moved or stored_from is None:
             counts["PairDatesPublished"] = _rebuild_horizon(client, table, s3, today)
             _put_token(table, "schedule", schedule_token)
         elif stored_from != today.isoformat():
