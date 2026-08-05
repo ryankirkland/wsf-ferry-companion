@@ -805,7 +805,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "moto", extras = ["s3", "dynamodb", "ssm"], specifier = ">=5" },
+    { name = "moto", extras = ["s3", "dynamodb", "ssm"], specifier = ">=5.2.2" },
     { name = "pytest", specifier = ">=8" },
 ]
 
@@ -855,7 +855,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "moto", extras = ["s3", "dynamodb", "ssm"], specifier = ">=5" },
+    { name = "moto", extras = ["s3", "dynamodb", "ssm"], specifier = ">=5.2.2" },
     { name = "pytest", specifier = ">=8" },
 ]
 
