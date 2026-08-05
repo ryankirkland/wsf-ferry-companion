@@ -4,7 +4,7 @@ members = ["libs/*", "services/*"]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.12",
+    "ruff>=0.16.1",
 ]
 
 [tool.ruff]
