@@ -24,16 +24,28 @@ class FakeWsf:
         # a transient WsfApiError before returning real data - simulates the
         # isolated WSDOT 5xx / exhausted-transport-retry blips seen in prod.
         self.transient_failures = 0
+        # Same idea, but scoped to the token/date-range calls that run on
+        # every invocation ahead of any rebuild logic (cache_flush_date,
+        # valid_date_range) - kept separate from transient_failures so tests
+        # can target one call site without perturbing the other's call counts.
+        self.token_failures = 0
 
     def _maybe_fail(self):
         if self.transient_failures > 0:
             self.transient_failures -= 1
             raise WsfApiError("simulated transient upstream failure", status=500)
 
+    def _maybe_fail_token(self):
+        if self.token_failures > 0:
+            self.token_failures -= 1
+            raise WsfApiError("simulated transient upstream failure", status=500)
+
     def cache_flush_date(self, sub_api):
+        self._maybe_fail_token()
         return self.tokens[sub_api]
 
     def valid_date_range(self, sub_api):
+        self._maybe_fail_token()
         return {"DateFrom": SERVER_TODAY, "DateThru": "/Date(1798272000000-0800)/"}
 
     def terminals_and_mates_raw(self, d):
@@ -263,5 +275,27 @@ def test_retries_exhausted_still_raises(aws, monkeypatch, fake):
     monkeypatch.setattr(schedule_refresh.time, "sleep", lambda s: None)
     monkeypatch.setenv("UPSTREAM_FETCH_RETRIES", "2")
     fake.transient_failures = 3
+    with pytest.raises(WsfApiError):
+        _run(monkeypatch, fake)
+
+
+def test_isolated_token_blip_is_retried_not_fatal(aws, monkeypatch, fake, capsys):
+    # cache_flush_date and valid_date_range run on every invocation, ahead
+    # of any rebuild logic - the highest-frequency upstream calls the
+    # Lambda makes (every 15 min, rebuild or not). A blip here must be
+    # retried too, not just inside the horizon-rebuild loop.
+    monkeypatch.setattr(schedule_refresh.time, "sleep", lambda s: None)
+    fake.token_failures = 1
+    counts = _run(monkeypatch, fake)
+    assert counts["PairDatesPublished"] == 4  # full horizon still published
+    assert "ScheduleFetchRetry" in capsys.readouterr().out
+
+
+def test_token_retries_exhausted_still_raises(aws, monkeypatch, fake):
+    # A sustained outage on the token/date-range calls must still fail
+    # loudly, same as the pair-date fetch path.
+    monkeypatch.setattr(schedule_refresh.time, "sleep", lambda s: None)
+    monkeypatch.setenv("UPSTREAM_FETCH_RETRIES", "2")
+    fake.token_failures = 3
     with pytest.raises(WsfApiError):
         _run(monkeypatch, fake)

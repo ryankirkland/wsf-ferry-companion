@@ -81,11 +81,14 @@ pairs); at that volume an isolated WSDOT 5xx or a timeout past `WsfClient`'s
 own transport retry is a statistical certainty, not an edge case (it tripped
 `wsf-prod-schedule-refresh-errors` twice in one morning, 2026-08-08 - one
 HTTP 500, one exhausted read-timeout retry). `schedule_refresh._with_retries`
-wraps every upstream call in the refresher (`schedule_pair_raw`,
-`terminals_and_mates_raw`, `route_details_raw`, `timeadj_raw`,
-`fare_line_items_verbose_raw`) with its own retry-with-backoff (default 2
-retries, 1 s/2 s backoff, `UPSTREAM_FETCH_RETRIES` env override), logging a
-`ScheduleFetchRetry` line per retry. This lives at the call site rather than
+wraps every upstream call in the refresher - both the rebuild-loop calls
+(`schedule_pair_raw`, `terminals_and_mates_raw`, `route_details_raw`,
+`timeadj_raw`, `fare_line_items_verbose_raw`) and the two token/date-range
+calls (`cache_flush_date`, `valid_date_range`) that run unconditionally on
+*every* invocation, ahead of any rebuild logic - with its own
+retry-with-backoff (default 2 retries, 1 s/2 s backoff,
+`UPSTREAM_FETCH_RETRIES` env override), logging a `ScheduleFetchRetry` line
+per retry. This lives at the call site rather than
 in `WsfClient` because the client's transport-only, never-retry-HTTP-errors
 policy is deliberately caller-specific (the vessel poller wants zero
 retries and treats a failed poll as a data point) - the refresher is the one

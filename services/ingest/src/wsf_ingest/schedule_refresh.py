@@ -130,7 +130,7 @@ def _put_json(s3, key: str, payload: dict, max_age: int = 60) -> None:
 
 def _server_today(client: WsfClient) -> date:
     """validdaterange's floor IS server-today - sidesteps the midnight-lag quirk."""
-    rng = client.valid_date_range("schedule")
+    rng = _with_retries(client.valid_date_range, "schedule")
     dt = parse_dotnet_date(rng["DateFrom"])
     assert dt is not None
     # Midnight Pacific expressed in UTC shares the calendar date.
@@ -141,8 +141,11 @@ def lambda_handler(event, context):
     mode = (event or {}).get("mode", "scheduled")
     client, table, s3 = _wsf(), _table(), boto3.client("s3")
 
-    schedule_token = client.cache_flush_date("schedule")
-    fares_token = client.cache_flush_date("fares")
+    # These three run unconditionally on every invocation (every 15 min),
+    # before any rebuild logic - the highest-frequency upstream calls the
+    # Lambda makes, so they get the same retry treatment as the rest.
+    schedule_token = _with_retries(client.cache_flush_date, "schedule")
+    fares_token = _with_retries(client.cache_flush_date, "fares")
     today = _server_today(client)
 
     horizon_item = table.get_item(Key={"PK": META_PK, "SK": "HORIZON#pairs"}).get("Item", {})
