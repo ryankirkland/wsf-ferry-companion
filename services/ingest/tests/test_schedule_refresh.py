@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from wsf_core import WsfApiError
 from wsf_ingest import schedule_refresh
 
 DATA_BUCKET = "wsf-test-data"
@@ -19,6 +20,15 @@ class FakeWsf:
         self._fares = fares_payload
         self.pair_calls = 0
         self.fares_calls = 0
+        # Number of remaining calls (any upstream method) that should raise
+        # a transient WsfApiError before returning real data - simulates the
+        # isolated WSDOT 5xx / exhausted-transport-retry blips seen in prod.
+        self.transient_failures = 0
+
+    def _maybe_fail(self):
+        if self.transient_failures > 0:
+            self.transient_failures -= 1
+            raise WsfApiError("simulated transient upstream failure", status=500)
 
     def cache_flush_date(self, sub_api):
         return self.tokens[sub_api]
@@ -37,6 +47,7 @@ class FakeWsf:
 
     def schedule_pair_raw(self, d, dep, arr):
         self.pair_calls += 1
+        self._maybe_fail()
         return self._env
 
     def fare_line_items_verbose_raw(self, d):
@@ -231,3 +242,26 @@ def test_force_rebuild_ignores_unmoved_tokens(aws, monkeypatch, fake):
     assert counts["PairDatesPublished"] == 4  # full horizon again, tokens unchanged
     assert counts["FaresPublished"] == 38
     assert fake.pair_calls > calls_after_first
+
+
+def test_isolated_upstream_blip_is_retried_not_fatal(aws, monkeypatch, fake, capsys):
+    # 2026-08-08: a single HTTP 500 (and, separately, an exhausted transport
+    # retry) mid-rebuild aborted the whole 532-call horizon rebuild and
+    # tripped wsf-prod-schedule-refresh-errors. One blip among hundreds of
+    # calls must not fail the run.
+    monkeypatch.setattr(schedule_refresh.time, "sleep", lambda s: None)
+    fake.transient_failures = 1
+    counts = _run(monkeypatch, fake)
+    assert counts["PairDatesPublished"] == 4  # full horizon still published
+    assert fake.pair_calls == 5  # 4 real pair-dates + 1 retried-away failure
+    assert "ScheduleFetchRetry" in capsys.readouterr().out
+
+
+def test_retries_exhausted_still_raises(aws, monkeypatch, fake):
+    # A genuine, sustained upstream outage must still fail loudly - retries
+    # smooth over blips, they don't mask a real problem.
+    monkeypatch.setattr(schedule_refresh.time, "sleep", lambda s: None)
+    monkeypatch.setenv("UPSTREAM_FETCH_RETRIES", "2")
+    fake.transient_failures = 3
+    with pytest.raises(WsfApiError):
+        _run(monkeypatch, fake)

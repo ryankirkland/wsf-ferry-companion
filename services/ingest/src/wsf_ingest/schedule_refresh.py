@@ -23,7 +23,7 @@ import time
 from datetime import UTC, date, datetime, timedelta
 
 import boto3
-from wsf_core import WsfClient
+from wsf_core import WsfApiError, WsfClient
 from wsf_core.dotnet_dates import parse_dotnet_date
 from wsf_core.fares import resolve_fares_verbose
 from wsf_core.schedule import PairSchedule, TimeAdjustment
@@ -59,6 +59,47 @@ def _spacing() -> float:
 
 def _horizon_days() -> int:
     return int(os.environ.get("HORIZON_DAYS", "14"))
+
+
+def _fetch_retries() -> int:
+    return int(os.environ.get("UPSTREAM_FETCH_RETRIES", "2"))
+
+
+def _with_retries(fn, *args):
+    """A full horizon rebuild makes hundreds of sequential upstream calls
+    (532 for the current 14-day x 38-pair horizon); an isolated WSDOT 5xx or
+    an already-exhausted transport retry must not abort the whole run and
+    trip wsf-prod-schedule-refresh-errors over one blip (it did, 2026-08-08).
+
+    Retries live here, at the call site, rather than in WsfClient: the
+    client's own transport-only retry policy is deliberately caller-specific
+    (the vessel poller wants zero retries and treats a failed poll as a data
+    point; WsfClient never retries HTTP 4xx/5xx at all - see client.py). The
+    refresher is the one caller that can afford a few seconds of backoff on
+    any upstream error class, transport or HTTP, without missing its window.
+    """
+    retries = _fetch_retries()
+    last_exc: WsfApiError | None = None
+    for attempt in range(retries + 1):
+        try:
+            return fn(*args)
+        except WsfApiError as exc:
+            last_exc = exc
+            if attempt >= retries:
+                raise
+            print(
+                json.dumps(
+                    {
+                        "ScheduleFetchRetry": {
+                            "attempt": attempt + 1,
+                            "of": retries,
+                            "error": str(exc),
+                        }
+                    }
+                )
+            )
+            time.sleep(1.0 * (attempt + 1))
+    raise last_exc  # pragma: no cover - loop above always returns or raises
 
 
 def _get_token(table, name: str) -> str | None:
@@ -151,9 +192,9 @@ def _write_horizon(table, today: date) -> None:
 
 def _fetch_system(client: WsfClient, today: date):
     d0 = today.isoformat()
-    mates = client.terminals_and_mates_raw(d0)
-    route_details = client.route_details_raw(d0)
-    timeadj = [TimeAdjustment.model_validate(r) for r in client.timeadj_raw()]
+    mates = _with_retries(client.terminals_and_mates_raw, d0)
+    route_details = _with_retries(client.route_details_raw, d0)
+    timeadj = [TimeAdjustment.model_validate(r) for r in _with_retries(client.timeadj_raw)]
     return mates, route_details, timeadj
 
 
@@ -197,7 +238,7 @@ def _publish_dates(
     for service_date in dates:
         d = service_date.isoformat()
         for pair in pairs:
-            envelope = client.schedule_pair_raw(d, pair[0], pair[1])
+            envelope = _with_retries(client.schedule_pair_raw, d, pair[0], pair[1])
             time.sleep(_spacing())
             archive.add(
                 fetched_at=datetime.now(UTC),
@@ -340,7 +381,7 @@ def _refresh_today(client, table, s3, today: date) -> int:
 
 
 def _publish_fares(client, s3, today: date, token: str) -> int:
-    payload = client.fare_line_items_verbose_raw(today.isoformat())
+    payload = _with_retries(client.fare_line_items_verbose_raw, today.isoformat())
     archive = ArchiveBatch(s3, os.environ["RAW_BUCKET"])
     archive.add(fetched_at=datetime.now(UTC), status=200, body={"farelineitemsverbose": payload})
     archive.flush(dataset="fares")
