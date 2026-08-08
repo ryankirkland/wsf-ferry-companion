@@ -152,6 +152,25 @@ def test_never_writes_under_the_public_data_bucket(aws, monkeypatch):
     assert not any(o["Key"].startswith("analytics/") for o in objects)
 
 
+def test_dt_partition_column_is_compared_as_a_string_not_a_date():
+    # dt is a STRING partition key (infra/modules/analytics/glue.tf) even
+    # though partition projection formats it as yyyy-MM-dd - Athena exposes
+    # it to SQL as varchar. Comparing it against a DATE literal is a
+    # TYPE_MISMATCH in Athena/Presto (varchar = date) and fails every run;
+    # this regression-tests the 2026-08-08 production incident.
+    for sql in (
+        events_stats._totals("2026-08-01"),
+        events_stats._by_path("2026-08-01"),
+        events_stats._by_click_label("2026-08-01"),
+        events_stats._by_referrer("2026-08-01"),
+        events_stats._by_geo("2026-08-01"),
+        events_stats._monthly_totals("2026-08-01", "2026-08-31"),
+        events_stats._returning_visitors("2026-08-01", "2026-08-31"),
+    ):
+        assert "DATE '" not in sql, sql
+        assert "dt = '2026-08-01'" in sql or "dt BETWEEN '2026-08-01' AND '2026-08-31'" in sql
+
+
 def test_visitor_identity_queries_exclude_ambient_traffic():
     # A wall tablet left on for hours/days must not inflate unique/returning
     # visitor counts - see docs/features/site-analytics.md.
@@ -175,10 +194,10 @@ def test_monthly_days_covered_counts_every_day_not_just_non_ambient_days():
 
 class RangeAwareAthena:
     """Fake Athena that dispatches on query kind (totals/returning/other)
-    AND on the DATE bounds embedded in the SQL, so a test can tell apart
-    the current-month rolling query from the closed-month finalizing query
-    - both share the same query shape as FakeAthena's key, but must cover
-    different date ranges."""
+    AND on the string date bounds embedded in the SQL, so a test can tell
+    apart the current-month rolling query from the closed-month finalizing
+    query - both share the same query shape as FakeAthena's key, but must
+    cover different date ranges."""
 
     def __init__(self, rows_by_key, **_):
         self.rows_by_key = rows_by_key
@@ -196,7 +215,7 @@ class RangeAwareAthena:
         else:
             return []
         for (k, since, through), rows in self.rows_by_key.items():
-            if k == kind and f"DATE '{since}'" in sql and f"DATE '{through}'" in sql:
+            if k == kind and f"'{since}'" in sql and f"'{through}'" in sql:
                 return rows
         return [{"unique_visitors": 0, "days_covered": 0}] if kind == "totals" else [
             {"returning_visitors": 0}
