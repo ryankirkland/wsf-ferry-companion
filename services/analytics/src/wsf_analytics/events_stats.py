@@ -52,39 +52,43 @@ def _publish(s3, bucket: str, key: str, doc: dict) -> None:
 
 
 def _totals(day: str) -> str:
+    # dt is a STRING partition key (see infra/modules/analytics/glue.tf) even
+    # though partition projection formats it as yyyy-MM-dd - Athena exposes
+    # it to SQL as varchar, so it must be compared against a string literal,
+    # not a DATE literal (varchar = date is a TYPE_MISMATCH in Athena/Presto).
     return f"""
     SELECT
       count(*) FILTER (WHERE event_type = 'pageview') AS pageviews,
       count(*) FILTER (WHERE event_type = 'pageview' AND ambient) AS ambient_pageviews,
       count(*) FILTER (WHERE event_type = 'click') AS clicks
-    FROM site_events WHERE dt = DATE '{day}'"""
+    FROM site_events WHERE dt = '{day}'"""
 
 
 def _by_path(day: str) -> str:
     return f"""
     SELECT path, count(*) AS count FROM site_events
-    WHERE dt = DATE '{day}' AND event_type = 'pageview'
+    WHERE dt = '{day}' AND event_type = 'pageview'
     GROUP BY 1 ORDER BY count DESC LIMIT {BREAKDOWN_LIMIT}"""
 
 
 def _by_click_label(day: str) -> str:
     return f"""
     SELECT label, count(*) AS count FROM site_events
-    WHERE dt = DATE '{day}' AND event_type = 'click'
+    WHERE dt = '{day}' AND event_type = 'click'
     GROUP BY 1 ORDER BY count DESC LIMIT {BREAKDOWN_LIMIT}"""
 
 
 def _by_referrer(day: str) -> str:
     return f"""
     SELECT referrer_host AS source, count(*) AS count FROM site_events
-    WHERE dt = DATE '{day}'
+    WHERE dt = '{day}'
     GROUP BY 1 ORDER BY count DESC LIMIT {BREAKDOWN_LIMIT}"""
 
 
 def _by_geo(day: str) -> str:
     return f"""
     SELECT country, region, city, count(*) AS count FROM site_events
-    WHERE dt = DATE '{day}'
+    WHERE dt = '{day}'
     GROUP BY 1, 2, 3 ORDER BY count DESC LIMIT {BREAKDOWN_LIMIT}"""
 
 
@@ -94,18 +98,18 @@ def _monthly_totals(since: str, through: str) -> str:
     # as a unique or returning visitor, see docs/features/site-analytics.md
     # - and not to days_covered, which tracks how far the aggregation window
     # has progressed (any event, ambient included) rather than how many days
-    # had real human traffic.
+    # had real human traffic. dt is compared as a string, see _totals above.
     return f"""
     SELECT count(DISTINCT visitor_hash) FILTER (WHERE NOT ambient) AS unique_visitors,
            count(DISTINCT dt) AS days_covered
-    FROM site_events WHERE dt BETWEEN DATE '{since}' AND DATE '{through}'"""
+    FROM site_events WHERE dt BETWEEN '{since}' AND '{through}'"""
 
 
 def _returning_visitors(since: str, through: str) -> str:
     return f"""
     SELECT count(*) AS returning_visitors FROM (
       SELECT visitor_hash FROM site_events
-      WHERE dt BETWEEN DATE '{since}' AND DATE '{through}' AND NOT ambient
+      WHERE dt BETWEEN '{since}' AND '{through}' AND NOT ambient
       GROUP BY visitor_hash HAVING count(DISTINCT dt) >= 2
     )"""
 
