@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from wsf_core import WsfApiError
 from wsf_ingest import schedule_refresh
 
 DATA_BUCKET = "wsf-test-data"
@@ -19,6 +20,14 @@ class FakeWsf:
         self._fares = fares_payload
         self.pair_calls = 0
         self.fares_calls = 0
+        # (calls-to-fail, status) - each schedule_pair_raw call decrements
+        # and raises WsfApiError(status) until it hits zero.
+        self._pair_failures = 0
+        self._pair_failure_status = 500
+
+    def fail_next_pair_calls(self, n: int, status: int = 500) -> None:
+        self._pair_failures = n
+        self._pair_failure_status = status
 
     def cache_flush_date(self, sub_api):
         return self.tokens[sub_api]
@@ -37,6 +46,11 @@ class FakeWsf:
 
     def schedule_pair_raw(self, d, dep, arr):
         self.pair_calls += 1
+        if self._pair_failures > 0:
+            self._pair_failures -= 1
+            raise WsfApiError(
+                f"boom: HTTP {self._pair_failure_status}", status=self._pair_failure_status
+            )
         return self._env
 
     def fare_line_items_verbose_raw(self, d):
@@ -233,6 +247,31 @@ def test_full_rebuild_publishes_adjustments_calendar(aws, monkeypatch, fake):
     aug10 = [a for a in doc["adjustments"] if a["date"] == "2026-08-10"]
     assert aug10 and all(a["tidal"] and a["type"] == "cancel" for a in aug10)
     assert all(len(a["time_local"]) == 5 for a in doc["adjustments"])
+
+
+def test_transient_5xx_is_retried_and_rebuild_still_succeeds(aws, monkeypatch, fake):
+    # One flaky pair-date call (the 2026-08-10 prod incident: a single
+    # upstream 500 mid-rebuild) must not abort a 532-call horizon rebuild.
+    monkeypatch.setattr(schedule_refresh.time, "sleep", lambda *_: None)
+    fake.fail_next_pair_calls(1, status=500)
+    counts = _run(monkeypatch, fake)
+    assert counts["PairDatesPublished"] == 4  # 2 pairs x 2 dates, unaffected
+    assert fake.pair_calls == 5  # 4 calls + 1 retried failure
+
+
+def test_5xx_exhausting_retry_budget_still_raises(aws, monkeypatch, fake):
+    monkeypatch.setattr(schedule_refresh.time, "sleep", lambda *_: None)
+    fake.fail_next_pair_calls(99, status=503)  # every attempt fails
+    with pytest.raises(WsfApiError):
+        _run(monkeypatch, fake)
+
+
+def test_4xx_is_never_retried(aws, monkeypatch, fake):
+    monkeypatch.setattr(schedule_refresh.time, "sleep", lambda *_: None)
+    fake.fail_next_pair_calls(1, status=400)
+    with pytest.raises(WsfApiError):
+        _run(monkeypatch, fake)
+    assert fake.pair_calls == 1  # no retry burned on a business error
 
 
 def test_force_rebuild_ignores_unmoved_tokens(aws, monkeypatch, fake):

@@ -38,7 +38,7 @@ import time
 from datetime import UTC, date, datetime, timedelta
 
 import boto3
-from wsf_core import WsfClient
+from wsf_core import WsfApiError, WsfClient
 from wsf_core.dotnet_dates import parse_dotnet_date
 from wsf_core.fares import resolve_fares_verbose
 from wsf_core.schedule import PairSchedule, TimeAdjustment
@@ -76,6 +76,37 @@ def _horizon_days() -> int:
     return int(os.environ.get("HORIZON_DAYS", "14"))
 
 
+def _app_retries() -> int:
+    return int(os.environ.get("UPSTREAM_APP_RETRIES", "1"))
+
+
+def _retryable(client_call, *, backoff_s: float = 1.0):
+    """Runs one upstream WsfClient call, retrying on 5xx only.
+
+    wsf_core.client deliberately never retries HTTP errors itself - "retry
+    policy belongs to the caller's failure taxonomy" - so this is that
+    taxonomy: a WSDOT-side 500 (observed live 2026-08-10, one bad pair-date
+    mid-horizon-rebuild) is transient noise worth one backed-off retry; a
+    4xx is a real business error (bad pair, out-of-range date) that must
+    propagate immediately, same as before. Every upstream call in this
+    module goes through here - the fetch phase makes 500+ of them per full
+    rebuild, and a single unlucky one used to abort the whole run and trip
+    the prod error alarm. Default is a single retry, not several: a full
+    rebuild already runs within ~90 s of the 600 s Lambda timeout, so a
+    retry budget must stay small enough that a genuine upstream outage times
+    out rather than compounding 532 calls' worth of retries into it.
+    """
+    retries = _app_retries()
+    for attempt in range(retries + 1):
+        try:
+            return client_call()
+        except WsfApiError as exc:
+            if exc.status is None or exc.status < 500 or attempt >= retries:
+                raise
+            time.sleep(backoff_s * (attempt + 1))
+    raise AssertionError("unreachable")  # pragma: no cover
+
+
 def _get_token(table, name: str) -> str | None:
     resp = table.get_item(Key={"PK": META_PK, "SK": f"CACHEFLUSH#{name}"})
     return resp.get("Item", {}).get("token")
@@ -104,7 +135,7 @@ def _put_json(s3, key: str, payload: dict, max_age: int = 60) -> None:
 
 def _server_today(client: WsfClient) -> date:
     """validdaterange's floor IS server-today - sidesteps the midnight-lag quirk."""
-    rng = client.valid_date_range("schedule")
+    rng = _retryable(lambda: client.valid_date_range("schedule"))
     dt = parse_dotnet_date(rng["DateFrom"])
     assert dt is not None
     # Midnight Pacific expressed in UTC shares the calendar date.
@@ -115,8 +146,8 @@ def lambda_handler(event, context):
     mode = (event or {}).get("mode", "scheduled")
     client, table, s3 = _wsf(), _table(), boto3.client("s3")
 
-    schedule_token = client.cache_flush_date("schedule")
-    fares_token = client.cache_flush_date("fares")
+    schedule_token = _retryable(lambda: client.cache_flush_date("schedule"))
+    fares_token = _retryable(lambda: client.cache_flush_date("fares"))
     today = _server_today(client)
 
     horizon_item = table.get_item(Key={"PK": META_PK, "SK": "HORIZON#pairs"}).get("Item", {})
@@ -182,9 +213,9 @@ def _write_horizon(table, today: date) -> None:
 
 def _fetch_system(client: WsfClient, today: date):
     d0 = today.isoformat()
-    mates = client.terminals_and_mates_raw(d0)
-    route_details = client.route_details_raw(d0)
-    timeadj = [TimeAdjustment.model_validate(r) for r in client.timeadj_raw()]
+    mates = _retryable(lambda: client.terminals_and_mates_raw(d0))
+    route_details = _retryable(lambda: client.route_details_raw(d0))
+    timeadj = [TimeAdjustment.model_validate(r) for r in _retryable(lambda: client.timeadj_raw())]
     return mates, route_details, timeadj
 
 
@@ -228,7 +259,7 @@ def _publish_dates(
     for service_date in dates:
         d = service_date.isoformat()
         for pair in pairs:
-            envelope = client.schedule_pair_raw(d, pair[0], pair[1])
+            envelope = _retryable(lambda p=pair, dd=d: client.schedule_pair_raw(dd, p[0], p[1]))
             time.sleep(_spacing())
             archive.add(
                 fetched_at=datetime.now(UTC),
@@ -371,7 +402,7 @@ def _refresh_today(client, table, s3, today: date) -> int:
 
 
 def _publish_fares(client, s3, today: date, token: str) -> int:
-    payload = client.fare_line_items_verbose_raw(today.isoformat())
+    payload = _retryable(lambda: client.fare_line_items_verbose_raw(today.isoformat()))
     archive = ArchiveBatch(s3, os.environ["RAW_BUCKET"])
     archive.add(fetched_at=datetime.now(UTC), status=200, body={"farelineitemsverbose": payload})
     archive.flush(dataset="fares")
