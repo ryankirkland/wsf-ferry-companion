@@ -76,6 +76,19 @@ drops same-day-cancelled sailings). `wsf-prod-ingest-alerts` (1 min,
 watermark-gated, triggers today-refresh). PAIR# DynamoDB items for
 today+tomorrow (M3's evaluator substrate; expires_at = depart+6h).
 
+**Upstream 5xx resilience** (added 2026-08-11, incident: a single WSDOT 500
+mid-fetch on `/schedule/{date}/{dep}/{arr}` aborted an entire 532-call
+horizon rebuild and tripped the prod error alarm). `wsf_core.client`
+deliberately never retries HTTP errors itself - only transport failures,
+per its own documented taxonomy - so `schedule_refresh._retryable` is the
+caller-side policy: every upstream call the refresher makes (tokens, mates,
+route details, timeadj, each pair-date, fares) gets one backed-off retry on
+a 5xx response; a 4xx (bad pair, out-of-range date) still propagates
+immediately, unchanged. Retry count defaults to 1 (`UPSTREAM_APP_RETRIES`)
+deliberately small: a full rebuild already runs within ~90 s of the 600 s
+Lambda timeout, so a genuine upstream outage should still time out rather
+than have 532 calls' worth of retries compound into it.
+
 ## Frontend (M2)
 
 38 pre-rendered pages `/trip/{dep-slug}-{arr-slug}` (generateStaticParams +
