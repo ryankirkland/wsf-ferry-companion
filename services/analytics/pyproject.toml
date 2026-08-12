@@ -5,7 +5,7 @@ description = "M4 analytics: vesselhistory sync/backfill, capacity poller, trans
 requires-python = ">=3.12"
 dependencies = [
     "wsf-core",
-    "boto3>=1.34",
+    "boto3>=1.43.67",
     "pyarrow>=17",
 ]
 
