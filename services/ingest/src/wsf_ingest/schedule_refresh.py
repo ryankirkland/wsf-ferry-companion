@@ -59,7 +59,10 @@ _client: WsfClient | None = None
 def _wsf() -> WsfClient:
     global _client
     if _client is None:
-        _client = WsfClient(get_access_code(), transport_retries=1)
+        # 3 transport retries: a 532-call rebuild gives WSDOT's occasional
+        # ~10 s read timeout 532 chances per run to kill the whole invocation
+        # (three schedule-refresh-errors alarms in the five days to 08-15).
+        _client = WsfClient(get_access_code(), transport_retries=3)
     return _client
 
 

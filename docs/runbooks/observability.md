@@ -84,6 +84,7 @@ format), so a metric costs no extra API call. Three namespaces:
 | `StatsPublished` / `StatsDataLagDays` | WSF/Analytics | the F4 freshness SLO |
 | `UnmappedSlip` | WSF/Analytics | vocabulary drift, sailings in quarantine |
 | `CapacityTerminalsReporting` | WSF/Analytics | how many terminals report space |
+| `EventsCollected` | WSF/Analytics | beacon events accepted by the collector. Watched by `wsf-prod-analytics-events-collection-silent` (all 24 hourly buckets empty -> alarm): the beacon path is fire-and-forget end to end, so a broken CloudFront hop collects zero events and nothing else says so - which is exactly what happened 2026-08-03 to 2026-08-15 |
 
 ```bash
 aws cloudwatch get-metric-statistics --namespace WSF/Ingest --metric-name PollSuccess \
@@ -91,7 +92,7 @@ aws cloudwatch get-metric-statistics --namespace WSF/Ingest --metric-name PollSu
   --period 86400 --statistics Sum --query 'Datapoints[0].Sum' --output text
 ```
 
-**You should not need to watch any of this.** 16 alarms cover the failure
+**You should not need to watch any of this.** 17 alarms cover the failure
 modes and email the `wsf-prod-alarms` SNS topic; the logs are for
 answering *why* after an alarm says *that*. Current state:
 
