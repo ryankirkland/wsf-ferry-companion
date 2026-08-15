@@ -216,6 +216,32 @@ resource "aws_cloudwatch_metric_alarm" "events_stats_errors" {
   alarm_actions       = [var.alarms_topic_arn]
 }
 
+# The beacon path is fire-and-forget end to end: the browser swallows
+# failed sends by design, and a broken CloudFront->API Gateway hop 502s
+# without ever invoking the collector - which is exactly how zero events
+# were collected from launch (2026-08-03) until 2026-08-15 with no alarm
+# saying so. This alarm is the missing detector: EventsCollected absent
+# or zero across all 24 hourly buckets of a day. Same shape as
+# wsf-prod-pairs-stale (hourly buckets, datapoints_to_alarm = 24) so one
+# quiet hour - or alarm creation itself - cannot fire it spuriously. A
+# genuinely zero-visitor day can fire it; on this site's traffic that is
+# itself worth a look, and the ambient wall display makes it unlikely.
+resource "aws_cloudwatch_metric_alarm" "events_collection_silent" {
+  alarm_name          = "wsf-prod-analytics-events-collection-silent"
+  alarm_description   = "No analytics events collected in 24 h - beacon, CloudFront /v1/events hop, or collector is broken."
+  namespace           = "WSF/Analytics"
+  metric_name         = "EventsCollected"
+  statistic           = "Sum"
+  period              = 3600
+  evaluation_periods  = 24
+  datapoints_to_alarm = 24
+  threshold           = 1
+  comparison_operator = "LessThanThreshold"
+  treat_missing_data  = "breaching"
+  alarm_actions       = [var.alarms_topic_arn]
+  ok_actions          = [var.alarms_topic_arn]
+}
+
 # --- admin read API: serves the private summaries to /admin/analytics ---
 
 data "aws_iam_policy_document" "events_admin" {

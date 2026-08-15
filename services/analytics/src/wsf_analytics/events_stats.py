@@ -57,34 +57,34 @@ def _totals(day: str) -> str:
       count(*) FILTER (WHERE event_type = 'pageview') AS pageviews,
       count(*) FILTER (WHERE event_type = 'pageview' AND ambient) AS ambient_pageviews,
       count(*) FILTER (WHERE event_type = 'click') AS clicks
-    FROM site_events WHERE dt = DATE '{day}'"""
+    FROM site_events WHERE dt = '{day}'"""
 
 
 def _by_path(day: str) -> str:
     return f"""
     SELECT path, count(*) AS count FROM site_events
-    WHERE dt = DATE '{day}' AND event_type = 'pageview'
+    WHERE dt = '{day}' AND event_type = 'pageview'
     GROUP BY 1 ORDER BY count DESC LIMIT {BREAKDOWN_LIMIT}"""
 
 
 def _by_click_label(day: str) -> str:
     return f"""
     SELECT label, count(*) AS count FROM site_events
-    WHERE dt = DATE '{day}' AND event_type = 'click'
+    WHERE dt = '{day}' AND event_type = 'click'
     GROUP BY 1 ORDER BY count DESC LIMIT {BREAKDOWN_LIMIT}"""
 
 
 def _by_referrer(day: str) -> str:
     return f"""
     SELECT referrer_host AS source, count(*) AS count FROM site_events
-    WHERE dt = DATE '{day}'
+    WHERE dt = '{day}'
     GROUP BY 1 ORDER BY count DESC LIMIT {BREAKDOWN_LIMIT}"""
 
 
 def _by_geo(day: str) -> str:
     return f"""
     SELECT country, region, city, count(*) AS count FROM site_events
-    WHERE dt = DATE '{day}'
+    WHERE dt = '{day}'
     GROUP BY 1, 2, 3 ORDER BY count DESC LIMIT {BREAKDOWN_LIMIT}"""
 
 
@@ -98,14 +98,14 @@ def _monthly_totals(since: str, through: str) -> str:
     return f"""
     SELECT count(DISTINCT visitor_hash) FILTER (WHERE NOT ambient) AS unique_visitors,
            count(DISTINCT dt) AS days_covered
-    FROM site_events WHERE dt BETWEEN DATE '{since}' AND DATE '{through}'"""
+    FROM site_events WHERE dt BETWEEN '{since}' AND '{through}'"""
 
 
 def _returning_visitors(since: str, through: str) -> str:
     return f"""
     SELECT count(*) AS returning_visitors FROM (
       SELECT visitor_hash FROM site_events
-      WHERE dt BETWEEN DATE '{since}' AND DATE '{through}' AND NOT ambient
+      WHERE dt BETWEEN '{since}' AND '{through}' AND NOT ambient
       GROUP BY visitor_hash HAVING count(DISTINCT dt) >= 2
     )"""
 

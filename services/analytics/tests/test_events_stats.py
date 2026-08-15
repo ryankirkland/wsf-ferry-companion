@@ -159,6 +159,25 @@ def test_visitor_identity_queries_exclude_ambient_traffic():
     assert "NOT ambient" in events_stats._returning_visitors("2026-08-01", "2026-08-31")
 
 
+def test_queries_compare_dt_as_a_string_never_a_date_literal():
+    # The Glue partition column dt is a STRING; Athena statically rejects
+    # varchar = date with TYPE_MISMATCH, which killed every nightly run from
+    # 2026-08-04 to 2026-08-14 (the tests mock Athena, so only prod ran the
+    # SQL). ISO date strings compare correctly lexicographically, including
+    # in BETWEEN. Guard every query builder against the literal coming back.
+    queries = [
+        events_stats._totals("2026-08-14"),
+        events_stats._by_path("2026-08-14"),
+        events_stats._by_click_label("2026-08-14"),
+        events_stats._by_referrer("2026-08-14"),
+        events_stats._by_geo("2026-08-14"),
+        events_stats._monthly_totals("2026-08-01", "2026-08-31"),
+        events_stats._returning_visitors("2026-08-01", "2026-08-31"),
+    ]
+    for q in queries:
+        assert "DATE '" not in q, q
+
+
 def test_monthly_days_covered_counts_every_day_not_just_non_ambient_days():
     # days_covered answers "how far has this aggregation window progressed,"
     # not "how many days had non-ambient traffic" - the ambient exclusion
@@ -196,7 +215,7 @@ class RangeAwareAthena:
         else:
             return []
         for (k, since, through), rows in self.rows_by_key.items():
-            if k == kind and f"DATE '{since}'" in sql and f"DATE '{through}'" in sql:
+            if k == kind and f"'{since}'" in sql and f"'{through}'" in sql:
                 return rows
         return (
             [{"unique_visitors": 0, "days_covered": 0}]

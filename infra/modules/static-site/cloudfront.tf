@@ -84,8 +84,13 @@ data "aws_cloudfront_cache_policy" "caching_disabled" {
   name = "Managed-CachingDisabled"
 }
 
-data "aws_cloudfront_origin_request_policy" "all_viewer_and_cf_headers" {
-  name = "Managed-AllViewerAndCloudFrontHeaders-2022-06"
+# API Gateway custom-domain origins route by Host header. Forwarding the
+# viewer's Host (ferrysound.com) makes API Gateway unable to resolve the
+# domain and every request 502s at the origin - which silently killed the
+# /v1/events beacon from launch until 2026-08-15 (the beacon is
+# fire-and-forget by design, so nothing surfaced it).
+data "aws_cloudfront_origin_request_policy" "all_viewer_except_host_header" {
+  name = "Managed-AllViewerExceptHostHeader"
 }
 
 # Maps clean URLs onto the static export's file layout (trailingSlash:
@@ -232,7 +237,7 @@ resource "aws_cloudfront_distribution" "site" {
     cached_methods             = ["GET", "HEAD"]
     compress                   = true
     cache_policy_id            = data.aws_cloudfront_cache_policy.caching_disabled.id
-    origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer_and_cf_headers.id
+    origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer_except_host_header.id
     response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
   }
 
