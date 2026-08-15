@@ -13,25 +13,24 @@ run is INTENDED to be a cheap token check, with a full rebuild only when:
   (e.g. a quirk fix) that must reach the published files before the next
   upstream token change.
 
-KNOWN ISSUE (task 40, 2026-08-04): production has been doing a full
-532-call horizon rebuild on EVERY 15-minute run since this shipped
-2026-07-29, not just on token moves - `cacheflushdate` looks like it
-echoes request time rather than a stable last-changed stamp (unverified
-live; the exploration samples for four sub-APIs each differ by roughly
-the gap between when each was probed). That's almost certainly why a
-routine run occasionally blows the timeout: a 532-call rebuild has been
-eating ~470-520 s out of the budget on every single run instead of just
-when the schedule actually changes. Tracked separately from the timeout
-fix (which bought headroom via a longer timeout + no async retry) because
-the right stable gating signal - ScheduleID/ScheduleName off the pair
-envelope is one candidate - needs a live probe to confirm before changing
-gating behavior. The decision log below (`ScheduleRefreshDecision`) is
-the diagnostic instrument for that investigation.
+Task 40's suspicion is now confirmed from billing + CloudTrail (2026-08-15):
+`cacheflushdate` churns on essentially every poll while the timetable stays
+identical, so production ran a full 532-call horizon rebuild every 15
+minutes since 2026-07-29 (~51k identical S3 PUTs/day, the bulk of the
+account's S3 bill). A rebuild is therefore no longer a republish: every S3
+publish passes a content gate - the payload is hashed minus its volatile
+fields (generated_at/retrieved_at/source_token) and skipped when identical
+to what is already served. DynamoDB pair items are NOT gated: the alert
+citation join reads them, and their freshness must not depend on file
+churn. force-rebuild bypasses the gate. The 532-call fetch itself still
+runs on every token move (the `ScheduleRefreshDecision` log remains the
+instrument for that); gating the fetch phase is the follow-up, task 44.
 
 Everything fetched is archived raw (fetch-time keys): upstream cannot serve
 past dates, so this archive is the only history - load-bearing for M4.
 """
 
+import hashlib
 import json
 import os
 import time
@@ -102,6 +101,51 @@ def _put_json(s3, key: str, payload: dict, max_age: int = 60) -> None:
     )
 
 
+# Excluded from content hashing: these change on every build even when the
+# data is identical, and none of them is load-bearing for consumers (the
+# trip planner reads sailings, not timestamps; source_token is provenance).
+_VOLATILE_KEYS = ("generated_at", "retrieved_at", "source_token")
+_HASHES_SK = "PUBLISHHASH#v1"
+
+
+def _content_hash(payload: dict) -> str:
+    stable = {k: v for k, v in payload.items() if k not in _VOLATILE_KEYS}
+    return hashlib.sha256(
+        json.dumps(stable, separators=(",", ":"), sort_keys=True).encode()
+    ).hexdigest()[:16]
+
+
+def _load_hashes(table) -> dict[str, str]:
+    item = table.get_item(Key={"PK": META_PK, "SK": _HASHES_SK}).get("Item", {})
+    return dict(item.get("hashes", {}))
+
+
+def _save_hashes(table, hashes: dict[str, str]) -> None:
+    table.put_item(
+        Item={
+            "PK": META_PK,
+            "SK": _HASHES_SK,
+            "hashes": hashes,
+            "updated_at_utc": datetime.now(UTC).isoformat(),
+        }
+    )
+
+
+def _put_json_gated(
+    s3, hashes: dict[str, str], key: str, payload: dict, max_age: int = 60, force: bool = False
+) -> bool:
+    """Publish only when the non-volatile content differs from what is
+    already served; returns whether a PUT happened. A skipped publish keeps
+    the served file's original generated_at, which is truthful - the content
+    genuinely has not changed since then."""
+    digest = _content_hash(payload)
+    if not force and hashes.get(key) == digest:
+        return False
+    _put_json(s3, key, payload, max_age)
+    hashes[key] = digest
+    return True
+
+
 def _server_today(client: WsfClient) -> date:
     """validdaterange's floor IS server-today - sidesteps the midnight-lag quirk."""
     rng = client.valid_date_range("schedule")
@@ -124,7 +168,14 @@ def lambda_handler(event, context):
     stored_sched_token = _get_token(table, "schedule")
     stored_fares_token = _get_token(table, "fares")
 
-    counts = {"PairDatesPublished": 0, "FaresPublished": 0}
+    counts = {
+        "PairDatesPublished": 0,
+        "PairDatesUnchanged": 0,
+        "FaresPublished": 0,
+        "FaresUnchanged": 0,
+    }
+    hashes = _load_hashes(table)
+    hashes_before = dict(hashes)
 
     force = mode == "force-rebuild"
     schedule_token_moved = schedule_token != stored_sched_token
@@ -144,22 +195,31 @@ def lambda_handler(event, context):
         )
     )
     if mode == "today-refresh":
-        counts["PairDatesPublished"] = _refresh_today(client, table, s3, today)
+        counts["PairDatesPublished"], counts["PairDatesUnchanged"] = _refresh_today(
+            client, table, s3, today, hashes
+        )
     else:
         if force or schedule_token_moved or stored_from is None:
-            counts["PairDatesPublished"] = _rebuild_horizon(client, table, s3, today)
+            counts["PairDatesPublished"], counts["PairDatesUnchanged"] = _rebuild_horizon(
+                client, table, s3, today, hashes, force=force
+            )
             _put_token(table, "schedule", schedule_token)
         elif stored_from != today.isoformat():
             # Window rolled: publish just the newest date at the edge.
             new_date = today + timedelta(days=_horizon_days() - 1)
-            counts["PairDatesPublished"] = _publish_dates(
-                client, table, s3, today, [new_date], write_pair_items=False
+            counts["PairDatesPublished"], counts["PairDatesUnchanged"] = _publish_dates(
+                client, table, s3, today, [new_date], hashes, write_pair_items=False
             )
             _write_horizon(table, today)
 
         if force or fares_token != stored_fares_token:
-            counts["FaresPublished"] = _publish_fares(client, s3, today, fares_token)
+            counts["FaresPublished"], counts["FaresUnchanged"] = _publish_fares(
+                client, s3, today, fares_token, hashes, force=force
+            )
             _put_token(table, "fares", fares_token)
+
+    if hashes != hashes_before:
+        _save_hashes(table, hashes)
 
     # No-op runs emit nothing: the pairs-stale alarm treats missing data as
     # breaching over 24 h, and a constant no-op metric would burn a free slot.
@@ -202,14 +262,25 @@ def _derive_routes(envelopes: dict[tuple[int, int], dict]) -> dict[tuple[int, in
     return routes
 
 
-def _rebuild_horizon(client, table, s3, today: date) -> int:
+def _rebuild_horizon(client, table, s3, today: date, hashes: dict, *, force: bool = False):
     dates = [today + timedelta(days=i) for i in range(_horizon_days())]
-    return _publish_dates(client, table, s3, today, dates, write_pair_items=True, full=True)
+    return _publish_dates(
+        client, table, s3, today, dates, hashes, write_pair_items=True, full=True, force=force
+    )
 
 
 def _publish_dates(
-    client, table, s3, today, dates, *, write_pair_items: bool, full: bool = False
-) -> int:
+    client,
+    table,
+    s3,
+    today,
+    dates,
+    hashes: dict,
+    *,
+    write_pair_items: bool,
+    full: bool = False,
+    force: bool = False,
+) -> tuple[int, int]:
     mates, route_details, timeadj = _fetch_system(client, today)
     archive = ArchiveBatch(s3, os.environ["RAW_BUCKET"])
     archive.add(fetched_at=datetime.now(UTC), status=200, body={"terminalsandmates": mates})
@@ -250,6 +321,7 @@ def _publish_dates(
     # Build phase, in date order for the post-midnight tail dedup.
     now = datetime.now(UTC)
     published = 0
+    skipped = 0
     prev_keys: dict[tuple[int, int], set] = {p: set() for p in pairs}
     for date_i, service_date in enumerate(dates):
         for pair in pairs:
@@ -268,8 +340,18 @@ def _publish_dates(
                 now=now,
             )
             prev_keys[pair] = keys
-            _put_json(s3, f"data/pairs/{dep}-{arr}/{service_date.isoformat()}.json", day)
-            published += 1
+            if _put_json_gated(
+                s3,
+                hashes,
+                f"data/pairs/{dep}-{arr}/{service_date.isoformat()}.json",
+                day,
+                force=force,
+            ):
+                published += 1
+            else:
+                skipped += 1
+            # Not gated: the alert-citation join reads these items, and their
+            # freshness must not depend on whether the S3 file changed.
             if write_pair_items and date_i <= 1:
                 _write_pair_items(day)
 
@@ -285,7 +367,7 @@ def _publish_dates(
             horizon_days=_horizon_days(),
             now=now,
         )
-        _put_json(s3, "data/pairs/index.json", index)
+        _put_json_gated(s3, hashes, "data/pairs/index.json", index, force=force)
         # The season-wide service calendar rides the same full-rebuild
         # trigger: timeadj rows only move when the schedule token does.
         adjustments_doc = build_adjustments_doc(
@@ -294,11 +376,13 @@ def _publish_dates(
             from_date=today,
             now=now,
         )
-        _put_json(s3, "data/adjustments.json", adjustments_doc, max_age=300)
+        _put_json_gated(
+            s3, hashes, "data/adjustments.json", adjustments_doc, max_age=300, force=force
+        )
         _write_horizon(table, today)
 
     archive.flush(dataset="schedule_refresh")
-    return published
+    return published, skipped
 
 
 def _terminals_from_mates(mates: list[dict]) -> list[dict]:
@@ -329,7 +413,7 @@ def _write_pair_items(day: dict) -> None:
             )
 
 
-def _refresh_today(client, table, s3, today: date) -> int:
+def _refresh_today(client, table, s3, today: date, hashes: dict) -> tuple[int, int]:
     """Re-pull today's pairs, diff against what's being served, log divergence."""
     bucket = os.environ["DATA_BUCKET"]
     d = today.isoformat()
@@ -343,10 +427,18 @@ def _refresh_today(client, table, s3, today: date) -> int:
         try:
             body = json.loads(s3.get_object(Bucket=bucket, Key=key)["Body"].read())
             served[key] = {(x["vessel_id"], x["depart_ms"]) for x in body["sailings"]}
+            # Reconcile the gate with reality: today-refresh gates against the
+            # bytes actually served, not the hash of what was last written - a
+            # tampered or corrupted file must be repaired, not protected by
+            # its own stale hash.
+            hashes[key] = _content_hash(body)
         except Exception:
             served[key] = set()
+            hashes.pop(key, None)
 
-    published = _publish_dates(client, table, s3, today, [today], write_pair_items=True)
+    published, skipped = _publish_dates(
+        client, table, s3, today, [today], hashes, write_pair_items=True
+    )
 
     for m in mates:
         dep, arr = m["DepartingTerminalID"], m["ArrivingTerminalID"]
@@ -367,10 +459,12 @@ def _refresh_today(client, table, s3, today: date) -> int:
                     }
                 )
             )
-    return published
+    return published, skipped
 
 
-def _publish_fares(client, s3, today: date, token: str) -> int:
+def _publish_fares(
+    client, s3, today: date, token: str, hashes: dict, *, force: bool = False
+) -> tuple[int, int]:
     payload = client.fare_line_items_verbose_raw(today.isoformat())
     archive = ArchiveBatch(s3, os.environ["RAW_BUCKET"])
     archive.add(fetched_at=datetime.now(UTC), status=200, body={"farelineitemsverbose": payload})
@@ -378,13 +472,18 @@ def _publish_fares(client, s3, today: date, token: str) -> int:
 
     now = datetime.now(UTC)
     published = 0
+    skipped = 0
     for fares in resolve_fares_verbose(payload):
         doc = build_pair_fares(fares=fares, trip_date=today, retrieved_at=now, source_token=token)
-        _put_json(
+        if _put_json_gated(
             s3,
+            hashes,
             f"data/fares/{fares.dep_terminal_id}-{fares.arr_terminal_id}.json",
             doc,
             max_age=300,
-        )
-        published += 1
-    return published
+            force=force,
+        ):
+            published += 1
+        else:
+            skipped += 1
+    return published, skipped

@@ -76,6 +76,7 @@ format), so a metric costs no extra API call. Three namespaces:
 |---|---|---|
 | `PollSuccess` | WSF/Ingest | fleet polls that worked (~5,760/day at 15 s) |
 | `DimsTokenChurn` | WSF/Ingest | upstream flushed its cacheflushdate but the served dim content was identical - absorbed, nothing published or invalidated. Expect ~96/day (terminals churns constantly); a sustained 0 with DimsRefreshed also 0 means the token gate stopped seeing changes at all |
+| `PairDatesUnchanged` / `FaresUnchanged` | WSF/Ingest | schedule/fares token moved but the rebuilt files were byte-identical (minus volatile fields) - absorbed by the content gate, no S3 PUTs. Expect ~530/run of PairDatesUnchanged on churn runs. `PairDatesPublished` still fires at least daily via the horizon roll, which is what keeps the pairs-stale alarm fed |
 | `AuthFailure` | WSF/Ingest | the 400+Message signature - the API-key canary |
 | `EmptyFleet` | WSF/Ingest | upstream returned `[]` |
 | `AlertEmailLatency` | WSF/Notify | bulletin first-seen -> inbox |

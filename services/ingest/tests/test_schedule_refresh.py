@@ -140,18 +140,82 @@ def test_decision_log_reflects_token_gating(aws, monkeypatch, fake, capsys):
     assert second_decision["ScheduleRefreshDecision"]["will_rebuild_horizon"] is False
 
 
-def test_fares_publish_when_token_moves(aws, monkeypatch, fake):
+def test_schedule_token_churn_with_identical_content_publishes_nothing(aws, monkeypatch, fake):
+    """WSDOT flips the schedule token on essentially every run; the content
+    gate must absorb the churn instead of re-PUTting 532 identical files."""
+    _run(monkeypatch, fake)
+    calls_after_first = fake.pair_calls
+
+    fake.tokens["schedule"] = "S2"
+    counts = _run(monkeypatch, fake)
+    assert counts["PairDatesPublished"] == 0
+    assert counts["PairDatesUnchanged"] == 4
+    assert fake.pair_calls == 2 * calls_after_first  # refetched (fetch gate is separate)
+
+    # The churned token was stored: the same token now takes the cheap gate.
+    counts = _run(monkeypatch, fake)
+    assert counts["PairDatesPublished"] == 0
+    assert counts["PairDatesUnchanged"] == 0
+    assert fake.pair_calls == 2 * calls_after_first
+
+
+def test_schedule_token_change_with_content_change_republishes(aws, monkeypatch, fake):
+    import copy
+
+    _run(monkeypatch, fake)
+
+    env = copy.deepcopy(fake._env)
+    env["TerminalCombos"][0]["Times"][0]["VesselName"] = "Renamed Vessel"
+    fake._env = env
+    fake.tokens["schedule"] = "S2"
+    counts = _run(monkeypatch, fake)
+    # One pair's day-0 file changes; its day-1 file dedupes to empty either
+    # way, and the other pair is untouched.
+    assert counts["PairDatesPublished"] == 1
+    assert counts["PairDatesUnchanged"] == 3
+
+    docs = [_get_json(aws, f"data/pairs/{d}-{a}/2026-07-24.json") for d, a in [(7, 3), (3, 7)]]
+    assert any(any(s["vessel"] == "Renamed Vessel" for s in doc["sailings"]) for doc in docs)
+
+
+def test_fares_token_churn_absorbed_and_real_change_published(
+    aws, monkeypatch, fake, fares_verbose_ingest
+):
     _run(monkeypatch, fake)
     assert fake.fares_calls == 1
-    counts = _run(monkeypatch, fake)
-    assert counts["FaresPublished"] == 0 and fake.fares_calls == 1  # token unchanged
-    fake.tokens["fares"] = "F2"
-    counts = _run(monkeypatch, fake)
-    assert counts["FaresPublished"] == 38 and fake.fares_calls == 2
     muk_cl = _get_json(aws, "data/fares/14-5.json")
     adult = next(i for i in muk_cl["one_way"] if i["id"] == 1)
     assert adult["amount"] == "7.10"  # the LineItemLookup regression, end to end
-    assert "retrieved_at" in muk_cl and muk_cl["source_token"] == "F2"
+    assert "retrieved_at" in muk_cl and muk_cl["source_token"] == "F1"
+
+    counts = _run(monkeypatch, fake)
+    assert counts["FaresPublished"] == 0 and fake.fares_calls == 1  # token unchanged
+
+    # Token churn with identical fares: fetched for comparison, nothing
+    # republished, and the served file keeps its original provenance.
+    fake.tokens["fares"] = "F2"
+    counts = _run(monkeypatch, fake)
+    assert counts["FaresPublished"] == 0
+    assert counts["FaresUnchanged"] == 38
+    assert fake.fares_calls == 2
+    assert _get_json(aws, "data/fares/14-5.json")["source_token"] == "F1"
+
+    # A real fare change republishes exactly the affected pair.
+    import copy
+
+    changed = copy.deepcopy(fares_verbose_ingest)
+    combo0 = changed["TerminalComboVerbose"][0]
+    changed["LineItems"][0][0]["Amount"] = 99.75
+    fake._fares = changed
+    fake.tokens["fares"] = "F3"
+    counts = _run(monkeypatch, fake)
+    assert counts["FaresPublished"] == 1
+    assert counts["FaresUnchanged"] == 37
+    target = _get_json(
+        aws,
+        f"data/fares/{combo0['DepartingTerminalID']}-{combo0['ArrivingTerminalID']}.json",
+    )
+    assert target["source_token"] == "F3"
 
 
 def test_today_refresh_logs_divergence(aws, monkeypatch, fake, capsys):
@@ -163,10 +227,15 @@ def test_today_refresh_logs_divergence(aws, monkeypatch, fake, capsys):
     aws["s3"].put_object(Bucket=DATA_BUCKET, Key=key, Body=json.dumps(doc).encode())
 
     counts = _run(monkeypatch, fake, {"mode": "today-refresh"})
-    assert counts["PairDatesPublished"] == 2  # today only, both pairs
+    # Only the tampered pair gets repaired; the untouched pair's served bytes
+    # already match the fresh build and are skipped.
+    assert counts["PairDatesPublished"] == 1
+    assert counts["PairDatesUnchanged"] == 1
     out = capsys.readouterr().out
     assert "ScheduleDivergence" in out
     assert "[999, 1]" in out  # the phantom shows up as removed
+    fresh = _get_json(aws, key)
+    assert all(s["vessel_id"] != 999 for s in fresh["sailings"])  # repaired
 
 
 def test_upstream_false_passenger_only_flag_is_suppressed():
