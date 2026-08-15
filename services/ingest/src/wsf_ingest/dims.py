@@ -87,46 +87,46 @@ def _build_vessels(client: WsfClient) -> dict:
     # sorted for a deterministic hash - upstream ordering is not contractual
     dims = sorted(client.vessel_dims(), key=lambda d: d.vessel_id)
     return {
-            "v": 1,
-            "vessels": [
-                {
-                    "id": d.vessel_id,
-                    "name": d.vessel_name,
-                    "abbrev": d.vessel_abbrev,
-                    "class": d.class_name,
-                    # WSDOT's official class drawing, mirrored into the
-                    # assets bucket by tools/vessel-drawings. Published
-                    # even if a new class has not been mirrored yet - the
-                    # card hides a drawing that fails to load.
-                    "drawing": f"/assets/vessels/{d.class_slug}.png" if d.class_slug else None,
-                    "silhouette": d.silhouette_url,
-                    "max_passengers": d.max_passengers,
-                    "reg_deck_space": d.reg_deck_space,
-                    "tall_deck_space": d.tall_deck_space,
-                    "year_built": d.year_built,
-                    "year_rebuilt": d.year_rebuilt,
-                    "length": d.length_text,
-                }
-                for d in dims
-            ],
+        "v": 1,
+        "vessels": [
+            {
+                "id": d.vessel_id,
+                "name": d.vessel_name,
+                "abbrev": d.vessel_abbrev,
+                "class": d.class_name,
+                # WSDOT's official class drawing, mirrored into the
+                # assets bucket by tools/vessel-drawings. Published
+                # even if a new class has not been mirrored yet - the
+                # card hides a drawing that fails to load.
+                "drawing": f"/assets/vessels/{d.class_slug}.png" if d.class_slug else None,
+                "silhouette": d.silhouette_url,
+                "max_passengers": d.max_passengers,
+                "reg_deck_space": d.reg_deck_space,
+                "tall_deck_space": d.tall_deck_space,
+                "year_built": d.year_built,
+                "year_rebuilt": d.year_rebuilt,
+                "length": d.length_text,
+            }
+            for d in dims
+        ],
     }
 
 
 def _build_terminals(client: WsfClient) -> dict:
     terms = [*client.terminal_locations(), EAGLE_HARBOR_TERMINAL]
     return {
-            "v": 1,
-            "terminals": [
-                {
-                    "id": t.terminal_id,
-                    "name": t.terminal_name,
-                    "abbrev": t.terminal_abbrev,
-                    "lat": t.lat,
-                    "lon": t.lon,
-                    "synthetic": t.synthetic,
-                }
-                for t in sorted(terms, key=lambda t: t.terminal_id)
-            ],
+        "v": 1,
+        "terminals": [
+            {
+                "id": t.terminal_id,
+                "name": t.terminal_name,
+                "abbrev": t.terminal_abbrev,
+                "lat": t.lat,
+                "lon": t.lon,
+                "synthetic": t.synthetic,
+            }
+            for t in sorted(terms, key=lambda t: t.terminal_id)
+        ],
     }
 
 
