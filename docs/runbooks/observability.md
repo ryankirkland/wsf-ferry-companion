@@ -75,6 +75,7 @@ format), so a metric costs no extra API call. Three namespaces:
 | Metric | Namespace | Means |
 |---|---|---|
 | `PollSuccess` | WSF/Ingest | fleet polls that worked (~5,760/day at 15 s) |
+| `DimsTokenChurn` | WSF/Ingest | upstream flushed its cacheflushdate but the served dim content was identical - absorbed, nothing published or invalidated. Expect ~96/day (terminals churns constantly); a sustained 0 with DimsRefreshed also 0 means the token gate stopped seeing changes at all |
 | `AuthFailure` | WSF/Ingest | the 400+Message signature - the API-key canary |
 | `EmptyFleet` | WSF/Ingest | upstream returned `[]` |
 | `AlertEmailLatency` | WSF/Notify | bulletin first-seen -> inbox |
@@ -155,13 +156,29 @@ Baseline before M4 was **$0.04/day**. The 07-30 and 07-31 spikes ($1.03,
 $0.53) were the 24-year backfill, ten full transform runs and repeated
 Athena suites - one-time build cost, not run-rate.
 
-**Expect August around $2.50-3.00**, made of the $0.50 hosted zone, the
-~$1.20 baseline, and M4's additions: ~$0.43 S3 PUTs from the 1-minute
-capacity poller, ~$0.04 Athena, and **~$0.60 of CloudWatch alarms** -
-six past the 10-alarm free tier. Alarms were created 2026-07-31, so
-August is the first month that bills them; if that $0.60 annoys you, the
+**Expect August around $2.50-3.00** was this section's original estimate,
+and August proved it wrong - actuals through Aug 14 ran ~$0.47/day, then
+~$0.90/day, forecasting ~$21 for the month. Three findings (2026-08-15):
+
+1. **CloudFront invalidations, ~$0.50/day from Aug 11.** The dims
+   refresher trusted the terminals cacheflushdate token, which WSDOT
+   flips on essentially every poll, so it republished and invalidated
+   `/data/terminals.json` 96x/day since launch (~Jul 28). July hid it
+   inside the 1,000 free invalidation paths; August burned through them
+   on the 10th. Fixed by the content-hash gate in `dims.py` (see
+   `DimsTokenChurn` above): invalidations now happen only on real
+   content changes. Expected steady state: ~0.
+2. **S3 Tier-1 requests, ~$0.33/day** (~66k PUT-class requests/day from
+   the pollers) - roughly 23x this section's "$0.43/mo" estimate.
+   Structural; candidate fix is batching raw archive writes.
+3. **DynamoDB writes, ~$0.145/day** (~21 vessels x 5,760 polls) - the
+   realtime map's design cost, not a defect.
+
+The original line items stand: $0.50 hosted zone, ~$0.04 Athena, and
+**~$0.60 of CloudWatch alarms** - six past the 10-alarm free tier
+(created 2026-07-31; August is the first month that bills them; the
 trimmable ones are `stats-data-lag` and `analytics-empty-night`, both
-partly covered by `stats-not-fresh`.
+partly covered by `stats-not-fresh`).
 
 **By service, this month:**
 

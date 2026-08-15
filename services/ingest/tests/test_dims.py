@@ -60,13 +60,44 @@ def test_unchanged_tokens_publish_nothing(
     assert _run(monkeypatch, fake)["refreshed"] == []
 
 
-def test_single_token_change_refreshes_one(
+def test_token_churn_with_identical_content_publishes_nothing(
+    aws, monkeypatch, vesselverbose_rows, terminallocations_rows
+):
+    """WSDOT flips the terminals cacheflushdate on essentially every poll
+    while the content stays identical; the content gate must absorb that
+    instead of republishing and invalidating 96 times a day."""
+    fake = FakeWsf(vesselverbose_rows, terminallocations_rows, {"vessels": "A", "terminals": "B"})
+    _run(monkeypatch, fake)
+
+    fake._tokens["terminals"] = "B2"
+    result = _run(monkeypatch, fake)
+    assert result["refreshed"] == []
+    assert result["token_churn"] == 1
+
+    # the churned token was stored: the same token now takes the cheap gate
+    result = _run(monkeypatch, fake)
+    assert result["refreshed"] == []
+    assert result["token_churn"] == 0
+
+
+def test_token_change_with_content_change_refreshes_one(
     aws, monkeypatch, vesselverbose_rows, terminallocations_rows
 ):
     fake = FakeWsf(vesselverbose_rows, terminallocations_rows, {"vessels": "A", "terminals": "B"})
     _run(monkeypatch, fake)
+
+    renamed = [dict(r) for r in terminallocations_rows]
+    renamed[0] = {**renamed[0], "TerminalName": "Renamed Terminal"}
+    fake._terminals = renamed
     fake._tokens["terminals"] = "B2"
-    assert _run(monkeypatch, fake)["refreshed"] == ["/data/terminals.json"]
+    result = _run(monkeypatch, fake)
+    assert result["refreshed"] == ["/data/terminals.json"]
+    assert result["token_churn"] == 0
+
+    doc = json.loads(
+        aws["s3"].get_object(Bucket=DATA_BUCKET, Key="data/terminals.json")["Body"].read()
+    )
+    assert any(t["name"] == "Renamed Terminal" for t in doc["terminals"])
 
 
 def test_force_rebuild_republishes_without_a_token_change(

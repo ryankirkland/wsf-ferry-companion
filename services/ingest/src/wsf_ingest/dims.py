@@ -1,15 +1,27 @@
-"""Dims refresher Lambda: republish dimension JSON only when upstream flushes.
+"""Dims refresher Lambda: republish dimension JSON only when content changes.
 
-Runs every 15 minutes. Each run compares the vessels/terminals cacheflushdate
-tokens (bare .NET date strings, treated as opaque) against META items; on
-change it re-fetches the dimension, publishes /data/{vessels,terminals}.json,
-archives the raw payload, and invalidates the two CloudFront paths.
+Runs every 15 minutes. Two gates, cheapest first:
+
+1. Token gate: compare the vessels/terminals cacheflushdate tokens (bare
+   .NET date strings, treated as opaque) against META items. Unchanged
+   token -> skip without fetching the dimension at all.
+2. Content gate: on a token change, rebuild the served payload and compare
+   its sha256 against the last published one. WSDOT flips the terminals
+   token on essentially every poll while the content stays identical
+   (observed ~96 flips/day through Aug 2026, which burned the CloudFront
+   invalidation free tier and then ~$0.50/day); an identical hash absorbs
+   the churn - store the new token, publish nothing, invalidate nothing.
+
+Only a genuine content change (or {"mode": "force-rebuild"}) publishes
+/data/{vessels,terminals}.json, archives the raw payload, and invalidates
+the CloudFront path.
 
 Also carries the one-off Gate-2 benchmark (event {"mode": "gate2-bench"}):
 the in-region confirmation of ADR-0001's serving-read gate, run from the
 same runtime class that will serve M2 reads.
 """
 
+import hashlib
 import json
 import os
 import time
@@ -38,38 +50,43 @@ def _table():
     return boto3.resource("dynamodb").Table(os.environ["TABLE_NAME"])
 
 
-def _stored_token(table, sub_api: str) -> str | None:
-    resp = table.get_item(Key={"PK": META_PK, "SK": f"CACHEFLUSH#{sub_api}"})
-    return resp.get("Item", {}).get("token")
+def _stored_meta(table, sub_api: str) -> tuple[str | None, str | None]:
+    item = table.get_item(Key={"PK": META_PK, "SK": f"CACHEFLUSH#{sub_api}"}).get("Item", {})
+    return item.get("token"), item.get("content_sha256")
 
 
-def _store_token(table, sub_api: str, token: str) -> None:
+def _store_meta(table, sub_api: str, token: str, content_sha256: str) -> None:
     table.put_item(
         Item={
             "PK": META_PK,
             "SK": f"CACHEFLUSH#{sub_api}",
             "token": token,
+            "content_sha256": content_sha256,
             "updated_at_utc": datetime.now(UTC).isoformat(),
         }
     )
 
 
-def _put_data(s3, key: str, payload: object) -> None:
+def _canonical(payload: object) -> bytes:
+    """The exact bytes we publish - hashed so the content gate and the
+    published object can never disagree."""
+    return json.dumps(payload, separators=(",", ":")).encode()
+
+
+def _put_data(s3, key: str, body: bytes) -> None:
     s3.put_object(
         Bucket=os.environ["DATA_BUCKET"],
         Key=key,
-        Body=json.dumps(payload, separators=(",", ":")).encode(),
+        Body=body,
         ContentType="application/json",
         CacheControl="public, max-age=300",
     )
 
 
-def _publish_vessels(s3, client: WsfClient) -> None:
-    dims = client.vessel_dims()
-    _put_data(
-        s3,
-        "data/vessels.json",
-        {
+def _build_vessels(client: WsfClient) -> dict:
+    # sorted for a deterministic hash - upstream ordering is not contractual
+    dims = sorted(client.vessel_dims(), key=lambda d: d.vessel_id)
+    return {
             "v": 1,
             "vessels": [
                 {
@@ -92,16 +109,12 @@ def _publish_vessels(s3, client: WsfClient) -> None:
                 }
                 for d in dims
             ],
-        },
-    )
+    }
 
 
-def _publish_terminals(s3, client: WsfClient) -> None:
+def _build_terminals(client: WsfClient) -> dict:
     terms = [*client.terminal_locations(), EAGLE_HARBOR_TERMINAL]
-    _put_data(
-        s3,
-        "data/terminals.json",
-        {
+    return {
             "v": 1,
             "terminals": [
                 {
@@ -114,16 +127,15 @@ def _publish_terminals(s3, client: WsfClient) -> None:
                 }
                 for t in sorted(terms, key=lambda t: t.terminal_id)
             ],
-        },
-    )
+    }
 
 
 # Which cacheflushdate token governs which publications:
-# sub_api -> (publish fn, raw fetcher name, raw dataset name, served path)
+# sub_api -> (build fn, raw fetcher name, raw dataset name, served path)
 _DATASETS = {
-    "vessels": (_publish_vessels, "vessel_dims_raw", "vesselverbose", "/data/vessels.json"),
+    "vessels": (_build_vessels, "vessel_dims_raw", "vesselverbose", "/data/vessels.json"),
     "terminals": (
-        _publish_terminals,
+        _build_terminals,
         "terminal_locations_raw",
         "terminallocations",
         "/data/terminals.json",
@@ -143,13 +155,26 @@ def lambda_handler(event, context):
 
     client, table, s3 = _wsf(), _table(), boto3.client("s3")
     refreshed: list[str] = []
-    for sub_api, (publish, raw_fetcher, raw_name, path) in _DATASETS.items():
+    token_churn = 0
+    for sub_api, (build, raw_fetcher, raw_name, path) in _DATASETS.items():
         token = client.cache_flush_date(sub_api)
-        if token == _stored_token(table, sub_api) and not force:
+        stored_token, stored_sha = _stored_meta(table, sub_api)
+        if token == stored_token and not force:
             continue
-        publish(s3, client)
+
+        body = _canonical(build(client))
+        sha = hashlib.sha256(body).hexdigest()
+        if sha == stored_sha and not force:
+            # Upstream flushed its cache but the served content is identical.
+            # Store the new token so the next run takes the cheap gate, and
+            # publish/invalidate nothing.
+            _store_meta(table, sub_api, token, sha)
+            token_churn += 1
+            continue
+
+        _put_data(s3, path.lstrip("/"), body)
         archive_dim(s3, os.environ["RAW_BUCKET"], raw_name, getattr(client, raw_fetcher)(), token)
-        _store_token(table, sub_api, token)
+        _store_meta(table, sub_api, token, sha)
         refreshed.append(path)
 
     if refreshed and (dist := os.environ.get("DISTRIBUTION_ID")):
@@ -161,8 +186,8 @@ def lambda_handler(event, context):
             },
         )
 
-    emit(DimsRefreshed=len(refreshed))
-    return {"refreshed": refreshed}
+    emit(DimsRefreshed=len(refreshed), DimsTokenChurn=token_churn)
+    return {"refreshed": refreshed, "token_churn": token_churn}
 
 
 def gate2_bench() -> dict:
