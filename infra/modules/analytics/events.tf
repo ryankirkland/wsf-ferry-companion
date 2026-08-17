@@ -253,6 +253,26 @@ data "aws_iam_policy_document" "events_admin" {
       "${var.raw_bucket_arn}/analytics/site_events_monthly/*",
     ]
   }
+
+  # Without ListBucket, S3 masks a MISSING key as AccessDenied instead of
+  # NoSuchKey (so callers cannot probe key existence) - which turned every
+  # date before the feature existed into a 500. The handler's
+  # missing-summary path expects NoSuchKey; this makes that error
+  # reachable. Scoped by prefix so this read-only role still cannot
+  # enumerate the raw archive.
+  statement {
+    sid       = "ListSummaryPrefixes"
+    actions   = ["s3:ListBucket"]
+    resources = [var.raw_bucket_arn]
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values = [
+        "analytics/site_events_daily/*",
+        "analytics/site_events_monthly/*",
+      ]
+    }
+  }
 }
 
 resource "aws_iam_role" "events_admin" {
