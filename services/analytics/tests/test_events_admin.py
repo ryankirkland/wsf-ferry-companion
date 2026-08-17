@@ -223,3 +223,36 @@ def test_response_carries_the_normalized_range(aws):
     body = json.loads(resp["body"])
     assert body["range"] == {"from": "2026-08-01", "to": "2026-08-01"}
     assert body["v"] == 1
+
+
+def _event_with_groups(groups):
+    return {"requestContext": {"authorizer": {"jwt": {"claims": {"cognito:groups": groups}}}}}
+
+
+def test_every_claim_shape_the_authorizer_actually_emits():
+    """HTTP API JWT authorizers stringify the array WITHOUT quotes:
+    '[Admins]'. The first parser json.loads'd (fails on that), then split
+    on comma/space with the brackets still attached - so a genuine admin
+    with a fresh token got 403. Every shape observed or documented:"""
+    from wsf_analytics.events_admin import _is_admin
+
+    for groups in (
+        "[Admins]",  # the shape that locked Ryan out
+        "[Admins Editors]",  # multiple groups, space separated, bracketed
+        '["Admins","Editors"]',  # real JSON, some runtimes
+        ["Admins", "Editors"],  # a genuine list
+        "Admins",  # bare string
+        "Editors,Admins",  # comma separated
+    ):
+        assert _is_admin(_event_with_groups(groups)), repr(groups)
+
+    for groups in ("[Editors]", "", None, "NotAdmins"):
+        assert not _is_admin(_event_with_groups(groups)), repr(groups)
+
+
+def test_admins_substring_of_another_group_does_not_qualify():
+    # 'SuperAdmins' contains 'Admins' as a substring; membership is by
+    # element, never by substring.
+    from wsf_analytics.events_admin import _is_admin
+
+    assert not _is_admin(_event_with_groups("[SuperAdmins]"))

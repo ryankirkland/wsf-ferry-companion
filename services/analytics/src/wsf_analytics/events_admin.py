@@ -46,16 +46,29 @@ def _is_admin(event: dict) -> bool:
         return "Admins" in groups
     if not isinstance(groups, str) or not groups:
         return False
-    # HTTP API JWT authorizers hand this claim back as either a
-    # JSON-array-shaped string ('["Admins","X"]') or a space/comma
-    # separated string, depending on the token - be tolerant of both.
+    # HTTP API JWT authorizers hand this claim back as a STRINGIFIED
+    # array WITHOUT quotes - '[Admins]', '[Admins Editors]' - which is
+    # not valid JSON. The first version json.loads'd (fails), then split
+    # on comma/space, which kept the brackets attached to the first and
+    # last elements: 'Admins' not in ['[Admins]'], so a genuine admin
+    # with a perfectly good token got 403. Strip the brackets FIRST,
+    # then handle real JSON ('["Admins"]') and plain separated strings
+    # the same way.
     try:
         parsed = json.loads(groups)
         if isinstance(parsed, list):
             return "Admins" in parsed
     except ValueError:
         pass
-    return "Admins" in _GROUP_SPLIT_RE.split(groups)
+    stripped = groups.strip()
+    if stripped.startswith("[") and stripped.endswith("]"):
+        stripped = stripped[1:-1]
+    if "Admins" in _GROUP_SPLIT_RE.split(stripped):
+        return True
+    # A rejected shape must never again be invisible: this 403'd a real
+    # admin for days of wall-clock and the logs said nothing.
+    print(json.dumps({"AdminGroupRejected": {"claim_shape": groups[:120]}}))
+    return False
 
 
 def _days_in_range(start: date, end: date) -> list[date]:
