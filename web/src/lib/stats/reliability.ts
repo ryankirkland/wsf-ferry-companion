@@ -135,3 +135,18 @@ export function formatDriveUp(spaces: number | null): { text: string; full: bool
   if (spaces <= 0) return { text: "Full", full: true };
   return { text: `${spaces} ${spaces === 1 ? "space" : "spaces"}`, full: false };
 }
+
+/** Order slots for display, starting at the rider's own and wrapping.
+ *
+ * The contract sorts slots from 00:00, so the collapsed six-row table
+ * showed an evening rider nothing but after-midnight sailings - the six
+ * LEAST relevant ones - while "Your 7:30 PM sailing" sat highlighted
+ * directly above. Starting at the rider's slot makes the visible rows the
+ * ones around their decision; with no focus slot the clock order stands.
+ */
+export function rotateToSlot(slots: SlotStat[], hhmm: string | null): SlotStat[] {
+  if (!hhmm) return slots;
+  const index = slots.findIndex((s) => s.hhmm >= hhmm);
+  if (index <= 0) return slots;
+  return [...slots.slice(index), ...slots.slice(0, index)];
+}
