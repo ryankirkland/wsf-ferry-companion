@@ -9,6 +9,7 @@ import {
   formatSlotTime,
   hasAnyStats,
   onTimeBand,
+  rotateToSlot,
   slotCaveat,
   slotKeyFor,
 } from "@/lib/stats/reliability";
@@ -187,5 +188,28 @@ describe("drive-up space wording", () => {
 
   it("distinguishes an unpublished count from a full boat", () => {
     expect(formatDriveUp(null)).toEqual({ text: "not published", full: false });
+  });
+});
+
+describe("slot display order", () => {
+  const mk = (hhmm: string) => ({ hhmm, basis: "slot", primary: block(50, 90), slot_window: block(50, 90), all_time: block(500, 90) }) as SlotStat;
+  const slots = ["00:15", "05:30", "12:00", "19:30", "22:45"].map(mk);
+
+  it("starts the table at the rider's slot and wraps", () => {
+    // An evening rider's collapsed table previously showed only the
+    // after-midnight sailings - the least relevant six on the schedule.
+    expect(rotateToSlot(slots, "19:30").map((s) => s.hhmm)).toEqual([
+      "19:30", "22:45", "00:15", "05:30", "12:00",
+    ]);
+  });
+
+  it("keeps clock order when there is no focus slot", () => {
+    expect(rotateToSlot(slots, null).map((s) => s.hhmm)).toEqual([
+      "00:15", "05:30", "12:00", "19:30", "22:45",
+    ]);
+  });
+
+  it("wraps to the start after the last sailing of the day", () => {
+    expect(rotateToSlot(slots, "23:50")[0]?.hhmm).toBe("00:15");
   });
 });

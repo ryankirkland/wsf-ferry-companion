@@ -18,6 +18,7 @@ import {
   formatSlotTime,
   hasAnyStats,
   onTimeBand,
+  rotateToSlot,
   slotCaveat,
 } from "@/lib/stats/reliability";
 import styles from "./stats.module.css";
@@ -56,7 +57,7 @@ export function Reliability({
   const band = onTimeBand(block.ontime_pct);
   const slot = findSlot(doc, yourSlot);
 
-  const ranked = doc.slots;
+  const ranked = rotateToSlot(doc.slots, yourSlot);
   const shown = expanded ? ranked : ranked.slice(0, COLLAPSED_SLOTS);
   const seasons = [...doc.seasons].sort(
     (a, b) => SEASON_ORDER.indexOf(a.season) - SEASON_ORDER.indexOf(b.season),

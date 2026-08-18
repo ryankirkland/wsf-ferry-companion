@@ -39,6 +39,15 @@ export function AccountView() {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // User-initiated flow changes drop the previous flow's messages: a
+  // "User already exists" from signup was riding into the reset-password
+  // screen, where it read as a statement about the reset.
+  const switchMode = (m: Mode) => {
+    setError(null);
+    setNotice(null);
+    setMode(m);
+  };
+
   const submit = async () => {
     setBusy(true);
     setError(null);
@@ -48,7 +57,9 @@ export function AccountView() {
         router.push(next);
       } else if (mode === "signup") {
         await signUp(email, password);
-        setNotice(`We emailed a confirmation code to ${email.trim().toLowerCase()}.`);
+        setNotice(
+          `We emailed a confirmation code to ${email.trim().toLowerCase()} - it often lands in spam, so check there too.`,
+        );
         setMode("confirm");
       } else if (mode === "confirm") {
         await confirmSignUp(email, code);
@@ -65,7 +76,9 @@ export function AccountView() {
       }
     } catch (e) {
       const err = e as Error & { code?: string };
-      if (err.code === "UserNotConfirmedException") {
+      if (err.code === "UsernameExistsException") {
+        setError("That address already has an account - sign in instead, or reset the password if it slipped away.");
+      } else if (err.code === "UserNotConfirmedException") {
         setNotice("This account still needs its email confirmed - code re-sent.");
         void resendCode(email).catch(() => undefined);
         setMode("confirm");
@@ -153,16 +166,16 @@ export function AccountView() {
           <div className={styles.links}>
             {mode === "signin" && (
               <>
-                <button type="button" onClick={() => setMode("signup")}>
+                <button type="button" onClick={() => switchMode("signup")}>
                   New here? Create an account
                 </button>
-                <button type="button" onClick={() => setMode("forgot")}>
+                <button type="button" onClick={() => switchMode("forgot")}>
                   Forgot password
                 </button>
               </>
             )}
             {mode !== "signin" && (
-              <button type="button" onClick={() => setMode("signin")}>
+              <button type="button" onClick={() => switchMode("signin")}>
                 Back to sign in
               </button>
             )}
