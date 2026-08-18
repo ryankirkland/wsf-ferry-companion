@@ -1,25 +1,15 @@
-"use client";
+import type { Metadata } from "next";
+import { AmbientStage } from "@/components/ambient/AmbientStage";
 
-import { MapView } from "@/components/MapView";
-import { Clock } from "@/components/chrome/Clock";
-import { useAmbientGuard } from "@/hooks/use-ambient-guard";
-import { useFleet } from "@/hooks/use-fleet";
-import { useMode } from "@/hooks/use-mode";
-import styles from "./ambient.module.css";
+// Server page so the route carries its own metadata (a "use client" page
+// cannot): a wall display is not a search result, and it should not
+// inherit the homepage's marketing description.
+export const metadata: Metadata = {
+  title: "Ambient · Ferry Sound",
+  description: "The Sound on a wall: the live ferry map, framed, all day.",
+  robots: { index: false },
+};
 
-// Ambient mode ("frame on a wall"): the inert map, a clock, and the 24 h
-// guarantees (wake lock, daily reload, outage-recovery reload).
-export default function Ambient() {
-  const { mode } = useMode(); // auto only; no switcher in ambient
-  const fleet = useFleet();
-  useAmbientGuard(fleet.feedState);
-
-  return (
-    <main className={styles.stage}>
-      <MapView mode={mode} fleet={fleet} ambient />
-      <div className={styles.clockCorner}>
-        <Clock />
-      </div>
-    </main>
-  );
+export default function AmbientPage() {
+  return <AmbientStage />;
 }

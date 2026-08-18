@@ -6,10 +6,13 @@
 // tracking - it was already running - it just stops the banner reappearing.
 
 import { useEffect, useState } from "react";
+import {
+  ANALYTICS_OPTOUT_KEY,
+  CONSENT_SEEN_KEY,
+  readStorage,
+  writeStorage,
+} from "@/lib/storage";
 import styles from "./consent-banner.module.css";
-
-const SEEN_KEY = "wsf_analytics_consent_seen";
-const OPTOUT_KEY = "wsf_analytics_optout";
 
 export function ConsentBanner() {
   const [visible, setVisible] = useState(false);
@@ -17,12 +20,9 @@ export function ConsentBanner() {
   useEffect(() => {
     // Async resolution (same pattern as useAuth.refresh) keeps this out of
     // the render/effect-sync path the set-state-in-effect lint rule guards.
+    // Private mode reads null -> banner shows, which is the honest default.
     const t = window.setTimeout(() => {
-      try {
-        setVisible(window.localStorage.getItem(SEEN_KEY) !== "1");
-      } catch {
-        // Private mode / storage disabled: say nothing rather than error.
-      }
+      setVisible(readStorage(CONSENT_SEEN_KEY) !== "1");
     }, 0);
     return () => window.clearTimeout(t);
   }, []);
@@ -30,12 +30,8 @@ export function ConsentBanner() {
   if (!visible) return null;
 
   const dismiss = (optOut: boolean) => {
-    try {
-      if (optOut) window.localStorage.setItem(OPTOUT_KEY, "1");
-      window.localStorage.setItem(SEEN_KEY, "1");
-    } catch {
-      // Nothing to persist - hide anyway rather than nag every load.
-    }
+    if (optOut) writeStorage(ANALYTICS_OPTOUT_KEY, "1");
+    writeStorage(CONSENT_SEEN_KEY, "1");
     setVisible(false);
   };
 

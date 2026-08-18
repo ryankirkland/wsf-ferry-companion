@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import {
   getTerminalDims,
@@ -11,8 +12,15 @@ import type { FleetUpdate } from "@/lib/data/fleet-poller";
 import { PAIRS } from "@/lib/trip/pairs";
 import type { VesselFix } from "@/lib/data/types";
 import { asOf, soundClock } from "@/lib/time/sound-time";
-import { VesselSchedule } from "./VesselSchedule";
 import styles from "./vessel-card.module.css";
+
+// The inline schedule pulls the trip planner's whole data + signal engine;
+// loaded only when the disclosure opens, warmed on card mount so the tap
+// feels instant (bundle-conditional).
+const VesselSchedule = dynamic(
+  () => import("./VesselSchedule").then((m) => m.VesselSchedule),
+  { ssr: false },
+);
 
 function runLine(fix: VesselFix, terms: Map<number, TerminalDim> | null): string {
   const dep = terms?.get(fix.dep)?.name ?? `terminal ${fix.dep}`;
@@ -47,14 +55,46 @@ function statusLine(fix: VesselFix): string {
  * night card. A drawing that fails to load (a class commissioned since the
  * last mirror run) removes itself rather than leaving a broken frame.
  */
+
+// Intrinsic sizes of the mirrored drawings (tools/vessel-drawings
+// MANIFEST), keyed by asset slug. Without dimensions the browser reserved
+// zero height and the facts line jumped down mid-read when the bitmap
+// arrived. Ratios vary 65% across classes, so this is per-class, with the
+// fleet-median ratio as the fallback for a class mirrored after this map
+// was written.
+const DRAWING_SIZES: Record<string, { w: number; h: number }> = {
+  "evergreen-state": { w: 550, h: 131 },
+  "issaquah-130": { w: 550, h: 120 },
+  issaquah: { w: 550, h: 120 },
+  "jumbo-mark-ii": { w: 550, h: 109 },
+  jumbo: { w: 550, h: 94 },
+  "kwa-di-tabil": { w: 549, h: 155 },
+  olympic: { w: 550, h: 130 },
+  super: { w: 550, h: 101 },
+};
+const DRAWING_FALLBACK = { w: 550, h: 120 };
+
+function drawingSize(src: string): { w: number; h: number } {
+  const slug = /\/([^/]+)\.png$/.exec(src)?.[1];
+  return (slug && DRAWING_SIZES[slug]) || DRAWING_FALLBACK;
+}
+
 function ClassDrawing({ src, className }: { src: string; className: string }) {
   const [failed, setFailed] = useState(false);
   if (failed) return null;
+  const { w, h } = drawingSize(src);
   return (
     <figure className={styles.drawing} data-testid="class-drawing">
-      {/* eslint-disable-next-line @next/next/no-img-element -- static export,
-          and the intrinsic size varies per class */}
-      <img src={src} alt={`WSDOT profile drawing of a ${className}-class ferry`} onError={() => setFailed(true)} />
+      {/* eslint-disable-next-line @next/next/no-img-element -- a plain img
+          with explicit dimensions; next/image adds nothing under
+          images.unoptimized and this card renders client-side only */}
+      <img
+        src={src}
+        width={w}
+        height={h}
+        alt={`WSDOT profile drawing of a ${className}-class ferry`}
+        onError={() => setFailed(true)}
+      />
       <figcaption>WSDOT class drawing</figcaption>
     </figure>
   );
@@ -114,6 +154,8 @@ export function VesselCard({
     getTerminalDims()
       .then((m) => alive && setTerms(m))
       .catch(() => {});
+    // Warm the schedule chunk: the disclosure tap must not wait on it.
+    void import("./VesselSchedule");
     return () => {
       alive = false;
     };

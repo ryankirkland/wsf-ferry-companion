@@ -37,14 +37,18 @@ export function AnalyticsDashboard() {
   const [doc, setDoc] = useState<AdminAnalyticsSummary | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("idle");
 
+  // Primitive deps, not the whole auth object: useAuth.refresh rebuilds its
+  // state object even when the token is byte-identical, and depending on
+  // `state` re-issued this fetch on every refresh (rerender-dependencies).
+  const idToken = state.status === "in" ? state.idToken : null;
   useEffect(() => {
-    if (state.status !== "in") return;
+    if (idToken === null) return;
     let alive = true;
     // Async resolution (same pattern as useAuth.refresh / StatsOverview)
     // keeps this out of the render/effect-sync path.
     const timer = window.setTimeout(() => {
       setLoadState("loading");
-      fetchAdminAnalytics(state.idToken, range.from, range.to)
+      fetchAdminAnalytics(idToken, range.from, range.to)
         .then((summary) => {
           if (!alive) return;
           if (summary) {
@@ -65,7 +69,7 @@ export function AnalyticsDashboard() {
       alive = false;
       window.clearTimeout(timer);
     };
-  }, [state, range.from, range.to]);
+  }, [idToken, range.from, range.to]);
 
   return (
     <main className={tripStyles.page}>

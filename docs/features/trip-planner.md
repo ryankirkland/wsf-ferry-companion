@@ -80,7 +80,12 @@ today+tomorrow (M3's evaluator substrate; expires_at = depart+6h).
 
 38 pre-rendered pages `/trip/{dep-slug}-{arr-slug}` (generateStaticParams +
 `dynamicParams=false`; junk slugs are real 404s) plus a `/trip` picker whose
-To-list only offers real mates. The slug map `web/src/lib/trip/pairs.ts` is
+To-list only offers real mates. The masthead and h1 are server-rendered in
+the page file with the `useSearchParams` Suspense boundary BELOW them
+(2026-08-18): with the whole page inside the boundary, the static export
+shipped an empty `<body>` for all 38 pairs - the highest-search-intent
+routes on the site delivered title+description and nothing else. Keep any
+new statically-derivable shell content in `page.tsx`, not `TripView`. The slug map `web/src/lib/trip/pairs.ts` is
 GENERATED from the live index by `tools/fixtures/build-trip-fixture.mjs`;
 a vitest drift test compares it against the checked-in index fixture - WSF
 adding/dropping a pair fails CI and the regeneration script is the fix.

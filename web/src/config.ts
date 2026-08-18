@@ -1,13 +1,24 @@
 // Build-time configuration; every value overridable via NEXT_PUBLIC_* env.
-
-const env = process.env;
+//
+// Each read MUST be the literal `process.env.NEXT_PUBLIC_X` member
+// expression: the bundler substitutes exactly that form at build time.
+// Aliasing (`const env = process.env`) silently breaks every override AND
+// keeps dev-fixture code alive in production bundles (found by the Vercel
+// best-practices audit: bundle-analyzable-paths).
 
 export const STYLE_URL =
-  env.NEXT_PUBLIC_STYLE_URL ?? "https://ferrysound.com/assets/style/positron-v1.json";
+  process.env.NEXT_PUBLIC_STYLE_URL ?? "https://ferrysound.com/assets/style/positron-v1.json";
 
-export const DATA_BASE = env.NEXT_PUBLIC_DATA_BASE ?? "";
+export const DATA_BASE = process.env.NEXT_PUBLIC_DATA_BASE ?? "";
+// Fixtures are a DEVELOPMENT affordance. Every consumer tests
+// `process.env.NODE_ENV === "development" && DATA_MODE === "fixture"` with
+// the NODE_ENV read written out literally in that module: the bundler only
+// folds constants within a module, so the local literal is what lets
+// `false && ...` collapse and the fixture fetchers tree-shake out of
+// production chunks entirely.
 export const DATA_MODE =
-  env.NEXT_PUBLIC_DATA_MODE ?? (env.NODE_ENV === "development" ? "fixture" : "live");
+  process.env.NEXT_PUBLIC_DATA_MODE ??
+  (process.env.NODE_ENV === "development" ? "fixture" : "live");
 
 export const FLEET_PATH = "/data/fleet.json";
 export const DIMS_PATH = "/data/vessels.json";
@@ -53,10 +64,10 @@ export const pairDayPath = (dep: number, arr: number, date: string) =>
 export const pairFaresPath = (dep: number, arr: number) => `/data/fares/${dep}-${arr}.json`;
 
 // M3 alerts: Cognito identifiers are public client config, not secrets.
-export const API_ORIGIN = env.NEXT_PUBLIC_API_ORIGIN ?? "https://api.ferrysound.com";
-export const COGNITO_POOL_ID = env.NEXT_PUBLIC_COGNITO_POOL_ID ?? "us-west-2_Rvw5RQOP0";
+export const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN ?? "https://api.ferrysound.com";
+export const COGNITO_POOL_ID = process.env.NEXT_PUBLIC_COGNITO_POOL_ID ?? "us-west-2_Rvw5RQOP0";
 export const COGNITO_CLIENT_ID =
-  env.NEXT_PUBLIC_COGNITO_CLIENT_ID ?? "57ckrpr8h75p2hrpf72so0leu7";
+  process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID ?? "57ckrpr8h75p2hrpf72so0leu7";
 
 // M4 stats + capacity contracts (materialized nightly / every minute).
 export const STATS_SUMMARY_PATH = "/data/stats/summary.json";

@@ -4,7 +4,6 @@
 // Sound styling, SRP under the hood. On success: back to ?next= (the
 // alerts manager is the only caller today).
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import {
@@ -94,17 +93,14 @@ export function AccountView() {
   const needsPassword = mode === "signin" || mode === "signup" || mode === "reset";
   const needsCode = mode === "confirm" || mode === "reset";
 
+  // The page shell (masthead, foot note) is server-rendered by
+  // app/account/page.tsx; the h1 stays here because it names the current
+  // flow ("Sign in" / "Create your account" / ...), which is client state.
   return (
-    <main className={tripStyles.page}>
-      <div className={tripStyles.column}>
-        <div className={tripStyles.masthead}>
-          <Link href="/" className={`display ${tripStyles.wordmark}`}>
-            Ferry <span>Sound</span>
-          </Link>
-        </div>
-        <h1 className={`display ${tripStyles.pairTitle}`}>{TITLES[mode]}</h1>
+    <>
+      <h1 className={`display ${tripStyles.pairTitle}`}>{TITLES[mode]}</h1>
 
-        <form
+      <form
           className={styles.card}
           data-testid="account-form"
           onSubmit={(e) => {
@@ -187,13 +183,6 @@ export function AccountView() {
           </div>
         </form>
 
-        <p className={tripStyles.footNote}>
-          Accounts exist for one thing: verified-email alert subscriptions - no newsletters. We do
-          log anonymous page visits and clicks sitewide (never tied to your account, never for
-          advertising) to catch bugs and understand traffic; you can opt out from the banner shown
-          on your first visit.
-        </p>
-      </div>
-    </main>
+    </>
   );
 }

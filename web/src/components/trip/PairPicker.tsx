@@ -7,10 +7,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useSyncExternalStore } from "react";
+import { readStorage, YOUR_RUN_KEY } from "@/lib/storage";
 import { PAIRS } from "@/lib/trip/pairs";
 import styles from "./trip.module.css";
-
-const YOUR_RUN_KEY = "fs.your-run";
 
 // localStorage as an external store: hydration-safe (server snapshot is
 // null, so the chip appears only after mount) and lint-clean.
@@ -20,11 +19,7 @@ function subscribeStorage(cb: () => void) {
 }
 
 function readYourRun(): string | null {
-  try {
-    return window.localStorage.getItem(YOUR_RUN_KEY);
-  } catch {
-    return null;
-  }
+  return readStorage(YOUR_RUN_KEY);
 }
 
 export function PairPicker() {

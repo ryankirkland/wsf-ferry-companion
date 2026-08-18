@@ -118,21 +118,11 @@ export function TripView({ slug }: { slug: string }) {
   const setDate = (d: string) =>
     router.replace(d === today ? `/trip/${slug}` : `/trip/${slug}?date=${d}`, { scroll: false });
 
+  // The page shell (masthead, h1) is server-rendered by trip/[pair]/page.tsx
+  // so the static export carries a real document body; this component owns
+  // everything below it, which all depends on ?date= or fetched documents.
   return (
-    <main className={styles.page}>
-      <div className={styles.column}>
-        <div className={styles.masthead}>
-          <Link href="/" className={`display ${styles.wordmark}`}>
-            Ferry <span>Sound</span>
-          </Link>
-          <Link href="/trip" className={styles.swap}>
-            Change route
-          </Link>
-        </div>
-
-        <h1 className={`display ${styles.pairTitle}`}>
-          {entry.depName} → {entry.arrName}
-        </h1>
+    <>
         <div className={styles.pairMeta}>
           {entry.mate && (
             <Link href={`/trip/${entry.mate}`} className={styles.swap}>
@@ -201,8 +191,7 @@ export function TripView({ slug }: { slug: string }) {
           Times are Puget Sound local. Live positions update every few seconds; schedule data
           refreshes within minutes of WSF publishing a change.
         </p>
-      </div>
-    </main>
+    </>
   );
 }
 

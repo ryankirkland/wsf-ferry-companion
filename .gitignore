@@ -1,6 +1,9 @@
 # Env & secrets - never in git
 .env
 .env.*
+# Next build-time public config - no secrets, must ship with the repo so
+# every production build folds dev fixtures the same way (see web/src/config.ts).
+!web/.env.production
 
 # Python
 .venv/

@@ -9,7 +9,7 @@
 import { useMemo, useState } from "react";
 import type { FleetUpdate } from "@/lib/data/fleet-poller";
 import { useNow } from "@/hooks/use-now";
-import { useTripData } from "@/hooks/use-trip-data";
+import { usePairDay } from "@/hooks/use-pair-day";
 import { buildDayView } from "@/lib/trip/day";
 import type { PairEntry } from "@/lib/trip/pairs";
 import { computeSignal } from "@/lib/trip/signal";
@@ -26,7 +26,9 @@ export function VesselSchedule({ entry, fleet }: { entry: PairEntry; fleet: Flee
   const now = useNow(30_000);
   const today = soundDate(new Date(now));
 
-  const trip = useTripData(entry, date);
+  // Just the day file: the combined trip hook also fetched index/fares and
+  // ran a permanent alerts poll - none of which this disclosure renders.
+  const trip = usePairDay(entry, date);
 
   const dayView = useMemo(() => {
     if (trip.day) return buildDayView(trip.day, trip.prevDay);

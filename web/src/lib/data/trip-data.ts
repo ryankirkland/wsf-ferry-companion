@@ -82,7 +82,7 @@ const fixture: TripFetchers = {
 };
 
 export function makeTripFetchers(): TripFetchers {
-  const inner = DATA_MODE === "fixture" ? fixture : live;
+  const inner = process.env.NODE_ENV === "development" && DATA_MODE === "fixture" ? fixture : live;
   // Uniform error policy: network/parse failures become nulls here so hooks
   // and components never juggle exceptions.
   const safely =
