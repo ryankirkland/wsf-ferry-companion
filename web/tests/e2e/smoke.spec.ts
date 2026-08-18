@@ -177,7 +177,7 @@ test("the landing page hydrates without a React error", async ({ page }) => {
   // every real visitor hydrated against a stale time string and React
   // threw #418. The server now renders a placeholder the client swaps.
   await interceptData(page);
-  const errors = [];
+  const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
   await page.waitForTimeout(3000);
