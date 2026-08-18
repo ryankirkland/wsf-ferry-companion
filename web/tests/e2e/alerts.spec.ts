@@ -162,3 +162,27 @@ test("boat FAB survives client-side navigation back to the map", async ({ page }
   expect(pos.rect.bottom).toBeLessThanOrEqual(viewport.height);
   expect(pos.rect.left).toBeLessThan(100); // bottom-left corner, on screen
 });
+
+// From the 2026-08-18 sign-up walk: a signup error rode into the
+// forgot-password screen, where "User already exists" read as a statement
+// about the reset.
+test("switching auth flows clears the previous flow's error", async ({ page }) => {
+  await page.route("**/cognito-idp.us-west-2.amazonaws.com/**", (r) =>
+    r.fulfill({
+      status: 400,
+      contentType: "application/x-amz-json-1.1",
+      body: JSON.stringify({ __type: "UsernameExistsException", message: "User already exists" }),
+    }),
+  );
+  await page.goto("/account/");
+  await page.getByText(/create an account/i).click();
+  await page.locator('input[type="email"]').fill("someone@example.com");
+  await page.locator('input[type="password"]').first().fill("Long-Enough-Password-9");
+  await page.getByRole("button", { name: /create/i }).click();
+  await expect(page.locator('[class*="error"]')).toContainText(/already has an account/);
+
+  // Now walk to forgot-password: the signup error must not follow.
+  await page.getByRole("button", { name: /back to sign in/i }).click();
+  await page.getByRole("button", { name: /forgot password/i }).click();
+  await expect(page.locator('[class*="error"]')).toHaveCount(0);
+});
