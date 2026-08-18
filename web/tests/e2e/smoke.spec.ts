@@ -160,3 +160,28 @@ test("a missing class drawing leaves no broken frame", async ({ page }) => {
   await expect(page.getByTestId("vessel-card")).toBeVisible();
   await expect(page.getByTestId("class-drawing")).toHaveCount(0);
 });
+
+// Two first-visit regressions found by the 2026-08-17 new-user walk.
+test("the consent banner never blocks the boat FAB", async ({ page }) => {
+  await interceptData(page);
+  await page.goto("/");
+  await page.waitForTimeout(2500);
+  // Banner visible (fresh visitor) AND the FAB still takes the tap.
+  await expect(page.getByTestId("consent-banner")).toBeVisible();
+  await page.locator('[class*="fab"]').first().click({ timeout: 4000 });
+  await expect(page.getByRole("link", { name: /Trip planner/ })).toBeVisible();
+});
+
+test("the landing page hydrates without a React error", async ({ page }) => {
+  // The masthead clock was baked at BUILD time into the static HTML, so
+  // every real visitor hydrated against a stale time string and React
+  // threw #418. The server now renders a placeholder the client swaps.
+  await interceptData(page);
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/");
+  await page.waitForTimeout(3000);
+  expect(errors.filter((m) => /418|hydrat/i.test(m))).toEqual([]);
+  // And the clock is a real time, not the placeholder.
+  await expect(page.locator("body")).not.toContainText("--:--");
+});

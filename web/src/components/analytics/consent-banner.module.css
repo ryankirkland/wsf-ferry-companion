@@ -78,3 +78,14 @@
     flex: 1;
   }
 }
+
+/* Clear the boat FAB on narrow screens: the banner sat directly on top of
+ * the map page's ONLY navigation control and swallowed its taps - a first
+ * visit began with an unusable menu. The FAB is 48px + a 1.25rem bottom
+ * margin, so 5.5rem floats the banner above it. Wider than 640px the
+ * centered banner clears the corner on its own. */
+@media (max-width: 640px) {
+  .banner {
+    bottom: max(5.5rem, calc(env(safe-area-inset-bottom, 0px) + 4.5rem));
+  }
+}
