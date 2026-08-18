@@ -60,6 +60,27 @@ ambient "frame on a wall" mode (`/ambient`) that runs unattended for days.
   "stranger calls it beautiful" gate - both Ryan-side; the PMTiles switch
   test records into tools/pmtiles/RUNBOOK.md.
 
+## Vessel markers under zoom (2026-08-18)
+
+Two rider-reported fixes, verified by trusted-input e2e (map-zoom.spec):
+
+- **Boats grow as you zoom in.** They were fixed-px (68px anchor, one
+  52px step below the declutter zoom), so zooming in grew the scenery
+  while boats stayed put - reading as SHRINKING exactly when the rider
+  leaned in. Now a continuous scale (`vesselScaleForZoom`: 1.0 at the
+  ~z9.6 overview, +35%/level, clamped 0.8-2.4) rides a `--vm-scale` CSS
+  var set by the controller and applied as a transform on `.boat` - not
+  the marker element (MapLibre owns its transform) and not the svg
+  (which carries the flip). True geographic scale is deliberately NOT
+  the goal (a Jumbo would be 11px at z13); boats stay super-scale.
+- **The lat/lon pins the hull's center.** The name/ETA labels used to
+  flow inside the marker's anchored box, so `anchor: center` centered
+  boat-plus-labels and pushed the hull ~14px above its true position
+  whenever labels were visible (hidden-label zooms measured 1px - the
+  offset WAS the siblings' height). Wake and labels are now absolutely
+  positioned out of the box; the box is the boat; the e2e asserts sub-2px
+  with labels shown.
+
 ## Landing bundle discipline (2026-08-18)
 
 The Vercel best-practices audit measured the landing page at 2.04 MB of
