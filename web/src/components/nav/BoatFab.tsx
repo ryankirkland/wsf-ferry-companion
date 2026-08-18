@@ -7,11 +7,17 @@
 
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { COGNITO_CLIENT_ID } from "@/config";
+import { readStorage, YOUR_RUN_KEY } from "@/lib/storage";
 import { PAIRS } from "@/lib/trip/pairs";
 import styles from "./nav.module.css";
 
-const YOUR_RUN_KEY = "fs.your-run";
+// Session presence WITHOUT the Cognito SDK: the SDK persists the signed-in
+// username under this well-known key, and this drawer only needs to choose
+// between "Account" and "Sign in" for a link label. Importing useAuth here
+// dragged 109 KB of SRP crypto into the map landing page (audit finding:
+// bundle-conditional); the pages behind the link do real auth.
+const AUTH_USER_KEY = `CognitoIdentityServiceProvider.${COGNITO_CLIENT_ID}.LastAuthUser`;
 
 function subscribeStorage(cb: () => void) {
   window.addEventListener("storage", cb);
@@ -19,26 +25,26 @@ function subscribeStorage(cb: () => void) {
 }
 
 function readYourRun(): string | null {
-  try {
-    return window.localStorage.getItem(YOUR_RUN_KEY);
-  } catch {
-    return null;
-  }
+  return readStorage(YOUR_RUN_KEY);
 }
 
-function BoatGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden fill="none">
-      <path d="M3.5 15.5h17l-1.6 3.2a2 2 0 0 1-1.8 1.1H6.9a2 2 0 0 1-1.8-1.1z" fill="currentColor" />
-      <path d="M6.5 15V11a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v4" stroke="currentColor" strokeWidth="1.6" />
-      <path d="M10 10V7.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V10" stroke="currentColor" strokeWidth="1.6" />
-    </svg>
-  );
+function readAuthUser(): string | null {
+  return readStorage(AUTH_USER_KEY);
 }
+
+// Static SVG hoisted to module scope: BoatFab re-renders with every fleet
+// poll, and this glyph never changes (rendering-hoist-jsx).
+const boatGlyph = (
+  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden fill="none">
+    <path d="M3.5 15.5h17l-1.6 3.2a2 2 0 0 1-1.8 1.1H6.9a2 2 0 0 1-1.8-1.1z" fill="currentColor" />
+    <path d="M6.5 15V11a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v4" stroke="currentColor" strokeWidth="1.6" />
+    <path d="M10 10V7.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V10" stroke="currentColor" strokeWidth="1.6" />
+  </svg>
+);
 
 export function BoatFab() {
   const [open, setOpen] = useState(false);
-  const { state: auth } = useAuth();
+  const authUser = useSyncExternalStore(subscribeStorage, readAuthUser, () => null);
   const yourRunSlug = useSyncExternalStore(subscribeStorage, readYourRun, () => null);
   const yourRun = yourRunSlug && PAIRS[yourRunSlug] ? PAIRS[yourRunSlug] : null;
 
@@ -60,7 +66,7 @@ export function BoatFab() {
         data-testid="boat-fab"
         onClick={() => setOpen(true)}
       >
-        <BoatGlyph />
+        {boatGlyph}
       </button>
 
       {open && <div className={styles.backdrop} onClick={() => setOpen(false)} />}
@@ -101,10 +107,10 @@ export function BoatFab() {
             Ambient mode
             <span>The Sound on a wall, all day</span>
           </Link>
-          {auth.status === "in" ? (
+          {authUser ? (
             <Link href="/alerts" data-analytics-label="nav-account" onClick={() => setOpen(false)}>
               Account
-              <span>{auth.email}</span>
+              <span>{authUser.includes("@") ? authUser : "Manage your alerts"}</span>
             </Link>
           ) : (
             <Link

@@ -37,50 +37,35 @@ export function AlertsManager() {
     `${pathname}${params.size ? `?${params.toString()}` : ""}`,
   );
 
+  // The page shell (masthead, h1, foot note) is server-rendered by
+  // app/alerts/page.tsx; this component owns only the session-dependent
+  // middle, which cannot exist in static HTML.
   return (
-    <main className={tripStyles.page}>
-      <div className={tripStyles.column}>
-        <div className={tripStyles.masthead}>
-          <Link href="/" className={`display ${tripStyles.wordmark}`}>
-            Ferry <span>Sound</span>
-          </Link>
-          <Link href="/trip" className={tripStyles.swap}>
-            Trip planner
+    <>
+      {state.status === "loading" && <p className={tripStyles.rangeNote}>Checking session…</p>}
+
+      {state.status === "out" && (
+        <div className={styles.card} data-testid="signed-out">
+          <p style={{ margin: 0 }}>
+            Pick a crossing and a time window; when WSF cancels or delays sailings that touch
+            it, you get one plain-language email - usually within two minutes of WSF publishing.
+            No spam: capped, deduplicated, one-click unsubscribe.
+          </p>
+          <Link className={tripStyles.go} style={{ textAlign: "center", textDecoration: "none" }} href={`/account?next=${nextHere}`}>
+            Sign in or create an account
           </Link>
         </div>
-        <h1 className={`display ${tripStyles.pairTitle}`}>Email alerts</h1>
+      )}
 
-        {state.status === "loading" && <p className={tripStyles.rangeNote}>Checking session…</p>}
-
-        {state.status === "out" && (
-          <div className={styles.card} data-testid="signed-out">
-            <p style={{ margin: 0 }}>
-              Pick a crossing and a time window; when WSF cancels or delays sailings that touch
-              it, you get one plain-language email - usually within two minutes of WSF publishing.
-              No spam: capped, deduplicated, one-click unsubscribe.
-            </p>
-            <Link className={tripStyles.go} style={{ textAlign: "center", textDecoration: "none" }} href={`/account?next=${nextHere}`}>
-              Sign in or create an account
-            </Link>
-          </div>
-        )}
-
-        {state.status === "in" && (
-          <Manager
-            idToken={state.idToken}
-            email={state.email}
-            onSignOut={signOut}
-            prefill={{ dep: params.get("dep"), arr: params.get("arr") }}
-          />
-        )}
-
-        <p className={tripStyles.footNote}>
-          Alerts come from WSF&apos;s official bulletin feed. When WSF names specific sailings we
-          match them to your window precisely; when it doesn&apos;t, we tell you honestly that we
-          couldn&apos;t narrow it down.
-        </p>
-      </div>
-    </main>
+      {state.status === "in" && (
+        <Manager
+          idToken={state.idToken}
+          email={state.email}
+          onSignOut={signOut}
+          prefill={{ dep: params.get("dep"), arr: params.get("arr") }}
+        />
+      )}
+    </>
   );
 }
 

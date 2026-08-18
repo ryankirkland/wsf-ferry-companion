@@ -259,9 +259,14 @@ test.describe("pair reliability", () => {
   });
 
   test("expanding reveals the rest of the sailings", async ({ page }) => {
+    // Anchor on the toggle first: it renders with the slot rows, so the
+    // "before" count is taken from a settled list, and the "after" count
+    // polls rather than racing the expansion re-render.
+    const showAll = page.getByRole("button", { name: /Show all \d+ sailings/ });
+    await expect(showAll).toBeVisible();
     const before = await page.getByTestId("slot-row").count();
-    await page.getByRole("button", { name: /Show all \d+ sailings/ }).click();
-    expect(await page.getByTestId("slot-row").count()).toBeGreaterThan(before);
+    await showAll.click();
+    await expect.poll(() => page.getByTestId("slot-row").count()).toBeGreaterThan(before);
   });
 });
 
@@ -334,8 +339,10 @@ test.describe("/stats overview", () => {
   });
 
   test("renders the year history and the month grid", async ({ page }) => {
+    // toHaveCount auto-waits; a bare count() races the client stats fetch
+    // and lost on CI runners once the chunk layout shifted load timing.
     const bars = page.getByTestId("year-chart").locator("> div");
-    expect(await bars.count()).toBe(25);
+    await expect(bars).toHaveCount(25);
     await expect(page.getByTestId("month-grid")).toBeVisible();
   });
 

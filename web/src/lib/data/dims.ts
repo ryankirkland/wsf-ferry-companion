@@ -32,7 +32,7 @@ let vesselCache: Map<number, VesselDim> | null = null;
 let terminalCache: Map<number, TerminalDim> | null = null;
 
 function url(livePath: string, fixtureName: string): string {
-  return DATA_MODE === "fixture" ? `/dev-fixtures/${fixtureName}` : `${DATA_BASE}${livePath}`;
+  return process.env.NODE_ENV === "development" && DATA_MODE === "fixture" ? `/dev-fixtures/${fixtureName}` : `${DATA_BASE}${livePath}`;
 }
 
 export async function getVesselDims(): Promise<Map<number, VesselDim>> {

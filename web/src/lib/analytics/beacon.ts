@@ -3,8 +3,7 @@
 // failure is invisible, not a console error or a broken click.
 
 import { EVENTS_PATH } from "@/config";
-
-const OPTOUT_KEY = "wsf_analytics_optout";
+import { ANALYTICS_OPTOUT_KEY, readStorage } from "@/lib/storage";
 
 type EventBody = {
   type: "pageview" | "click";
@@ -17,7 +16,7 @@ type EventBody = {
 // Callers already guard SSR (typeof window === "undefined"), so this only
 // ever runs in the browser.
 function send(body: EventBody): void {
-  if (window.localStorage.getItem(OPTOUT_KEY) === "1") return;
+  if (readStorage(ANALYTICS_OPTOUT_KEY) === "1") return;
   const payload = JSON.stringify(body);
   if (navigator.sendBeacon) {
     navigator.sendBeacon(EVENTS_PATH, new Blob([payload], { type: "application/json" }));

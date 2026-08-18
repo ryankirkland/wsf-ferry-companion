@@ -7,27 +7,34 @@ export type ModePreference = "auto" | Mode;
 
 /** Mode preference with a live auto boundary timer (the prototype only
  * evaluated auto on click/load - a wall display never re-tinted at sunset).
- * Re-evaluates at each Sound-time boundary and on visibility regain. */
+ * Re-evaluates at each Sound-time boundary and on visibility regain.
+ *
+ * An explicit preference IS the mode - derived during render, not stored,
+ * so a switcher click commits in one render with no wrong-mode frame
+ * (rerender-derived-state-no-effect). Only "auto" needs state: the clock
+ * tick that moves the day/dusk/night boundary. */
 export function useMode() {
   const [pref, setPref] = useState<ModePreference>("auto");
-  const [mode, setMode] = useState<Mode>(() => autoMode());
+  const [autoTick, setAutoTick] = useState<Mode>(() => autoMode());
+  const mode = pref === "auto" ? autoTick : pref;
 
   useEffect(() => {
-    const apply = () => setMode(pref === "auto" ? autoMode() : pref);
-    apply();
     if (pref !== "auto") return;
+    // Returning to auto after hours pinned: the stored tick may be stale.
+    const refresh = () => setAutoTick(autoMode());
+    refresh();
 
     let timer: number;
     const arm = () => {
       timer = window.setTimeout(() => {
-        apply();
+        refresh();
         arm();
       }, msToNextModeBoundary() + 500);
     };
     arm();
 
     const onVisible = () => {
-      if (!document.hidden) apply();
+      if (!document.hidden) refresh();
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => {

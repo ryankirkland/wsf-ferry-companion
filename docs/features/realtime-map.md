@@ -60,6 +60,21 @@ ambient "frame on a wall" mode (`/ambient`) that runs unattended for days.
   "stranger calls it beautiful" gate - both Ryan-side; the PMTiles switch
   test records into tools/pmtiles/RUNBOOK.md.
 
+## Landing bundle discipline (2026-08-18)
+
+The Vercel best-practices audit measured the landing page at 2.04 MB of
+initial JS; it now ships ~0.66 MB. Three rules keep it that way:
+maplibre-gl and VesselCard load via `next/dynamic` (the map chunk streams
+behind the same LoadingVeil; the card chunk preloads on idle so a marker
+tap never waits), the BoatFab decides its "Account"/"Sign in" label from
+the Cognito SDK's own localStorage key instead of importing the 109 KB SDK,
+and dev fixtures are guarded by a literal `process.env.NODE_ENV ===
+"development"` test in each consuming module so production builds
+tree-shake them (cross-module constant folding does not happen - the
+literal must be in the consumer). VesselSchedule consumes `usePairDay`, not
+`useTripData`: the combined hook started a permanent alerts poll from a
+card disclosure.
+
 ## Vessel class icons (2026-07-30)
 
 Each of the 7 vessel classes renders its own silhouette, vector-traced

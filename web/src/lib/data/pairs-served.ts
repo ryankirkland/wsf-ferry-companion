@@ -11,7 +11,7 @@ let cache: Set<number> | null = null;
 export async function servedTerminalIds(): Promise<Set<number>> {
   if (cache) return cache;
   const url =
-    DATA_MODE === "fixture" ? "/dev-fixtures/pairs-index.json" : DATA_BASE + PAIRS_INDEX_PATH;
+    process.env.NODE_ENV === "development" && DATA_MODE === "fixture" ? "/dev-fixtures/pairs-index.json" : DATA_BASE + PAIRS_INDEX_PATH;
   try {
     const doc: unknown = await (await fetch(url, { cache: "no-store" })).json();
     if (!isPairsIndex(doc)) return new Set();

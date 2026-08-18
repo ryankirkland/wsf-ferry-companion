@@ -91,7 +91,7 @@ const fixture: StatsFetchers = {
 };
 
 export function makeStatsFetchers(): StatsFetchers {
-  const inner = DATA_MODE === "fixture" ? fixture : live;
+  const inner = process.env.NODE_ENV === "development" && DATA_MODE === "fixture" ? fixture : live;
   // Uniform error policy, same as the trip fetchers: a missing or
   // malformed document becomes null and the section simply does not render.
   const safely =

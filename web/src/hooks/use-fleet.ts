@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { DATA_MODE } from "@/config";
 import { FleetPoller, type FleetUpdate, type PollerLike } from "@/lib/data/fleet-poller";
 import { FixturePoller } from "@/lib/data/fixture-poller";
 
-export function useFleet(): FleetUpdate & { pollNow: () => void } {
-  const pollerRef = useRef<PollerLike | null>(null);
+// Returns the poller's state object AS-IS: it only changes identity when a
+// poll lands, so consumers (MapView, VesselCard) stay memoizable. The old
+// shape spread it with a fresh pollNow closure every render, which made
+// every prop new on every render - and nothing ever called pollNow.
+export function useFleet(): FleetUpdate {
   const [update, setUpdate] = useState<FleetUpdate>({
     snapshot: null,
     feedState: "down",
@@ -14,8 +17,7 @@ export function useFleet(): FleetUpdate & { pollNow: () => void } {
   });
 
   useEffect(() => {
-    const poller: PollerLike = DATA_MODE === "fixture" ? new FixturePoller() : new FleetPoller();
-    pollerRef.current = poller;
+    const poller: PollerLike = process.env.NODE_ENV === "development" && DATA_MODE === "fixture" ? new FixturePoller() : new FleetPoller();
     const off = poller.subscribe(setUpdate);
     poller.start();
 
@@ -28,9 +30,8 @@ export function useFleet(): FleetUpdate & { pollNow: () => void } {
       document.removeEventListener("visibilitychange", onVisible);
       off();
       poller.stop();
-      pollerRef.current = null;
     };
   }, []);
 
-  return { ...update, pollNow: () => pollerRef.current?.pollNow() };
+  return update;
 }

@@ -1,13 +1,31 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MapView } from "@/components/MapView";
+import { LoadingVeil } from "@/components/chrome/LoadingVeil";
 import { TopBar } from "@/components/chrome/TopBar";
 import { BoatFab } from "@/components/nav/BoatFab";
-import { VesselCard } from "@/components/vessel/VesselCard";
 import { useFleet } from "@/hooks/use-fleet";
 import { useMode } from "@/hooks/use-mode";
 import styles from "./page.module.css";
+
+// maplibre-gl is ~1.26 MB. Statically imported, it sat in this client
+// page's initial chunk set and React could not hydrate the page's only
+// nav control (BoatFab) until it downloaded and parsed
+// (bundle-dynamic-imports). Dynamic keeps the same loading visual - the
+// veil - while the map chunk streams in behind an interactive page.
+const MapView = dynamic(() => import("@/components/MapView").then((m) => m.MapView), {
+  ssr: false,
+  loading: () => <LoadingVeil gone={false} />,
+});
+
+// Reached only via a marker click, and it drags the trip engine with it;
+// preloaded on idle below so the first click still feels instant
+// (bundle-conditional + bundle-preload).
+const VesselCard = dynamic(
+  () => import("@/components/vessel/VesselCard").then((m) => m.VesselCard),
+  { ssr: false },
+);
 
 export default function Home() {
   const { mode, pref, setPref } = useMode();
@@ -27,6 +45,17 @@ export default function Home() {
       return () => window.clearTimeout(t);
     }
   }, [fleet.snapshot]);
+
+  // Warm the vessel-card chunk once the page is idle: the click that needs
+  // it must never wait on the network. Optional-chained because older
+  // Safari lacks requestIdleCallback; the timer path covers it.
+  useEffect(() => {
+    const preload = () => void import("@/components/vessel/VesselCard");
+    const idleId = window.requestIdleCallback?.(preload);
+    if (idleId !== undefined) return () => window.cancelIdleCallback(idleId);
+    const t = window.setTimeout(preload, 2500);
+    return () => window.clearTimeout(t);
+  }, []);
 
   const onVesselClick = useCallback((id: number) => setSelectedId(id), []);
   const selected = useMemo(
