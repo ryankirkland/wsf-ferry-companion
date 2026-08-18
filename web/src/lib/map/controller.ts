@@ -18,6 +18,7 @@ import {
 } from "./terminals";
 import { servedTerminalIds } from "@/lib/data/pairs-served";
 import { getTerminalDims } from "@/lib/data/dims";
+import { vesselScaleForZoom } from "./vessels/anchor";
 import { VesselMarkerPool } from "./vessels/markers";
 
 // Below this width the expanded attribution and the boat FAB fight for
@@ -155,9 +156,8 @@ export class PaperSoundMap {
       if (process.env.NODE_ENV !== "production") console.warn("map error:", e.error);
     });
 
-    this.map.on("zoom", () => {
-      container.classList.toggle("z-lo", this.map.getZoom() < DECLUTTER_ZOOM);
-    });
+    this.map.on("zoom", () => this.syncZoomPresentation());
+    this.syncZoomPresentation();
 
     // The canvas can be born tiny (hidden/small panel) - re-measure on
     // resize and on visibility regain.
@@ -193,6 +193,17 @@ export class PaperSoundMap {
    *  names; the dots never leave. */
   private syncLabelZoom(): void {
     this.map.getContainer().classList.toggle("labels-far", this.map.getZoom() < LABEL_ALL_ZOOM);
+  }
+
+  /** Vessel presentation follows the zoom: label declutter below
+   *  DECLUTTER_ZOOM, and the continuous boat scale (--vm-scale, consumed
+   *  by the .vm CSS) so boats grow as the rider leans in instead of
+   *  shrinking against the scenery. */
+  private syncZoomPresentation(): void {
+    const zoom = this.map.getZoom();
+    const el = this.map.getContainer();
+    el.classList.toggle("z-lo", zoom < DECLUTTER_ZOOM);
+    el.style.setProperty("--vm-scale", vesselScaleForZoom(zoom).toFixed(3));
   }
 
   fitSound(): void {

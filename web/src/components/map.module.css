@@ -109,6 +109,16 @@
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));
 }
 
+/* Continuous zoom scale (--vm-scale set by the controller): the boat
+ * grows as the rider zooms in. Scaled here on the .boat wrapper - not
+ * the marker element, whose transform MapLibre owns for positioning,
+ * and not the svg, which carries the flip transform. transform leaves
+ * the layout box alone, so the anchor math below stays exact. */
+.vm :global(.boat) {
+  transform: scale(var(--vm-scale, 1));
+  transform-origin: 50% 50%;
+}
+
 .vm :global(.hull) {
   fill: var(--hull);
   /* stroke units live in the traced 550px viewBox space */
@@ -141,10 +151,19 @@ html[data-mode="night"] .vm :global(svg) {
   transform: scaleX(-1);
 }
 
+/* The wake and both labels are absolutely positioned OUT of the marker's
+ * layout box, so the box is the boat alone and MapLibre's anchor:center
+ * puts the lat/lon at the BOAT's center. In flow, their heights joined
+ * the box and pushed the boat ~14px above its true position whenever
+ * labels were visible. The (--vm-scale - 1) terms shift them down as the
+ * scaled boat's bottom edge extends past the unscaled box. */
 .vm :global(.wake) {
+  position: absolute;
+  top: calc(100% - 2px + (var(--vm-scale, 1) - 1) * 7px);
+  left: 50%;
+  transform: translateX(-50%) scaleX(var(--vm-scale, 1));
   width: 34px;
   height: 4px;
-  margin: -2px auto 0;
   opacity: 0;
   background: repeating-linear-gradient(90deg, var(--wake) 0 8px, transparent 8px 14px);
   border-radius: 2px;
@@ -156,6 +175,10 @@ html[data-mode="night"] .vm :global(svg) {
 }
 
 .vm :global(.nm) {
+  position: absolute;
+  top: calc(100% + 3px + (var(--vm-scale, 1) - 1) * 7px);
+  left: 50%;
+  transform: translateX(-50%);
   font-family: var(--font-gabarito), sans-serif;
   font-weight: 700;
   font-size: 11px;
@@ -165,11 +188,14 @@ html[data-mode="night"] .vm :global(svg) {
   text-shadow:
     0 0 6px var(--halo),
     0 0 2px var(--halo);
-  margin-top: 2px;
   white-space: nowrap;
 }
 
 .vm :global(.st) {
+  position: absolute;
+  top: calc(100% + 17px + (var(--vm-scale, 1) - 1) * 7px);
+  left: 50%;
+  transform: translateX(-50%);
   font-size: 9.5px;
   color: var(--ink-soft);
   text-shadow: 0 0 5px var(--halo);
@@ -191,16 +217,9 @@ html[data-mode="night"] .vm :global(svg) {
   display: none;
 }
 
-/* Below the declutter zoom the boats shrink with the scenery - scaled
- * from the 68px anchor, so zooming out is a step down and not a collapse
- * back to the old size. */
-:global(.z-lo) .vm :global(svg) {
-  width: 52px;
-}
-
-:global(.z-lo) .vm :global(.wake) {
-  width: 40px;
-}
+/* Below the declutter zoom the boats used to take a one-step 52px
+ * shrink; the continuous --vm-scale ramp (see .boat above) covers the
+ * whole zoom range now, so z-lo only handles label declutter. */
 
 /* Moored-cluster declutter: companions render sprite-only (see cluster.ts). */
 .vm:global(.lbl-off) :global(.nm),
