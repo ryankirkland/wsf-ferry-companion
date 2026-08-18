@@ -63,7 +63,22 @@ documented option if ParseCoverage proves the regex weak.
 - 2026-07-30: D1-D3 + W1 live (PRs #32-#35). SES production-access
   request filed (sandbox until AWS approves). Bulletin state seeded from
   the live feed (7 bulletins, 0 sends - no subscribers yet).
-- Remaining for M3 exit (W2): sandbox canary with verified addresses ->
-  Cognito email sender switch to SES -> real-disruption delivery
-  measured against the 2-min SLO -> PRD acceptance walk + ADR-0003 tile
-  revisit at exit review.
+- 2026-08-18: **first real delivery.** Owner's address verified in the
+  sandbox; a genuine WSF bulletin (117236, Chimacum elevator outage,
+  Sea/Brem) was detected by the live poller, matched a Bremerton->Seattle
+  subscription via the publish-time window rule (status alert, nothing
+  to parse - correctly no "couldn't determine" line), and landed in a
+  real inbox. Fan-out latency 4,240 ms observed-to-SES-accepted
+  (AlertSend audit line); with the 1-min poll cadence on top, worst-case
+  detection-to-inbox is ~65 s against the 2-min SLO. First data point:
+  within SLO.
+- Sandbox IAM gotcha (PR #82): in sandbox, SES authorizes the
+  RECIPIENT's verified identity as a resource alongside the sender's.
+  The notifier policy carries a temporary `SandboxRecipientIdentities`
+  statement (account-own identities wildcard) marked REMOVE at grant -
+  found live via the SendFailure audit log naming the missing ARN.
+- Remaining for M3 exit (W2), all gated on the production-access grant
+  (case reopened + answered 2026-08-18): Cognito email sender switch to
+  SES (confirmation codes out of spam) -> remove the "check spam" signup
+  copy -> remove the sandbox IAM statement -> PRD acceptance walk +
+  ADR-0003 tile revisit at exit review.
