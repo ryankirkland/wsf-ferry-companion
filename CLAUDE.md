@@ -10,6 +10,11 @@
 - **F4/F5 Stats + capacity**: see `docs/features/stats.md` for the sync->transform->stats chain, the two `/data/stats` contracts, and the honesty rules that shape them (window+n on every number, n<30 slot degradation, reconciliation-based cancellation with its floor caveat, labeled collection gaps). Update that file whenever the feature changes.
 - **Site analytics**: see `docs/features/site-analytics.md` (and ADR-0007) for the beacon->collector->nightly-aggregate->`/admin/analytics` pipeline, the visitor-hash and coarse-geo privacy rules, the Cognito `Admins`-group gate, and the consent/opt-out copy. Update that file whenever the feature changes.
 
+## Frontend engineering standards
+- **Vercel React/Next.js best practices**: `.claude/skills/vercel-react-best-practices/` (vendored from [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills), MIT) - 70 performance rules prioritized by impact. Apply when writing or reviewing anything under `web/`. Start with `SKILL.md`; read individual `rules/*.md` for the categories a change touches.
+- **Next.js reference docs**: version-matched docs ship inside the installed framework at `web/node_modules/next/dist/docs/` (Vercel's replacement for the retired `next-best-practices` skill). Consult them for App Router / static-export questions instead of the (possibly newer) public website.
+- Static-export lens: this site is `output: "export"` - no request-time server, so `server-*`/API-route rules apply only to build-time code, and hydration rules matter doubly (every page prerenders at build).
+
 ## Operations
 - **Observability**: `docs/runbooks/observability.md` covers reading application logs (13 Lambda log groups + the EMF metric namespaces), tracking cost (the two budgets, the run-rate command, what July actually decomposed to), and user activity - homegrown site analytics (see above) now covers page views, clicks, referrers, and coarse geography; CloudFront access logging itself remains off (the analytics pipeline is a separate first-party beacon, not raw request logs, and never persists IPs). Update it when monitoring changes.
 
