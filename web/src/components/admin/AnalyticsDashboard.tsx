@@ -75,8 +75,8 @@ export function AnalyticsDashboard() {
     <main className={tripStyles.page}>
       <div className={tripStyles.column}>
         <div className={tripStyles.masthead}>
-          <Link href="/" className={`display ${tripStyles.wordmark}`}>
-            Ferry <span>Sound</span>
+          <Link href="/" className={tripStyles.swap}>
+            ← Back to map
           </Link>
         </div>
         <h1 className={`display ${tripStyles.pairTitle}`}>Analytics</h1>

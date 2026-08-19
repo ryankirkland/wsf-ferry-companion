@@ -44,11 +44,17 @@ Cognito accounts (email sign-in, SRP, verified email) -> JWT-authorized
 CRUD on /v1/subscriptions: pair + window (validated against the pairs
 index; route derived at write; TransactWrite of the USER#/ROUTE# item
 pair + the EMAIL#/USER pointer; natural-key idempotent; 10-sub cap).
-Frontend: /account (sign-in machine), /alerts (manager: crossing picker,
-window preset chips, custom times), /unsubscribe (button page, token in
-the URL fragment). Entry points: map drawer + "Get alerts for this run"
-on pair pages. Pairs without an upstream route id (ana-sj) are refused
-with honest copy.
+Frontend (renamed "Ferry Alerts" + split at the owner's 2026-08-19
+walk): /alerts carries two tabs - "Your alerts" (the subscription
+manager: crossing picker, window preset chips, custom times) and "All
+active alerts" (every current WSF bulletin systemwide, straight from
+/data/alerts.json with route names from the pairs index - public, no
+account). /account is account management proper: email display,
+Cognito password change (SRP, in-SDK), sign out; signed-out visitors
+get the sign-in machine. /unsubscribe (button page, token in the URL
+fragment) is unchanged. Entry points: nav drawer/side rail + "Get
+alerts for this run" on pair pages. Pairs without an upstream route id
+(ana-sj) are refused with honest copy.
 
 ## Failure-capture / improvement loop
 

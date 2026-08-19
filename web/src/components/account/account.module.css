@@ -158,3 +158,49 @@
   padding: 0;
   list-style: none;
 }
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+/* ---- All active alerts (Ferry Alerts second tab) ---- */
+.allAlerts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.alertCard {
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 0.75rem;
+  padding: 0.9rem 1.1rem;
+}
+
+.alertCard h3 {
+  margin: 0;
+  font-size: 1rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+}
+
+.alertCard time {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.alertCard p {
+  margin: 0.4rem 0 0;
+  font-size: 0.92rem;
+}
+
+.alertRoutes {
+  color: var(--ink-soft);
+  font-size: 0.82rem !important;
+}

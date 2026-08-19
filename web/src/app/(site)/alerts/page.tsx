@@ -1,33 +1,33 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { AlertsManager } from "@/components/account/AlertsManager";
+import { AlertsTabs } from "@/components/account/AlertsTabs";
 import tripStyles from "@/components/trip/trip.module.css";
 
 export const metadata: Metadata = {
-  title: "Email alerts · Ferry Sound",
+  title: "Ferry Alerts · Ferry Sound",
   description:
     "One plain-language email when WSF cancels or delays sailings on your crossing, in your window.",
 };
 
 // The shell is server-rendered so the static export carries a real body;
-// AlertsManager (useSearchParams + auth state) renders inside the boundary.
+// AlertsTabs (subscriptions + all-active bulletins) renders inside the boundary.
 export default function AlertsPage() {
   return (
     <main className={tripStyles.page}>
       <div className={tripStyles.column}>
         <div className={tripStyles.masthead}>
-          <Link href="/" className={`display ${tripStyles.wordmark}`}>
-            Ferry <span>Sound</span>
+          <Link href="/" className={tripStyles.swap}>
+            ← Back to map
           </Link>
           <Link href="/trip" className={tripStyles.swap}>
             Trip planner
           </Link>
         </div>
-        <h1 className={`display ${tripStyles.pairTitle}`}>Email alerts</h1>
+        <h1 className={`display ${tripStyles.pairTitle}`}>Ferry Alerts</h1>
 
         <Suspense fallback={<p className={tripStyles.rangeNote}>Checking session…</p>}>
-          <AlertsManager />
+          <AlertsTabs />
         </Suspense>
 
         <p className={tripStyles.footNote}>

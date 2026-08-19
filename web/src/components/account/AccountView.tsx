@@ -29,7 +29,7 @@ const TITLES: Record<Mode, string> = {
 
 export function AccountView() {
   const router = useRouter();
-  const next = useSearchParams().get("next") ?? "/alerts";
+  const next = useSearchParams().get("next") ?? "/account";
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

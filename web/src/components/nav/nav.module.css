@@ -112,3 +112,57 @@
   font-weight: 400;
   font-size: 0.8rem;
 }
+
+/* ---- persistent sidebar (non-map pages, wide screens) ---- */
+/* Sits in the centered 40rem column's left margin; below 1120px the
+ * margin vanishes and the boat-button drawer takes over. */
+.sideNav {
+  display: none;
+}
+
+@media (min-width: 1120px) {
+  .sideNav {
+    position: fixed;
+    top: 1.4rem;
+    left: max(1rem, calc(50vw - 35rem));
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    width: 12rem;
+  }
+
+  .sideNav a {
+    color: var(--ink-soft);
+    text-decoration: none;
+    padding: 0.3rem 0.6rem;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  .sideNav a:hover {
+    background: var(--card);
+    color: var(--ink);
+  }
+
+  .sideNav a[aria-current="page"] {
+    background: var(--card);
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .sideNavBrand {
+    font-size: 1.25rem;
+    color: var(--ink) !important;
+    margin-bottom: 0.1rem;
+  }
+
+  .sideNavBrand span {
+    color: var(--accent);
+  }
+
+  .sideNavBack {
+    font-size: 0.85rem !important;
+    margin-bottom: 0.75rem;
+  }
+}

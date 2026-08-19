@@ -4,7 +4,7 @@ test("back-button to map after drawer navigation", async ({ page }) => {
   await page.route("**/data/**", (r) => r.fulfill({ status: 404, body: "" }));
   await page.goto("/");
   await page.getByTestId("boat-fab").click();          // open drawer
-  await page.getByRole("link", { name: /Email alerts/ }).click(); // navigate away with drawer open
+  await page.getByRole("link", { name: /Ferry Alerts/ }).first().click(); // navigate away with drawer open
   await expect(page).toHaveURL(/alerts/);
   await page.goBack();                                  // browser back
   await expect(page).toHaveURL(/\/$/);

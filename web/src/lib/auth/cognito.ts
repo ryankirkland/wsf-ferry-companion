@@ -73,6 +73,21 @@ export function signOut(): void {
   pool().getCurrentUser()?.signOut();
 }
 
+/** Change the signed-in user's password (SRP session required; the SDK
+ *  talks straight to Cognito - passwords never transit our code). */
+export function changePassword(currentPw: string, newPw: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const current = pool().getCurrentUser();
+    if (!current) return reject(new Error("Not signed in"));
+    current.getSession((err: Error | null, session: CognitoUserSession | null) => {
+      if (err || !session || !session.isValid()) {
+        return reject(err ?? new Error("Session expired - sign in again"));
+      }
+      current.changePassword(currentPw, newPw, (e) => (e ? reject(e) : resolve()));
+    });
+  });
+}
+
 export function forgotPassword(email: string): Promise<void> {
   return new Promise((resolve, reject) => {
     user(email).forgotPassword({ onSuccess: () => resolve(), onFailure: reject, inputVerificationCode: () => resolve() });

@@ -125,9 +125,9 @@ test("the vessel card shows the WSDOT class drawing", async ({ page }) => {
   await page.goto("/");
   await page.waitForTimeout(3000);
   await page.evaluate(() => {
-    const el = [...document.querySelectorAll(".maplibregl-marker")].find((e) =>
-      e.querySelector("svg"),
-    );
+    // Vessel markers render the WSDOT drawing img (traced svg only as
+    // fallback) - select by the data attribute, not the graphic's tag.
+    const el = document.querySelector("[data-vessel]");
     el?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
   const card = page.getByTestId("vessel-card");
@@ -152,9 +152,9 @@ test("a missing class drawing leaves no broken frame", async ({ page }) => {
   await page.goto("/");
   await page.waitForTimeout(3000);
   await page.evaluate(() => {
-    const el = [...document.querySelectorAll(".maplibregl-marker")].find((e) =>
-      e.querySelector("svg"),
-    );
+    // Vessel markers render the WSDOT drawing img (traced svg only as
+    // fallback) - select by the data attribute, not the graphic's tag.
+    const el = document.querySelector("[data-vessel]");
     el?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
   await expect(page.getByTestId("vessel-card")).toBeVisible();

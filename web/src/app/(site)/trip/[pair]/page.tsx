@@ -36,8 +36,8 @@ export default async function TripPairPage({ params }: { params: Promise<{ pair:
     <main className={styles.page}>
       <div className={styles.column}>
         <div className={styles.masthead}>
-          <Link href="/" className={`display ${styles.wordmark}`}>
-            Ferry <span>Sound</span>
+          <Link href="/" className={styles.swap}>
+            ← Back to map
           </Link>
           <Link href="/trip" className={styles.swap}>
             Change route
