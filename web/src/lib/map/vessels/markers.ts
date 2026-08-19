@@ -35,13 +35,20 @@ export interface MarkerPoolOptions {
   onClick?: (id: number) => void;
 }
 
+interface ClassInfo {
+  klass: string;
+  /** Card drawing path, e.g. /assets/vessels/jumbo.png; the map derives
+   *  the transparent -t variant from it. */
+  drawing: string | null;
+}
+
 export class VesselMarkerPool {
   private handles = new Map<number, Handle>();
   private glides: GlideLoop;
   private lastSnapshotAt: number | null = null;
-  // VesselID -> class display name. Dims usually resolve after the first
-  // fleet snapshot, so markers born before then get retrofitted.
-  private classes = new Map<number, string>();
+  // VesselID -> class info. Dims usually resolve after the first fleet
+  // snapshot, so markers born before then get retrofitted.
+  private classes = new Map<number, ClassInfo>();
 
   constructor(
     private map: MLMap,
@@ -49,7 +56,7 @@ export class VesselMarkerPool {
   ) {
     void getVesselDims()
       .then((dims) => {
-        dims.forEach((d) => this.classes.set(d.id, d.class));
+        dims.forEach((d) => this.classes.set(d.id, { klass: d.class, drawing: d.drawing }));
         this.handles.forEach((h, id) => {
           if (!h.el.dataset.vesselClass) this.applyClassIcon(h.el, id);
         });
@@ -132,14 +139,32 @@ export class VesselMarkerPool {
   }
 
   private applyClassIcon(el: HTMLElement, id: number): void {
-    const className = this.classes.get(id);
-    const icon = classIcon(className);
-    if (className) el.dataset.vesselClass = className;
+    const info = this.classes.get(id);
+    const icon = classIcon(info?.klass);
+    if (info?.klass) el.dataset.vesselClass = info.klass;
     // Real relative lengths: a 460' Jumbo Mark II reads wider than a 274'
     // Kwa-di Tabil at the same zoom (VESSEL_ANCHOR_PX on the longest class).
     el.style.width = `${((VESSEL_ANCHOR_PX * icon.feet) / REFERENCE_FEET).toFixed(1)}px`;
     const slot = el.querySelector<HTMLElement>(".boat");
-    if (slot) slot.innerHTML = classSvg(icon);
+    if (!slot) return;
+    // The transparent WSDOT drawing IS the boat (owner's call after an
+    // A/B against the traced icons, 2026-08-18: the drawings' detail
+    // wins). The traced svg remains the fallback for a class without a
+    // mirrored drawing or a failed asset load - the map must never show
+    // an empty marker.
+    const transparentSrc = info?.drawing ? info.drawing.replace(/\.png$/, "-t.png") : null;
+    if (transparentSrc) {
+      const img = document.createElement("img");
+      img.src = transparentSrc;
+      img.alt = "";
+      img.draggable = false;
+      img.addEventListener("error", () => {
+        slot.innerHTML = classSvg(icon);
+      });
+      slot.replaceChildren(img);
+    } else {
+      slot.innerHTML = classSvg(icon);
+    }
   }
 
   private create(fix: VesselFix): Handle {

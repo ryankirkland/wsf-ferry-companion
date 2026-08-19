@@ -19,6 +19,14 @@ const json = (body: unknown) => ({
   headers: { "access-control-allow-origin": "*" },
 });
 
+// Aspect-correct (55x11) transparent PNG standing in for the mirrored
+// WSDOT drawings, which are gitignored and absent on CI runners - the
+// boat imgs must load from a fulfilled route, never from disk.
+const DRAWING_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAADcAAAALCAYAAADbYxWQAAAAKUlEQVR4nGMISCi4MFwxw0A7YNRzo54b9dzwwaOeG6p41HNDFQ9rzwEAENKUbWBCUTcAAAAASUVORK5CYII=",
+  "base64",
+);
+
 async function openMap(page: Page) {
   const fleet = JSON.parse(fixture("fleet-frame-0.json"));
   fleet.generated_at = new Date().toISOString();
@@ -26,8 +34,11 @@ async function openMap(page: Page) {
   await page.route("**/data/vessels.json", (r) =>
     r.fulfill({ body: fixture("vessels.json"), contentType: "application/json" }),
   );
+  await page.route("**/assets/vessels/*-t.png", (r) =>
+    r.fulfill({ body: DRAWING_PNG, contentType: "image/png" }),
+  );
   await page.goto("/");
-  await page.waitForSelector("[data-vessel] svg");
+  await page.waitForSelector("[data-vessel] .boat img");
 }
 
 // Trusted wheel input over open water - synthetic WheelEvents are ignored
@@ -41,16 +52,28 @@ async function wheelZoom(page: Page, notches: number) {
 
 test("boats grow on zoom-in and shrink back on zoom-out", async ({ page }) => {
   await openMap(page);
-  const svg = page.locator("[data-vessel] svg").first();
-  const overview = (await svg.boundingBox())!;
+  const boat = page.locator("[data-vessel] .boat img").first();
+  const overview = (await boat.boundingBox())!;
 
   await wheelZoom(page, 10);
-  const zoomedIn = (await svg.boundingBox())!;
+  const zoomedIn = (await boat.boundingBox())!;
   expect(zoomedIn.width).toBeGreaterThan(overview.width * 1.15);
 
   await wheelZoom(page, -10);
-  const backOut = (await svg.boundingBox())!;
+  const backOut = (await boat.boundingBox())!;
   expect(backOut.width).toBeLessThan(zoomedIn.width);
+});
+
+test("a missing drawing falls back to the traced icon, never an empty marker", async ({ page }) => {
+  const fleet = JSON.parse(fixture("fleet-frame-0.json"));
+  fleet.generated_at = new Date().toISOString();
+  await page.route("**/data/fleet.json", (r) => r.fulfill(json(fleet)));
+  await page.route("**/data/vessels.json", (r) =>
+    r.fulfill({ body: fixture("vessels.json"), contentType: "application/json" }),
+  );
+  await page.route("**/assets/vessels/*-t.png", (r) => r.fulfill({ status: 404, body: "" }));
+  await page.goto("/");
+  await expect(page.locator("[data-vessel] .boat svg").first()).toBeVisible();
 });
 
 test("the anchored point stays on the boat even with labels visible", async ({ page }) => {
@@ -62,10 +85,10 @@ test("the anchored point stays on the boat even with labels visible", async ({ p
     // hide theirs) - that is the case that used to inflate the box.
     for (const el of document.querySelectorAll<HTMLElement>("[data-vessel]")) {
       const nm = el.querySelector<HTMLElement>(".nm");
-      const svg = el.querySelector<SVGElement>("svg");
-      if (!nm || !svg || getComputedStyle(nm).display === "none") continue;
+      const boatEl = el.querySelector<HTMLElement>(".boat img, .boat svg");
+      if (!nm || !boatEl || getComputedStyle(nm).display === "none") continue;
       const box = el.getBoundingClientRect(); // MapLibre pins its center to the lat/lon
-      const boat = svg.getBoundingClientRect(); // where the hull is actually drawn
+      const boat = boatEl.getBoundingClientRect(); // where the hull is actually drawn
       return {
         found: true,
         offX: Math.abs(box.left + box.width / 2 - (boat.left + boat.width / 2)),

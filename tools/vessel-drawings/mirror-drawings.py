@@ -96,6 +96,70 @@ def process(raw: bytes) -> bytes:
     return out.getvalue()
 
 
+# Page-white threshold for the transparent variant; the linework is far darker.
+WHITE_T = 243
+
+
+def transparent(png: bytes) -> bytes:
+    """The map variant: page background knocked out, drawing kept intact.
+
+    Border-connected flood fill, NOT a global white filter - the whites
+    INSIDE the hull (superstructure panels, deck faces) are part of the
+    drawing and must survive. Chosen for the map after an A/B against the
+    traced vector icons (2026-08-18, owner's call: the drawings' detail
+    wins). The white-plate original above remains the card's version.
+    """
+    from collections import deque
+    from io import BytesIO
+
+    image = Image.open(BytesIO(png)).convert("RGBA")
+    w, h = image.size
+    px = image.load()
+
+    def whiteish(x: int, y: int) -> bool:
+        r, g, b, _ = px[x, y]
+        return r >= WHITE_T and g >= WHITE_T and b >= WHITE_T
+
+    seen = [[False] * w for _ in range(h)]
+    queue: deque[tuple[int, int]] = deque()
+    for x in range(w):
+        for y in (0, h - 1):
+            if whiteish(x, y) and not seen[y][x]:
+                seen[y][x] = True
+                queue.append((x, y))
+    for y in range(h):
+        for x in (0, w - 1):
+            if whiteish(x, y) and not seen[y][x]:
+                seen[y][x] = True
+                queue.append((x, y))
+    while queue:
+        x, y = queue.popleft()
+        px[x, y] = (0, 0, 0, 0)
+        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if 0 <= nx < w and 0 <= ny < h and not seen[ny][nx] and whiteish(nx, ny):
+                seen[ny][nx] = True
+                queue.append((nx, ny))
+
+    # Soften the cut: near-white pixels touching transparency get alpha
+    # proportional to how far from white they are, so the hull edge does
+    # not alias hard against the water.
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if a == 0:
+                continue
+            touching = any(
+                0 <= nx < w and 0 <= ny < h and px[nx, ny][3] == 0
+                for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))
+            )
+            if touching and min(r, g, b) > 190:
+                px[x, y] = (r, g, b, max(0, 255 - min(r, g, b)))
+
+    out = BytesIO()
+    image.save(out, format="PNG", optimize=True)
+    return out.getvalue()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--upload", action="store_true", help="push to the map-assets bucket")
@@ -115,8 +179,9 @@ def main() -> None:
         slug = class_slug(name)
         raw = httpx.get(url, timeout=30, follow_redirects=True).content
         png = process(raw)
-        path = MIRROR / f"{slug}.png"
-        path.write_bytes(png)
+        png_t = transparent(png)
+        (MIRROR / f"{slug}.png").write_bytes(png)
+        (MIRROR / f"{slug}-t.png").write_bytes(png_t)
         manifest.append(
             {
                 "class": name,
@@ -124,9 +189,11 @@ def main() -> None:
                 "source": url,
                 "bytes": len(png),
                 "sha256": hashlib.sha256(png).hexdigest(),
+                "bytes_t": len(png_t),
+                "sha256_t": hashlib.sha256(png_t).hexdigest(),
             }
         )
-        print(f"  {name:16} -> {slug}.png  {len(png):,}b")
+        print(f"  {name:16} -> {slug}.png {len(png):,}b / {slug}-t.png {len(png_t):,}b")
 
     (MIRROR / "manifest.json").write_text(json.dumps(manifest, indent=1) + "\n")
 
@@ -135,20 +202,23 @@ def main() -> None:
             raise SystemExit("--upload needs --bucket or MAP_ASSETS_BUCKET")
         s3 = boto3.client("s3")
         for entry in manifest:
-            s3.put_object(
-                Bucket=args.bucket,
-                Key=f"{BUCKET_PREFIX}{entry['slug']}.png",
-                Body=(MIRROR / f"{entry['slug']}.png").read_bytes(),
-                ContentType="image/png",
-                # Drawings change when a class is commissioned; a day of edge
-                # caching costs nothing and a rebuild busts it by content.
-                CacheControl="public, max-age=86400",
-            )
-            print(f"  uploaded {BUCKET_PREFIX}{entry['slug']}.png")
+            for suffix in ("", "-t"):
+                key = f"{BUCKET_PREFIX}{entry['slug']}{suffix}.png"
+                s3.put_object(
+                    Bucket=args.bucket,
+                    Key=key,
+                    Body=(MIRROR / f"{entry['slug']}{suffix}.png").read_bytes(),
+                    ContentType="image/png",
+                    # Drawings change when a class is commissioned; a day of edge
+                    # caching costs nothing and a rebuild busts it by content.
+                    CacheControl="public, max-age=86400",
+                )
+                print(f"  uploaded {key}")
 
     print("\nManifest shasums:")
     for entry in manifest:
         print(f"  {entry['sha256']}  {entry['slug']}.png")
+        print(f"  {entry['sha256_t']}  {entry['slug']}-t.png")
 
 
 if __name__ == "__main__":
