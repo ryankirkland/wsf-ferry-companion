@@ -142,8 +142,7 @@ def lambda_handler(event, context):
             if exc.response["Error"]["Code"] != "ConditionalCheckFailedException":
                 raise
             continue  # a fresher invoke got here first
-        first_seen = int(stored.get(bid, {}).get("first_seen_ms", observed_at_ms))
-        to_notify.append((alert, text_hash, first_seen))
+        to_notify.append((alert, text_hash))
 
     for bid, prior in stored.items():
         if bid not in fresh_ids and "gone_at" not in prior:
@@ -153,8 +152,8 @@ def lambda_handler(event, context):
                 ExpressionAttributeValues={":g": observed_at_ms},
             )
 
-    for alert, text_hash, first_seen in to_notify:
-        _fan_out(table, alert, text_hash, first_seen, counts)
+    for alert, text_hash in to_notify:
+        _fan_out(table, alert, text_hash, observed_at_ms, counts)
 
     emit(**{k: v for k, v in counts.items() if v > 0})
     return {"sent": counts["EmailsSent"], "changed_bulletins": len(to_notify)}
@@ -190,7 +189,7 @@ def _sub_matches(sub, sailings, parsed_clean, published_iso) -> tuple[bool, list
     return lead <= hhmm <= end, []
 
 
-def _fan_out(table, alert, text_hash, first_seen_ms, counts) -> None:
+def _fan_out(table, alert, text_hash, observed_at_ms, counts) -> None:
     sailings, parsed_clean = parse_cancelled_sailings(alert.get("text"))
     if not parsed_clean:
         counts["ParseMisses"] += 1
@@ -209,7 +208,13 @@ def _fan_out(table, alert, text_hash, first_seen_ms, counts) -> None:
         try:
             _send(alert, sub, mine, parsed_clean)
             counts["EmailsSent"] += 1
-            latency_ms = int(time.time() * 1000) - first_seen_ms
+            # Latency anchors on THIS invoke's observation - when this text
+            # version reached our feed - which is what the p95 <= 2 min SLO
+            # promises. Anchoring on the bulletin's stored first_seen_ms
+            # reported 1.9 HOURS for a WSF edit re-notify (live, 2026-08-19,
+            # bulletin 117241): bulletin age, not fan-out speed, poisoning
+            # the SLO metric.
+            latency_ms = int(time.time() * 1000) - observed_at_ms
             print(
                 json.dumps(
                     {
