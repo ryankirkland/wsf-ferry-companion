@@ -60,6 +60,23 @@ ambient "frame on a wall" mode (`/ambient`) that runs unattended for days.
   "stranger calls it beautiful" gate - both Ryan-side; the PMTiles switch
   test records into tools/pmtiles/RUNBOOK.md.
 
+## The boats ARE the drawings now (2026-08-18)
+
+Owner's beauty-gate call after a side-by-side A/B at real map sizes: the
+map markers use WSDOT's official class drawings with the page background
+extracted (border-flood-fill, interior whites preserved - see
+tools/vessel-drawings/MANIFEST.md), served as `<slug>-t.png` beside the
+card's white-plate originals. The frontend derives the `-t` URL from the
+dim's `drawing` field; class footage still sets marker width, so a
+Jumbo reads longer than a Kwa-di Tabil. The vector-traced icons remain
+in the bundle as the fallback for a class without a drawing or a failed
+asset load - an empty marker is never acceptable.
+
+Costs accepted with eyes open: the dusk "lantern moment" (windows going
+amber via the --win token) is retired - raster art has no themable
+layers - and night mode instead tames the white superstructure with a
+brightness filter. If the lantern is missed in practice, revisit.
+
 ## Vessel markers under zoom (2026-08-18)
 
 Two rider-reported fixes, verified by trusted-input e2e (map-zoom.spec):

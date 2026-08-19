@@ -52,5 +52,6 @@ test("boat FAB on the map opens the drawer with trips and calendar", async ({ pa
   await expect(drawer).toContainText("Ambient mode");
 
   await drawer.getByRole("link", { name: /Service calendar/ }).click();
-  await expect(page).toHaveURL(/\/calendar\/?/);
+  // Client-side navigation on a loaded runner can outlive the 5s default.
+  await expect(page).toHaveURL(/\/calendar\/?/, { timeout: 15_000 });
 });

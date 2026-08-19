@@ -166,9 +166,13 @@ test("the consent banner never blocks the boat FAB", async ({ page }) => {
   await interceptData(page);
   await page.goto("/");
   await page.waitForTimeout(2500);
-  // Banner visible (fresh visitor) AND the FAB still takes the tap.
+  // Banner visible (fresh visitor) AND the FAB still takes the tap. No
+  // tight click timeout: an overlapping banner fails as "element
+  // intercepts pointer events" at any timeout, which is the regression
+  // this guards - a short deadline only adds load-flakiness on busy
+  // runners.
   await expect(page.getByTestId("consent-banner")).toBeVisible();
-  await page.locator('[class*="fab"]').first().click({ timeout: 4000 });
+  await page.locator('[class*="fab"]').first().click();
   await expect(page.getByRole("link", { name: /Trip planner/ })).toBeVisible();
 });
 

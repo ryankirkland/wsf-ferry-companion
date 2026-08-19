@@ -1,29 +1,39 @@
 # WSDOT class-drawing mirror manifest
 
-Mirrored 2026-07-31 from `Class.DrawingImg` in
-`/vessels/rest/vesselverbose`. Re-run and re-upload if WSF commissions a
-new vessel class (about once a decade - the newest here is Kwa-di Tabil,
-2010):
+Mirrored 2026-07-31 (re-run 2026-08-18 to add the transparent variants)
+from `Class.DrawingImg` in `/vessels/rest/vesselverbose`. Re-run and
+re-upload if WSF commissions a new vessel class (about once a decade -
+the newest here is Kwa-di Tabil, 2010):
 
 ```bash
 uv run tools/vessel-drawings/mirror-drawings.py --upload \
   --bucket wsf-prod-map-assets-654654574183
 ```
 
-Serving path: `https://ferrysound.com/assets/vessels/<slug>.png`, published
-into `/data/vessels.json` as each vessel's `drawing` field.
+Serving paths: `https://ferrysound.com/assets/vessels/<slug>.png` (white
+plate, the vessel card; published into `/data/vessels.json` as each
+vessel's `drawing` field) and `<slug>-t.png` (transparent background,
+the map markers - the frontend derives the `-t` URL from `drawing`).
 
 The images are NOT committed (`mirror/` is gitignored), same as
 `tools/map-assets/mirror/`: WSDOT artwork stays out of a public repo, and
 the shasums below are the integrity record.
 
-## Why the background stays white
+## Two variants, two grounds
 
-These are dark line drawings made for white paper. Knocking the
-background out would erase the hull outline, rails and lettering against a
-dusk or night card, so the card gives them a light plate instead. The
-processing step only crops surrounding page-white to the drawing's
-bounding box.
+The **card** keeps the white plate: these are dark line drawings made
+for white paper, and against a dusk or night card the linework would
+disappear - the plate is also how WSDOT presents them.
+
+The **map** uses the transparent variant (owner's call after an A/B
+against the vector-traced icons, 2026-08-18: the drawings' detail wins).
+The extraction is a border-connected flood fill, NOT a global white
+filter - whites inside the hull (superstructure panels, deck faces) are
+part of the drawing and survive; only page background connected to the
+image border becomes alpha, with near-white edge pixels feathered. Night
+mode tames the white superstructure with a brightness filter in the map
+CSS; the traced svg icons remain the fallback for a class without a
+drawing or a failed load.
 
 ## Slugs come from ClassName, never PublicDisplayName
 
@@ -56,4 +66,12 @@ bcd7488e90e72b6fdf6bb13106a8d1a675abebcd198665cefb7b342f8c191861  evergreen-stat
 8f33bdbaccf2356e4be606a2d8df373726cdafe7edc7b78d0bbfd1e62c045ca5  kwa-di-tabil.png
 69c7df4ac5c1adae29be61edaa65c0860d4c6f5f1a41ada2f0eb93eba0fd6634  olympic.png
 61ec40ef065a8ff74751a0ecc9abaa77fd7893b2de6fc87b44751119d1a3a14e  super.png
+fedeab5cdd34afc96b003a50d8594c93cb1fb26aba2c6b047cd58bd1fc14fe43  evergreen-state-t.png
+ed5e4dfd3246581616a3030ce595c74c6381d954db69834b66f4bb4cd60f2368  issaquah-t.png
+41136249d01b2899ab9df0da29809e6d190b2506c08fcf9d65104b753f5b0e82  issaquah-130-t.png
+60fb2fea48c3c660b691691c803906fc9e36d24abdaf0434784dd6c6415872e9  jumbo-t.png
+d76570253c00df3b91fda256ade09ab0ce1c1233a912bb83555e974c349f59cb  jumbo-mark-ii-t.png
+592a3f1b77ac7b42825669ab15ca7be0ef9728c5501a711929ffab85d2fd6ddc  kwa-di-tabil-t.png
+0d6cc11ee3cbed55fb83508f0c70d0719901a775e852dca9e0d73b87be06beaf  olympic-t.png
+475216c19afd240aa94d3c5c2a87188ff6a14f43caff46f25bb3b1ed39c176a2  super-t.png
 ```
