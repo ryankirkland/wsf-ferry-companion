@@ -72,6 +72,12 @@ documented option if ParseCoverage proves the regex weak.
   (AlertSend audit line); with the 1-min poll cadence on top, worst-case
   detection-to-inbox is ~65 s against the 2-min SLO. First data point:
   within SLO.
+- 2026-08-19: second real delivery overnight (bulletin 117241), and its
+  WSF text edit re-notified correctly - which exposed a latency-metric
+  bug: AlertSend anchored on the bulletin's first sighting, so the edit
+  reported 1.9 h of bulletin age as if it were fan-out speed, poisoning
+  the p95 SLO metric. Latency now anchors on the invoke's own
+  observed_at_ms - the moment THIS text version reached the feed.
 - Sandbox IAM gotcha (PR #82): in sandbox, SES authorizes the
   RECIPIENT's verified identity as a resource alongside the sender's.
   The notifier policy carries a temporary `SandboxRecipientIdentities`

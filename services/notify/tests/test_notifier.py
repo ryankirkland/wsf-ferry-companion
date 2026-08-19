@@ -152,3 +152,23 @@ def test_every_alert_cites_the_wsf_bulletin_it_came_from(aws, sends):
     body = mime.decode()
     assert "Source: WSF bulletin 4242" in body
     assert "wsdot.wa.gov" in body
+
+
+def test_updated_bulletin_latency_anchors_on_the_new_observation(aws, sends, capsys):
+    """A WSF text edit re-notifies, and its AlertSend latency must measure
+    THIS observation -> send, never the bulletin's age. Anchoring on the
+    stored first_seen_ms reported 1.9 HOURS for a live edit (bulletin
+    117241, 2026-08-19) and poisoned the p95 SLO metric with bulletin age."""
+    import json as _json
+    import time as _time
+
+    subscribe("u-hit", "hit@example.com", 7, 3, "16:00", "19:00")
+    now_ms = int(_time.time() * 1000)
+    run([alert()], observed_ms=now_ms - 7_200_000)  # first sighting: 2 h ago
+    capsys.readouterr()
+
+    run([alert(text=CANCEL_TEXT + " Now expected to resume at 1830.")], observed_ms=now_ms)
+    lines = [line for line in capsys.readouterr().out.splitlines() if "AlertSend" in line]
+    assert lines, "a text edit must re-notify"
+    latency = _json.loads(lines[-1])["AlertSend"]["latency_ms"]
+    assert 0 <= latency < 60_000  # fan-out speed, not the 2 h bulletin age
