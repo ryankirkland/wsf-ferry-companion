@@ -153,14 +153,16 @@ test("boat FAB survives client-side navigation back to the map", async ({ page }
   await expect(page).toHaveURL(/\/$/);
   const fab = page.getByTestId("boat-fab");
   await expect(fab).toBeVisible();
-  const pos = await fab.evaluate((el) => {
-    const s = getComputedStyle(el);
-    return { position: s.position, rect: el.getBoundingClientRect().toJSON() };
-  });
-  expect(pos.position).toBe("fixed");
+  // Poll, don't snapshot: the (site) layout's FAB unmounts and the map
+  // page's own FAB mounts during this navigation, and a one-shot
+  // evaluate can measure the detached one (computed position "").
+  await expect
+    .poll(() => fab.evaluate((el) => getComputedStyle(el).position))
+    .toBe("fixed");
+  const box = (await fab.boundingBox())!;
   const viewport = page.viewportSize()!;
-  expect(pos.rect.bottom).toBeLessThanOrEqual(viewport.height);
-  expect(pos.rect.left).toBeLessThan(100); // bottom-left corner, on screen
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+  expect(box.x).toBeLessThan(100); // bottom-left corner, on screen
 });
 
 // From the 2026-08-18 sign-up walk: a signup error rode into the
