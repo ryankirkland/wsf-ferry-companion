@@ -15,8 +15,8 @@ export default function StatsPage() {
     <main className={overview.page}>
       <div className={overview.column}>
         <div className={styles.masthead}>
-          <Link href="/" className={`display ${styles.wordmark}`}>
-            Ferry <span>Sound</span>
+          <Link href="/" className={styles.swap}>
+            ← Back to map
           </Link>
           <Link href="/trip" className={styles.swap}>
             Plan a trip

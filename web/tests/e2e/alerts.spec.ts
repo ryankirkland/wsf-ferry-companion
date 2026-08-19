@@ -72,7 +72,7 @@ test("signed-in: list, add with window chips, delete", async ({ page }) => {
   });
 
   await page.goto("/alerts/");
-  await expect(page.getByText(EMAIL)).toBeVisible();
+  await expect(page.getByRole("main").getByText(EMAIL)).toBeVisible();
   const list = page.getByTestId("sub-list");
   await expect(list).toContainText("Seattle → Bainbridge Island");
   await expect(list).toContainText("16:00-19:00");
@@ -175,7 +175,7 @@ test("switching auth flows clears the previous flow's error", async ({ page }) =
     }),
   );
   await page.goto("/account/");
-  await page.getByText(/create an account/i).click();
+  await page.getByRole("button", { name: "New here? Create an account" }).click();
   await page.locator('input[type="email"]').fill("someone@example.com");
   await page.locator('input[type="password"]').first().fill("Long-Enough-Password-9");
   await page.getByRole("button", { name: /create/i }).click();

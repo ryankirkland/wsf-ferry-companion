@@ -1,9 +1,8 @@
 "use client";
 
-// The map's doorway to everything that isn't the map: a small boat-button
-// bottom-left opening a Paper Sound drawer (trip planner, your run, the
-// service calendar, ambient mode). The map stays chrome-light; /ambient
-// stays chromeless and never renders this.
+// The boat-button drawer: on the map it is the doorway to everything
+// else; on every (site) page it is the narrow-screen navigation (wide
+// screens get the SideNav rail). /ambient stays chromeless.
 
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
@@ -81,6 +80,10 @@ export function BoatFab() {
           </button>
         </div>
         <nav className={styles.links}>
+          <Link href="/" data-analytics-label="nav-map" onClick={() => setOpen(false)}>
+            Live map
+            <span>The Sound, right now</span>
+          </Link>
           <Link href="/trip" data-analytics-label="nav-trip" onClick={() => setOpen(false)}>
             Trip planner
             <span>Next sailings, live status, fares</span>
@@ -91,16 +94,12 @@ export function BoatFab() {
               <span>Straight to your crossing</span>
             </Link>
           )}
-          <Link href="/calendar" data-analytics-label="nav-calendar" onClick={() => setOpen(false)}>
-            Service calendar
-            <span>Scheduled cancellations, months ahead</span>
-          </Link>
           <Link href="/stats" data-analytics-label="nav-stats" onClick={() => setOpen(false)}>
             On-time record
             <span>24 years of departures, by route and boat</span>
           </Link>
           <Link href="/alerts" data-analytics-label="nav-alerts" onClick={() => setOpen(false)}>
-            Email alerts
+            Ferry Alerts
             <span>Your crossing, your window, one email</span>
           </Link>
           <Link href="/ambient" data-analytics-label="ambient-toggle" onClick={() => setOpen(false)}>
@@ -108,9 +107,9 @@ export function BoatFab() {
             <span>The Sound on a wall, all day</span>
           </Link>
           {authUser ? (
-            <Link href="/alerts" data-analytics-label="nav-account" onClick={() => setOpen(false)}>
+            <Link href="/account" data-analytics-label="nav-account" onClick={() => setOpen(false)}>
               Account
-              <span>{authUser.includes("@") ? authUser : "Manage your alerts"}</span>
+              <span>{authUser.includes("@") ? authUser : "Email and password"}</span>
             </Link>
           ) : (
             <Link
@@ -119,7 +118,7 @@ export function BoatFab() {
               onClick={() => setOpen(false)}
             >
               Sign in
-              <span>Create an account for email alerts</span>
+              <span>Create an account for ferry alerts</span>
             </Link>
           )}
         </nav>

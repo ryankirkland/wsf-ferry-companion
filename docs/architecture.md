@@ -158,8 +158,9 @@ upstream has no reason to flush.
 (38 pairs + horizon), `/data/pairs/{dep}-{arr}/{date}.json` (14-day
 window, `depart_ms` = the verified fleet join key),
 `/data/fares/{dep}-{arr}.json` (LineItemLookup-resolved),
-`/data/alerts.json` (watermarked), `/data/adjustments.json` (season-wide
-service calendar from timeadj). Pair-day files expire from the bucket
+`/data/alerts.json` (watermarked), `/data/adjustments.json` (per-date
+timeadj expansion; its /calendar page was removed 2026-08-19, pair-day
+notes still consume the upstream). Pair-day files expire from the bucket
 after 30 days.
 
 **Raw archive** (`wsf-prod-raw-*`): `raw/<dataset>/dt=YYYY-MM-DD/HHMM.ndjson.gz`

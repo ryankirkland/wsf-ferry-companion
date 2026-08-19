@@ -23,7 +23,6 @@ import { VesselMarkerPool } from "./vessels/markers";
 
 // Below this width the expanded attribution and the boat FAB fight for
 // the same bottom-left corner.
-const COMPACT_ATTRIB_MAX_PX = 640;
 
 export interface ControllerOptions {
   styleUrl: string;
@@ -61,30 +60,21 @@ export class PaperSoundMap {
     });
     this.map.touchZoomRotate.disableRotation();
 
-    // MapLibre opens the compact attribution by default, which lays two
-    // lines of credits along the bottom edge - straight under the boat FAB
-    // in the corner. Collapse it to the "i" on narrow screens: the credits
-    // stay one tap away, which is what compact mode is for, and the corner
-    // belongs to the control the rider actually uses.
+    // MapLibre opens the compact attribution by default, laying credit
+    // lines along the bottom edge. Collapse it to the "i" at every width
+    // (owner's walk, 2026-08-19): the credits stay one tap away, which is
+    // what compact mode is for, and the bottom edge belongs to the map.
     this.map.once("load", () => {
-      if (window.innerWidth > COMPACT_ATTRIB_MAX_PX) return;
       container
         .querySelector(".maplibregl-ctrl-attrib")
         ?.classList.remove("maplibregl-compact-show");
     });
 
-    if (opts.ambient) {
-      for (const handler of [
-        this.map.dragPan,
-        this.map.scrollZoom,
-        this.map.doubleClickZoom,
-        this.map.touchZoomRotate,
-        this.map.keyboard,
-        this.map.boxZoom,
-      ]) {
-        handler.disable();
-      }
-    }
+    // Ambient used to disable every interaction handler ("inert wall
+    // display") - the owner's walk found that surprising rather than calm
+    // (2026-08-19). The map now pans and zooms everywhere; ambient keeps
+    // its 24 h guarantees, and the daily reload / visibility refit still
+    // recenter a wandered wall display.
 
     this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 

@@ -163,6 +163,15 @@ export function VesselCard({
 
   const delay = delayLine(fix);
   const eta = fix.eta && fix.state === "underway" ? soundClock(new Date(fix.eta)) : null;
+  // Name the destination (owner's walk): "arrives about 5:15" left the
+  // rider asking WHERE. "about", not "scheduled" - this is WSF's live
+  // estimate; the scheduled time has its own line below.
+  const arrName = fix.arr != null ? terms?.get(fix.arr)?.name : null;
+  const etaLine = eta
+    ? arrName
+      ? ` · arrives in ${arrName} about ${eta}`
+      : ` · arrives about ${eta}`
+    : "";
 
   return (
     <aside className={styles.card} data-testid="vessel-card">
@@ -174,7 +183,7 @@ export function VesselCard({
       <p className={styles.run}>{runLine(fix, terms)}</p>
       <p className={styles.status}>
         {statusLine(fix)}
-        {eta && ` · arrives about ${eta}`}
+        {etaLine}
       </p>
       {delay && (
         <p className={`${styles.delay} ${delay.lateMin >= 5 ? styles.late : ""}`}>{delay.text}</p>

@@ -26,7 +26,7 @@ export type SignalTone = "green" | "amber" | "red" | "muted" | "neutral";
 export interface Signal {
   state: SignalState;
   tone: SignalTone;
-  /** The answer line, e.g. "Leaves in 42 min - relax". */
+  /** The answer line, e.g. "Leaves in 42 min". */
   headline: string;
   /** Optional live suffix, e.g. "Wenatchee is at the dock". */
   detail: string | null;
@@ -163,12 +163,15 @@ export function computeSignal({ sailing, cancelled, fix, depTerminalId, nowMs }:
   return timeSignal(t, when, null, false);
 }
 
+// No coaching words ("relax", "keep moving") after the owner's acceptance
+// walk: the countdown and the tone color already carry the judgment, and
+// the words read as noise once you've seen them twice.
 function timeSignal(t: number, when: string, detail: string | null, live: boolean): Signal {
   if (t <= SIGNAL.comfortableMin) {
-    return { state: "tight", tone: "amber", headline: `Leaves in ${t} min - keep moving`, detail, live };
+    return { state: "tight", tone: "amber", headline: `Leaves in ${t} min`, detail, live };
   }
   if (t <= SIGNAL.countdownMaxMin) {
-    return { state: "comfortable", tone: "green", headline: `Leaves in ${t} min - relax`, detail, live };
+    return { state: "comfortable", tone: "green", headline: `Leaves in ${t} min`, detail, live };
   }
   return { state: "comfortable", tone: "green", headline: `Leaves at ${when}`, detail, live };
 }

@@ -262,7 +262,7 @@ test("picker filters to real mates and remembers your run", async ({ page }) => 
   await expect(page.getByTestId("answer-line")).toBeVisible({ timeout: 15_000 });
 
   await page.goto("/trip/");
-  await expect(page.getByText(`Your run: Seattle → Bainbridge Island`)).toBeVisible();
+  await expect(page.getByRole("main").getByText(`Your run: Seattle → Bainbridge Island`)).toBeVisible();
 
   await page.getByLabel("From", { exact: true }).selectOption({ label: "Seattle" });
   await page.getByLabel("To", { exact: true }).selectOption({ label: "Bainbridge Island" });

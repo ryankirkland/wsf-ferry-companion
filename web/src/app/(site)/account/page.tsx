@@ -1,29 +1,29 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { AccountView } from "@/components/account/AccountView";
+import { AccountHome } from "@/components/account/AccountHome";
 import tripStyles from "@/components/trip/trip.module.css";
 
 export const metadata: Metadata = {
   title: "Account · Ferry Sound",
-  description: "Sign in to manage your ferry alert subscriptions.",
+  description: "Manage your Ferry Sound account: email and password.",
 };
 
 // The shell is server-rendered so the static export carries a real body;
-// AccountView (useSearchParams + the sign-in state machine, including the
-// mode-dependent h1) renders inside the boundary.
+// AccountHome (auth state + useSearchParams in the sign-in machine) renders
+// inside the boundary.
 export default function AccountPage() {
   return (
     <main className={tripStyles.page}>
       <div className={tripStyles.column}>
         <div className={tripStyles.masthead}>
-          <Link href="/" className={`display ${tripStyles.wordmark}`}>
-            Ferry <span>Sound</span>
+          <Link href="/" className={tripStyles.swap}>
+            ← Back to map
           </Link>
         </div>
 
         <Suspense>
-          <AccountView />
+          <AccountHome />
         </Suspense>
 
         <p className={tripStyles.footNote}>

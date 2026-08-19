@@ -48,13 +48,14 @@ across 5 routes.**
   stamps every alert with its publish time (Sound-time clock if today,
   short date otherwise) - a 9 AM delay notice means something different
   at 5 PM.
-- `/data/adjustments.json` (added 2026-07-29) - the season-wide service
-  calendar: every timeadj row expanded to per-date entries (date,
-  route_id/name, dep terminal, add|cancel, tidal, HH:MM local), past
-  dates dropped. Published on full rebuilds - timeadj only moves with
-  the schedule token. Rendered at `/calendar` as month grids; days
-  inside the 14-day horizon deep-link to the pair page for that date,
-  deeper dates are information only (upstream cannot serve them yet).
+- `/data/adjustments.json` (added 2026-07-29) - every timeadj row
+  expanded to per-date entries (date, route_id/name, dep terminal,
+  add|cancel, tidal, HH:MM local), past dates dropped. Published on
+  full rebuilds - timeadj only moves with the schedule token. The
+  `/calendar` month-grid page that rendered it was REMOVED at the
+  owner's acceptance walk (2026-08-19: "not useful"); the contract
+  stays published because pair-day notes consume the same upstream
+  and a future surface may want it.
 
 ## Dependencies
 
@@ -97,9 +98,13 @@ signal pills (earlier sailings collapsed) -> 14-chip date strip (`?date=`
 bounded today..+13, out-of-range clamps with an honest note) -> collapsible
 fares panel (basic 13 default, honest effective label).
 
-Navigation: the map carries a boat-button (bottom-left) opening a drawer
-with the trip planner, "your run", the service calendar, and ambient mode
-- /ambient itself stays chromeless. Signal pills mark only states that
+Navigation (reworked at the owner's 2026-08-19 walk): the boat-button
+drawer (live map, trip planner, "your run", on-time record, Ferry
+Alerts, ambient, account) now renders on every page except /ambient;
+wide screens additionally get a persistent SideNav rail, and non-map
+mastheads lead with "Back to map" instead of the wordmark. Coaching
+words ("relax", "keep moving") are gone from the answer line - the
+countdown and tone color carry the judgment. Signal pills mark only states that
 demand a glance (boarding, leaving now, running late, departed/gone,
 no-signal); tight/comfortable rows let the countdown speak for itself
 (Ryan's call, 2026-07-29).

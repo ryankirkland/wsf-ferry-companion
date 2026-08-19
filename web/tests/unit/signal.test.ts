@@ -108,7 +108,7 @@ describe("dock-confirmed states", () => {
   it("comfortable with live dock suffix", () => {
     const s = run(D - 40 * MIN, fix({}));
     expect(s.state).toBe("comfortable");
-    expect(s.headline).toBe("Leaves in 40 min - relax");
+    expect(s.headline).toBe("Leaves in 40 min");
     expect(s.tone).toBe("green");
   });
 });
@@ -218,7 +218,7 @@ describe("threshold boundaries", () => {
   });
 
   it("countdown switches to clock time past 120 min", () => {
-    expect(run(D - 120 * MIN, null).headline).toBe("Leaves in 120 min - relax");
+    expect(run(D - 120 * MIN, null).headline).toBe("Leaves in 120 min");
     expect(run(D - 121 * MIN, null).headline).toBe("Leaves at 2:05 PM");
   });
 });

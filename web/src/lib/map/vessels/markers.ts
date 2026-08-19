@@ -9,7 +9,7 @@ import { STALE_S } from "@/config";
 import type { VesselFix, VesselState } from "@/lib/data/types";
 import { asOf, soundClock } from "@/lib/time/sound-time";
 import { planMooredLabels } from "./cluster";
-import { getVesselDims } from "@/lib/data/dims";
+import { getTerminalDims, getVesselDims } from "@/lib/data/dims";
 import { VESSEL_ANCHOR_PX } from "./anchor";
 import { classIcon, classSvg, REFERENCE_FEET } from "./class-icons";
 import { GlideLoop } from "./interpolate";
@@ -49,6 +49,7 @@ export class VesselMarkerPool {
   // VesselID -> class info. Dims usually resolve after the first fleet
   // snapshot, so markers born before then get retrofitted.
   private classes = new Map<number, ClassInfo>();
+  private terminalNames = new Map<number, string>();
 
   constructor(
     private map: MLMap,
@@ -62,6 +63,14 @@ export class VesselMarkerPool {
         });
       })
       .catch(() => undefined); // fallback icons are fine without dims
+
+    // Terminal names for the "-> Seattle ~5:15" status label; until they
+    // resolve the label falls back to the bare arrival time.
+    void getTerminalDims()
+      .then((terms) => {
+        terms.forEach((t) => this.terminalNames.set(t.id, t.name));
+      })
+      .catch(() => undefined);
 
     this.glides = new GlideLoop((id, lat, lon) => {
       const h = this.handles.get(id);
@@ -234,8 +243,14 @@ export class VesselMarkerPool {
         return "resting";
       case "docked":
         return "at dock";
-      case "underway":
-        return fix.eta ? `arrives ~${soundClock(new Date(fix.eta))}` : "";
+      case "underway": {
+        if (!fix.eta) return "";
+        // Name the destination (owner's walk: "arrives ~5:15" leaves the
+        // rider asking WHERE); the arrow matches the run-line convention.
+        const eta = soundClock(new Date(fix.eta));
+        const arr = fix.arr != null ? this.terminalNames.get(fix.arr) : null;
+        return arr ? `→ ${arr} ~${eta}` : `arrives ~${eta}`;
+      }
     }
   }
 }
