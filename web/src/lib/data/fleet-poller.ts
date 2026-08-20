@@ -100,7 +100,12 @@ export class FleetPoller implements PollerLike {
       const body: unknown = await res.json();
       if (!isFleetSnapshot(body)) throw new Error("malformed snapshot");
       this.snapshot = body;
-      this.lastGoodAt = Date.now();
+      // The DATA's clock, never the fetch's: during the 2026-08-19 WSDOT
+      // outage the snapshot file kept serving (stale) while its contents
+      // froze, and stamping fetch time here made the staleness banner
+      // track the rider's page-load time - overstating freshness during
+      // the exact event the banner exists for (owner caught it live).
+      this.lastGoodAt = Date.parse(body.generated_at) || Date.now();
       this.failures = 0;
     } catch (err) {
       if ((err as Error).name !== "AbortError" || !this.running) this.failures += 1;
