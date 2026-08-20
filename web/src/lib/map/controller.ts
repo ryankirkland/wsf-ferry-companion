@@ -258,7 +258,7 @@ export class PaperSoundMap {
       if (!chip) {
         chip = document.createElement("em");
         chip.className = "wx";
-        el.appendChild(chip);
+        el.prepend(chip); // top of the stack: chip over name over dot
       }
       const temp = row[1] !== null ? `<b>${row[1]}°</b>` : "";
       chip.innerHTML = `${glyphMarkup(row[2], 13)}${temp}`;

@@ -46,12 +46,15 @@
   white-space: nowrap;
 }
 
-/* Terminal markers: dot + tracked caps label, west-shore side-aware. */
+/* Terminal markers: weather chip over name over dot, centered on the
+ * point (owner's call: sideways rows sprawled over the water and hid
+ * the boats). */
 .term {
   z-index: 6; /* labels stay legible above docked hulls */
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
   pointer-events: none;
   font-family: var(--font-gabarito), sans-serif;
   font-weight: 700;
@@ -70,10 +73,6 @@
   border-radius: 50%;
   background: var(--ink);
   flex: none;
-}
-
-.term:global(.right) {
-  flex-direction: row-reverse;
 }
 
 .term:global(.soft) {
@@ -253,7 +252,6 @@ html[data-mode="night"] .vm :global(svg) {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  margin-left: 6px;
   font-style: normal;
   font-size: 11px;
   color: var(--ink-soft);
