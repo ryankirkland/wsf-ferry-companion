@@ -217,10 +217,7 @@ def test_every_poll_is_banked_to_the_raw_archive(aws, monkeypatch):
     monkeypatch.setenv("RAW_BUCKET", "wsf-test-raw")
     run(monkeypatch, {"gridpoints": forecast(), "airnowapi.org": airnow()})
 
-    keys = [
-        o["Key"]
-        for o in boto3.client("s3").list_objects_v2(Bucket="wsf-test-raw")["Contents"]
-    ]
+    keys = [o["Key"] for o in boto3.client("s3").list_objects_v2(Bucket="wsf-test-raw")["Contents"]]
     assert len(keys) == 1 and keys[0].startswith("raw/weather/dt=")
     raw = gzip.decompress(
         boto3.client("s3").get_object(Bucket="wsf-test-raw", Key=keys[0])["Body"].read()
