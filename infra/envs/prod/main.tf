@@ -62,6 +62,19 @@ module "analytics" {
   lambda_zip_path = "${path.root}/.build/analytics.zip"
 }
 
+# F6 weather: NWS + AirNow per-terminal conditions poller (evidence in
+# api-exploration-weather/weather.md). The AirNow key is an SSM
+# SecureString set via CLI - never in this state.
+module "weather" {
+  source = "../../modules/weather"
+
+  data_bucket_name = module.static_site.data_bucket_name
+  data_bucket_arn  = module.static_site.data_bucket_arn
+  alarms_topic_arn = aws_sns_topic.alarms.arn
+  # Built by CI (and locally) before terraform runs - see infra-plan.yml.
+  lambda_zip_path = "${path.root}/.build/weather.zip"
+}
+
 # M3 alert-notification foundations: SES identity + Cognito + link-token
 # secrets (ADR-0006). Lambdas land in D2/D3.
 module "notify" {
