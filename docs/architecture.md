@@ -16,6 +16,7 @@ flowchart LR
         EB[EventBridge Scheduler<br/>1 min + 15 min] --> POLL[Lambda poller<br/>4x15s loop]
         EB --> DIMS[Lambda dims refresher<br/>cacheflushdate-gated]
         EB --> SCHED[Lambda schedule refresher<br/>token + horizon gated, 15 min]
+        EB2[EventBridge rate 30 min] --> WX[Lambda weather poller<br/>NWS 19 cells + AirNow 6 areas] -- weather.json --> DATA
         EB --> AL[Lambda alerts poller<br/>watermark-gated, 1 min]
         AL -- "on change: today-refresh" --> SCHED
         AL -- "on change: full slim feed" --> NOTIF[Lambda notifier<br/>diff + match + capped SES fan-out]

@@ -1,0 +1,261 @@
+{
+ "resolved_at": "2026-08-19",
+ "terminals": [
+  {
+   "terminal_id": 1,
+   "name": "Anacortes",
+   "lat": 48.5074,
+   "lon": -122.677,
+   "grid": {
+    "office": "SEW",
+    "x": 122,
+    "y": 113
+   },
+   "airnow_area": "Anacortes"
+  },
+  {
+   "terminal_id": 3,
+   "name": "Bainbridge Island",
+   "lat": 47.6223,
+   "lon": -122.5096,
+   "grid": {
+    "office": "SEW",
+    "x": 119,
+    "y": 70
+   },
+   "airnow_area": "Bremerton-Silverdale-Bainbridge Island"
+  },
+  {
+   "terminal_id": 4,
+   "name": "Bremerton",
+   "lat": 47.5618,
+   "lon": -122.6241,
+   "grid": {
+    "office": "SEW",
+    "x": 115,
+    "y": 68
+   },
+   "airnow_area": "Bremerton-Silverdale-Bainbridge Island"
+  },
+  {
+   "terminal_id": 5,
+   "name": "Clinton",
+   "lat": 47.9754,
+   "lon": -122.3496,
+   "grid": {
+    "office": "SEW",
+    "x": 128,
+    "y": 85
+   },
+   "airnow_area": "Everett-Marysville-Lynnwood"
+  },
+  {
+   "terminal_id": 7,
+   "name": "Seattle",
+   "lat": 47.6025,
+   "lon": -122.3405,
+   "grid": {
+    "office": "SEW",
+    "x": 124,
+    "y": 68
+   },
+   "airnow_area": "Seattle-Bellevue-Kent Valley"
+  },
+  {
+   "terminal_id": 8,
+   "name": "Edmonds",
+   "lat": 47.8134,
+   "lon": -122.3854,
+   "grid": {
+    "office": "SEW",
+    "x": 125,
+    "y": 78
+   },
+   "airnow_area": "Bremerton-Silverdale-Bainbridge Island"
+  },
+  {
+   "terminal_id": 9,
+   "name": "Fauntleroy",
+   "lat": 47.5232,
+   "lon": -122.3967,
+   "grid": {
+    "office": "SEW",
+    "x": 122,
+    "y": 65
+   },
+   "airnow_area": "Seattle-Bellevue-Kent Valley"
+  },
+  {
+   "terminal_id": 10,
+   "name": "Friday Harbor",
+   "lat": 48.5358,
+   "lon": -123.0138,
+   "grid": {
+    "office": "SEW",
+    "x": 112,
+    "y": 116
+   },
+   "airnow_area": "Anacortes"
+  },
+  {
+   "terminal_id": 11,
+   "name": "Coupeville",
+   "lat": 48.159,
+   "lon": -122.6726,
+   "grid": {
+    "office": "SEW",
+    "x": 119,
+    "y": 96
+   },
+   "airnow_area": "Port Townsend"
+  },
+  {
+   "terminal_id": 12,
+   "name": "Kingston",
+   "lat": 47.7946,
+   "lon": -122.4943,
+   "grid": {
+    "office": "SEW",
+    "x": 121,
+    "y": 78
+   },
+   "airnow_area": "Bremerton-Silverdale-Bainbridge Island"
+  },
+  {
+   "terminal_id": 13,
+   "name": "Lopez Island",
+   "lat": 48.5709,
+   "lon": -122.8828,
+   "grid": {
+    "office": "SEW",
+    "x": 117,
+    "y": 117
+   },
+   "airnow_area": "Anacortes"
+  },
+  {
+   "terminal_id": 14,
+   "name": "Mukilteo",
+   "lat": 47.9506,
+   "lon": -122.297,
+   "grid": {
+    "office": "SEW",
+    "x": 129,
+    "y": 84
+   },
+   "airnow_area": "Everett-Marysville-Lynnwood"
+  },
+  {
+   "terminal_id": 15,
+   "name": "Orcas Island",
+   "lat": 48.5973,
+   "lon": -122.9435,
+   "grid": {
+    "office": "SEW",
+    "x": 115,
+    "y": 118
+   },
+   "airnow_area": "Anacortes"
+  },
+  {
+   "terminal_id": 16,
+   "name": "Point Defiance",
+   "lat": 47.3065,
+   "lon": -122.5141,
+   "grid": {
+    "office": "SEW",
+    "x": 116,
+    "y": 55
+   },
+   "airnow_area": "Tacoma-Puyallup"
+  },
+  {
+   "terminal_id": 17,
+   "name": "Port Townsend",
+   "lat": 48.1108,
+   "lon": -122.759,
+   "grid": {
+    "office": "SEW",
+    "x": 116,
+    "y": 94
+   },
+   "airnow_area": "Port Townsend"
+  },
+  {
+   "terminal_id": 18,
+   "name": "Shaw Island",
+   "lat": 48.5848,
+   "lon": -122.9296,
+   "grid": {
+    "office": "SEW",
+    "x": 115,
+    "y": 118
+   },
+   "airnow_area": "Anacortes"
+  },
+  {
+   "terminal_id": 19,
+   "name": "Sidney B.C.",
+   "lat": 48.6431,
+   "lon": -123.3967,
+   "grid": null,
+   "airnow_area": null
+  },
+  {
+   "terminal_id": 20,
+   "name": "Southworth",
+   "lat": 47.5131,
+   "lon": -122.4957,
+   "grid": {
+    "office": "SEW",
+    "x": 119,
+    "y": 65
+   },
+   "airnow_area": "Seattle-Bellevue-Kent Valley"
+  },
+  {
+   "terminal_id": 21,
+   "name": "Tahlequah",
+   "lat": 47.332,
+   "lon": -122.5078,
+   "grid": {
+    "office": "SEW",
+    "x": 116,
+    "y": 56
+   },
+   "airnow_area": "Tacoma-Puyallup"
+  },
+  {
+   "terminal_id": 22,
+   "name": "Vashon Island",
+   "lat": 47.511,
+   "lon": -122.4636,
+   "grid": {
+    "office": "SEW",
+    "x": 120,
+    "y": 64
+   },
+   "airnow_area": "Seattle-Bellevue-Kent Valley"
+  },
+  {
+   "terminal_id": 122,
+   "name": "Eagle Harbor",
+   "lat": 47.6205,
+   "lon": -122.5145,
+   "grid": {
+    "office": "SEW",
+    "x": 119,
+    "y": 70
+   },
+   "airnow_area": "Bremerton-Silverdale-Bainbridge Island"
+  }
+ ],
+ "airnow_area_representatives": {
+  "Anacortes": 1,
+  "Bremerton-Silverdale-Bainbridge Island": 3,
+  "Everett-Marysville-Lynnwood": 5,
+  "Seattle-Bellevue-Kent Valley": 7,
+  "Port Townsend": 11,
+  "Tacoma-Puyallup": 16
+ }
+}

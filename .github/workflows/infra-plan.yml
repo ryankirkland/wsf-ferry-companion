@@ -93,6 +93,15 @@ jobs:
             --only-binary :all: --no-cache
           python3 tools/build_lambda_zip.py .build/notify-src infra/envs/prod/.build/notify.zip
 
+
+      - name: build weather lambda artifact
+        run: |
+          uv build --wheel --package wsf-weather --out-dir .build/wheels
+          uv pip install .build/wheels/wsf_weather-*.whl --target .build/weather-src \
+            --python-platform aarch64-manylinux2014 --python-version 3.12 \
+            --only-binary :all: --no-cache
+          python3 tools/build_lambda_zip.py .build/weather-src infra/envs/prod/.build/weather.zip
+
       - name: build analytics lambda artifact
         run: |
           uv build --wheel --package wsf-analytics --out-dir .build/wheels
