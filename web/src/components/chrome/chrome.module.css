@@ -120,3 +120,25 @@
   white-space: nowrap;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
 }
+
+/* The under-construction notice: quiet, permanent, everywhere - bottom
+ * center where nothing interactive lives. pointer-events: none so it can
+ * never intercept a tap (the consent banner sits above it on first
+ * visit, which is fine - consent dismisses once). */
+.construction {
+  position: fixed;
+  bottom: max(0.4rem, env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 22;
+  margin: 0;
+  padding: 0.15rem 0.8rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card) 85%, transparent);
+  border: 1px solid var(--card-line);
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  pointer-events: none;
+}

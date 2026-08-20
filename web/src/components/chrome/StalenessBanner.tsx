@@ -17,7 +17,7 @@ export function StalenessBanner({
   const asOfText = lastGoodAt ? `Positions ${asOf(new Date(lastGoodAt))}` : "No positions yet";
   return (
     <p className={styles.staleBanner} role="status">
-      {asOfText} - trying to reach the Sound.
+      {asOfText} - we&apos;re experiencing an outage.
     </p>
   );
 }
