@@ -60,6 +60,11 @@ the day - including the air, in smoke season.
   `aqiTone` maps EPA thresholds (theirs, not ours).
 - `lib/weather-glyphs.ts`: the ONE source of glyph artwork, consumed by
   the React `WeatherIcon` (trip pages) and the DOM-built map chips.
+  Flat filled shapes on a fixed palette (amber sun, gray cloud, blue
+  rain), not line drawings - the owner's 2026-08-20 call after the
+  stroked set proved "very hard to decipher" at chip sizes, and flat
+  color is the map's native language. Sizes run ~30% larger everywhere
+  (strip 24 px, map chips 17 px + 14 px temps, AQI chips 0.98rem).
 - Trip pages: `WeatherStrip` under the answer line - both terminals at
   the VIEWED sailing's hour (today with nothing left shows now), short
   text, rain chance >=15%, wind >=12 mph, AQI chip always (category
@@ -70,6 +75,9 @@ the day - including the air, in smoke season.
 
 ## Status
 
+- 2026-08-20: glyphs redrawn flat + colorful, everything ~30% bigger
+  (PR #102) - owner acceptance feedback; verified live on the deployed
+  pair pages and map.
 - 2026-08-19 (late): W1 shipped - strip, chips, glyph set, fixture
   template, 5 unit + 3 e2e specs; every poll banked to raw/weather/ for
   the future weather-vs-delay join (owner's call). AirNow outage at
