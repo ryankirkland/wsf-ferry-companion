@@ -96,7 +96,7 @@ def run(monkeypatch, responses):
     """responses: url-substring -> payload (None = failure after retries)."""
     monkeypatch.setattr(poller, "_gridcells", DIM)
 
-    def fake_get(url, params=None):
+    def fake_get(url, params=None, retry=True):
         for frag, payload in responses.items():
             if frag in url:
                 return payload

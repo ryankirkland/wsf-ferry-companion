@@ -69,9 +69,11 @@ resource "aws_lambda_function" "poller" {
   filename         = var.lambda_zip_path
   source_code_hash = filebase64sha256(var.lambda_zip_path)
   memory_size      = 192
-  # 19 NWS cells + 6 AirNow areas, sequential with one 3s retry each:
-  # normal runs ~20s; the ceiling covers a bad NWS day.
-  timeout = 120
+  # 19 NWS cells (one retry each) + 6 AirNow areas (no retry, and a
+  # remaining-time guard reserves the publish window): normal runs ~30s;
+  # the ceiling covers a bad NWS day without the first deploy's failure
+  # mode of dying mid-fetch before publishing anything.
+  timeout = 180
 
   environment {
     variables = {
