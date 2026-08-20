@@ -75,14 +75,17 @@ def main() -> None:
                 headers=UA,
                 timeout=30,
             )
-            periods = fc.json().get("properties", {}).get("periods", []) if fc.status_code == 200 else []
+            body = fc.json() if fc.status_code == 200 else {}
+            periods = body.get("properties", {}).get("periods", [])
             if periods:
                 entry["grid"] = grid
-                print(f"  {t['name']:22} {grid['office']}/{grid['x']},{grid['y']}  {len(periods)} hourly periods")
+                cell = f"{grid['office']}/{grid['x']},{grid['y']}"
+                print(f"  {t['name']:22} {cell}  {len(periods)} hourly periods")
             else:
-                print(f"  {t['name']:22} grid resolved but forecast {fc.status_code} - SHIPPING AS UNCOVERED")
+                print(f"  {t['name']:22} forecast {fc.status_code} - SHIPPING AS UNCOVERED")
         else:
-            print(f"  {t['name']:22} points {points.status_code} - uncovered (expected for Sidney B.C.)")
+            print(f"  {t['name']:22} points {points.status_code} - uncovered "
+                  "(expected for Sidney B.C.)")
 
         obs = httpx.get(
             "https://www.airnowapi.org/aq/observation/latLong/current/",

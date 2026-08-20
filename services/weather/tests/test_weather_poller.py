@@ -125,7 +125,7 @@ def test_contract_shape_and_honest_absence(aws, monkeypatch):
     doc = published()
     sea = doc["terminals"]["7"]
     assert sea["as_of"] == "2026-08-19T20:00:00+00:00"  # NWS updateTime, not fetch time
-    ms, temp, icon, pop, wind, wind_dir, short = sea["hours"][0]
+    _ms, temp, icon, pop, wind, wind_dir, short = sea["hours"][0]
     assert (temp, icon, pop, wind, wind_dir) == (64, "showers", 40, 10, "SW")
     assert short == "Rain Showers Likely"
     assert sea["hours"][1][3] == 0  # null precipitation -> 0, never None
