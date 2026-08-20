@@ -9,7 +9,9 @@ to alarm on, never to retry-storm).
 
 import json
 import re
+import ssl
 import time
+from importlib import resources
 from typing import Any
 
 import urllib3
@@ -43,6 +45,23 @@ class WsfBadRequestError(WsfApiError):
 _AUTH_MESSAGE_RE = re.compile(r"access\s*code|register", re.IGNORECASE)
 
 
+def _tls_context() -> ssl.SSLContext:
+    """Default trust plus the DigiCert intermediate WSDOT stopped serving.
+
+    Since their 2026-08-19 maintenance, www.wsdot.wa.gov presents a bare
+    leaf certificate with no intermediate. Browsers repair that via AIA
+    chasing; strict clients correctly fail CERTIFICATE_VERIFY_FAILED - a
+    36 h outage that looked exactly like a cloud-IP block. Loading the
+    intermediate locally keeps FULL verification: the chain must still
+    anchor at a trusted root. See certs/digicert-ev-rsa-ca-g2.pem for
+    provenance; remove both once WSDOT serves a complete chain.
+    """
+    ctx = ssl.create_default_context()
+    pem = resources.files("wsf_core").joinpath("certs/digicert-ev-rsa-ca-g2.pem")
+    ctx.load_verify_locations(cadata=pem.read_text())
+    return ctx
+
+
 class WsfClient:
     def __init__(
         self,
@@ -65,6 +84,7 @@ class WsfClient:
             timeout=urllib3.Timeout(total=timeout_s),
             retries=False,
             headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
+            ssl_context=_tls_context(),
         )
 
     def _get(self, path: str) -> Any:

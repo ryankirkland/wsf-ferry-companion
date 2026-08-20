@@ -147,3 +147,33 @@ def test_vessel_history_strips_spaces_from_names():
     client = WsfClient("test-code", http=http)  # type: ignore[arg-type]
     client.vessel_history_raw("Walla Walla", "2015-01-01", "2015-12-31")
     assert "/vesselhistory/WallaWalla/2015-01-01/2015-12-31" in http.requested_urls[0]
+
+
+class TestTlsChainSupplement:
+    """WSDOT's 2026-08-19 maintenance left the server presenting a bare
+    leaf certificate; _tls_context supplies the missing DigiCert
+    intermediate while keeping full verification. These tests pin the
+    supplement's presence and integrity - a lost package-data file would
+    resurface the 36 h CERTIFICATE_VERIFY_FAILED outage silently."""
+
+    def test_intermediate_ships_with_the_package(self):
+        from importlib import resources
+
+        pem = resources.files("wsf_core").joinpath("certs/digicert-ev-rsa-ca-g2.pem")
+        text = pem.read_text()
+        assert "BEGIN CERTIFICATE" in text
+        assert "DigiCert" in text  # provenance header survived
+
+    def test_context_builds_with_verification_intact(self):
+        import ssl
+
+        from wsf_core.client import _tls_context
+
+        ctx = _tls_context()
+        # Full verification stays on - the whole point is adding a chain
+        # link, never loosening trust.
+        assert ctx.verify_mode == ssl.CERT_REQUIRED
+        assert ctx.check_hostname is True
+        # The supplement actually loaded: exactly one extra CA over default.
+        subjects = [dict(x[0] for x in cert.get("subject", ())) for cert in ctx.get_ca_certs()]
+        assert any(s.get("commonName") == "DigiCert EV RSA CA G2" for s in subjects)
