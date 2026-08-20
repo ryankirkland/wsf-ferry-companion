@@ -16,6 +16,11 @@ export interface LabelHint {
   label?: string;
   /** Names itself only once zoomed in - see LABEL_ALL_ZOOM. */
   minor?: boolean;
+  /** Collision-avoidance placement for terminals that share a screen row
+   *  at far zoom. "left"/"right" slide the name+chip sideways while the
+   *  dot stays on the coordinate (far zoom only - centered when close);
+   *  "below" hangs the whole stack under the dot at every zoom. */
+  stagger?: "left" | "right" | "below";
 }
 
 /** Per-terminal treatment, keyed by TerminalID. Markers stack
@@ -29,7 +34,7 @@ export const LABEL_HINTS: Record<number, LabelHint> = {
   5: { label: "Clinton" },
   7: { label: "Seattle" },
   8: { label: "Edmonds" },
-  9: { label: "Fauntleroy", minor: true },
+  9: { label: "Fauntleroy", stagger: "right" },
   10: { label: "Friday Harbor", minor: true },
   11: { label: "Coupeville", minor: true },
   12: { },
@@ -39,17 +44,20 @@ export const LABEL_HINTS: Record<number, LabelHint> = {
   16: { label: "Pt. Defiance", minor: true },
   17: { label: "Port Townsend", minor: true },
   18: { label: "Shaw", minor: true },
-  20: { label: "Southworth", minor: true },
+  20: { label: "Southworth", stagger: "left" },
   21: { label: "Tahlequah", minor: true },
-  22: { label: "Vashon", minor: true },
+  22: { label: "Vashon", stagger: "below" },
   122: { label: "Eagle Harbor yard", soft: true, minor: true },
 };
 
 /** Zoom at or above which every terminal names itself. Below it, only the
- *  anchors do. Twenty DOM labels at the default framing collided outright -
- *  SOUTHWORTH over VASHON, FAUNTLEROY over White Center - because these are
- *  plain markers with no collision engine behind them. The dots stay at
- *  every zoom, so a terminal is never invisible, only unnamed. */
+ *  anchors do. Twenty DOM labels at the default framing collided outright
+ *  because these are plain markers with no collision engine behind them.
+ *  The dots stay at every zoom, so a terminal is never invisible, only
+ *  unnamed. The Fauntleroy/Vashon/Southworth triangle shares one screen
+ *  row at far zoom yet must survive full zoom-out (owner's 2026-08-20
+ *  call) - hence `stagger`, which slides or hangs those labels instead of
+ *  demoting them to minor. */
 export const LABEL_ALL_ZOOM = 11.4;
 
 export function servedTerminals(terminals: TerminalDim[], servedIds: Set<number>): TerminalDim[] {
@@ -67,20 +75,28 @@ export function addTerminalMarkers(
   return terminals.map((term) => {
     const hint = LABEL_HINTS[term.id] ?? {};
     const el = document.createElement("div");
-    el.className = [className, hint.soft ? "soft" : "", hint.minor ? "minor" : ""]
+    el.className = [
+      className,
+      hint.soft ? "soft" : "",
+      hint.minor ? "minor" : "",
+      hint.stagger ? `stag-${hint.stagger}` : "",
+    ]
       .filter(Boolean)
       .join(" ");
     // Vertical stack: (weather chip - prepended by controller.syncWeather)
     // over name over dot; the dot's center sits on the coordinate via the
     // bottom anchor. A map without weather data is simply a map without
-    // chips.
+    // chips. A "below" stagger reverses the column (CSS) and anchors at
+    // the top, so the dot still owns the coordinate with the stack
+    // hanging under it.
     el.innerHTML = `<span>${hint.label ?? term.name}</span><i></i>`;
     el.dataset.terminal = String(term.id);
 
+    const below = hint.stagger === "below";
     return new maplibregl.Marker({
       element: el,
-      anchor: "bottom",
-      offset: [0, 4],
+      anchor: below ? "top" : "bottom",
+      offset: [0, below ? -4 : 4],
     })
       .setLngLat([term.lon, term.lat])
       .addTo(map);
@@ -93,6 +109,8 @@ export function suppressedTownNames(terminals: TerminalDim[]): string[] {
   // The dim's names double as the basemap's for most towns; the ones that
   // differ are listed alongside rather than instead, since a miss here is
   // only a duplicate label, never a missing one.
-  const extras = ["Bainbridge Island", "Vashon", "Friday Harbor", "Port Townsend"];
+  // White Center rides with Fauntleroy: its basemap text sits exactly
+  // where Fauntleroy's right-staggered label lands at far zoom.
+  const extras = ["Bainbridge Island", "Vashon", "Friday Harbor", "Port Townsend", "White Center"];
   return [...new Set([...terminals.map((t) => t.name), ...extras])];
 }

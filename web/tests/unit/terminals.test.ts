@@ -53,7 +53,18 @@ describe("terminal label hints", () => {
     for (const id of anchors) expect(LABEL_HINTS[id]?.minor).toBeFalsy();
     // Everything else waits for room, so twenty labels never overlap at once.
     const minors = Object.entries(LABEL_HINTS).filter(([, h]) => h.minor);
-    expect(minors.length).toBeGreaterThan(10);
+    expect(minors.length).toBeGreaterThanOrEqual(9);
+  });
+
+  it("keeps the Fauntleroy triangle named at full zoom-out, staggered", () => {
+    // The triangle shares one screen row at the zoom floor; demoting it to
+    // minor made three commuter terminals vanish (owner's 2026-08-20 walk).
+    // Staggering is what makes naming them possible - one without the
+    // other regresses to either invisibility or a label pile-up.
+    for (const id of [9, 20, 22]) {
+      expect(LABEL_HINTS[id]?.minor, `terminal ${id} demoted`).toBeFalsy();
+      expect(LABEL_HINTS[id]?.stagger, `terminal ${id} unstaggered`).toBeDefined();
+    }
   });
 });
 
