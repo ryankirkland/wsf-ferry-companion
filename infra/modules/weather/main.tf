@@ -34,6 +34,12 @@ data "aws_iam_policy_document" "poller" {
   }
 
   statement {
+    sid       = "RawWeatherArchive"
+    actions   = ["s3:PutObject"]
+    resources = ["${var.raw_bucket_arn}/raw/weather/*"]
+  }
+
+  statement {
     sid       = "AirNowKeyRead"
     actions   = ["ssm:GetParameter"]
     resources = ["arn:aws:ssm:us-west-2:${data.aws_caller_identity.current.account_id}:parameter/wsf/prod/airnow-api-key"]
@@ -78,6 +84,7 @@ resource "aws_lambda_function" "poller" {
   environment {
     variables = {
       DATA_BUCKET      = var.data_bucket_name
+      RAW_BUCKET       = var.raw_bucket_name
       AIRNOW_KEY_PARAM = "/wsf/prod/airnow-api-key"
     }
   }

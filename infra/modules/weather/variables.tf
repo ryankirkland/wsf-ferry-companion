@@ -16,3 +16,12 @@ variable "alarms_topic_arn" {
   description = "Shared SNS topic for operational alarms."
   type        = string
 }
+
+variable "raw_bucket_name" {
+  description = "Raw archive bucket for banked weather polls."
+  type        = string
+}
+
+variable "raw_bucket_arn" {
+  type = string
+}

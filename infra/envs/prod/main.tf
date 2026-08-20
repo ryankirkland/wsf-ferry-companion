@@ -70,6 +70,8 @@ module "weather" {
 
   data_bucket_name = module.static_site.data_bucket_name
   data_bucket_arn  = module.static_site.data_bucket_arn
+  raw_bucket_name  = module.ingest.raw_bucket
+  raw_bucket_arn   = module.ingest.raw_bucket_arn
   alarms_topic_arn = aws_sns_topic.alarms.arn
   # Built by CI (and locally) before terraform runs - see infra-plan.yml.
   lambda_zip_path = "${path.root}/.build/weather.zip"

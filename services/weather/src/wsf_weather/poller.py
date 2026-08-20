@@ -244,19 +244,37 @@ def lambda_handler(event, context):
         entry["aqi"] = aqi
         terminals[tid] = entry
 
+    now = datetime.now(UTC)
     doc = {
         "v": 1,
-        "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        "generated_at": now.isoformat().replace("+00:00", "Z"),
         "hour_row": ["epoch_ms", "temp_f", "icon", "pop_pct", "wind_mph", "wind_dir", "short"],
         "terminals": terminals,
     }
+    body = json.dumps(doc, separators=(",", ":")).encode()
     s3.put_object(
         Bucket=bucket,
         Key="data/weather.json",
-        Body=json.dumps(doc, separators=(",", ":")).encode(),
+        Body=body,
         ContentType="application/json",
         CacheControl="public, max-age=300, must-revalidate",
     )
+
+    # Raw archive (owner's call, 2026-08-19): every poll banked so weather
+    # can one day be JOINED against the on-time record - measured wind/rain
+    # vs delay correlations are what could eventually EARN the derived
+    # warnings the display-only rule currently forbids. Collectors first:
+    # every idle day is history that never exists.
+    if raw_bucket := os.environ.get("RAW_BUCKET"):
+        import gzip
+
+        s3.put_object(
+            Bucket=raw_bucket,
+            Key=f"raw/weather/dt={now:%Y-%m-%d}/{now:%H%M}.json.gz",
+            Body=gzip.compress(body),
+            ContentType="application/json",
+            ContentEncoding="gzip",
+        )
 
     emit(WeatherPublished=1, **{k: v for k, v in counts.items() if v > 0})
     return {
