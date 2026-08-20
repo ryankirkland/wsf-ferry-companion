@@ -202,3 +202,24 @@ def test_icon_tokens_cover_the_nws_vocabulary():
     # A condition NWS invents later degrades to the generic bucket.
     assert icon_token("https://api.weather.gov/icons/land/day/volcanic_ash") == "cloudy"
     assert icon_token(None) == "cloudy"
+
+
+def test_every_poll_is_banked_to_the_raw_archive(aws, monkeypatch):
+    """Owner's call: weather history accrues from day one so wind/rain can
+    one day be JOINED against the on-time record - the measurement that
+    could earn the derived warnings the display-only rule forbids today."""
+    import gzip
+
+    boto3.client("s3").create_bucket(
+        Bucket="wsf-test-raw",
+        CreateBucketConfiguration={"LocationConstraint": "us-west-2"},
+    )
+    monkeypatch.setenv("RAW_BUCKET", "wsf-test-raw")
+    run(monkeypatch, {"gridpoints": forecast(), "airnowapi.org": airnow()})
+
+    keys = [o["Key"] for o in boto3.client("s3").list_objects_v2(Bucket="wsf-test-raw")["Contents"]]
+    assert len(keys) == 1 and keys[0].startswith("raw/weather/dt=")
+    raw = gzip.decompress(
+        boto3.client("s3").get_object(Bucket="wsf-test-raw", Key=keys[0])["Body"].read()
+    )
+    assert json.loads(raw)["terminals"]["7"]["hours"]  # the full published doc
