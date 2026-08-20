@@ -19,8 +19,10 @@ import { buildDayView } from "@/lib/trip/day";
 import { PAIRS } from "@/lib/trip/pairs";
 import { computeSignal } from "@/lib/trip/signal";
 import type { Sailing } from "@/lib/trip/types";
+import { writeStorage, YOUR_RUN_KEY } from "@/lib/storage";
 import { shiftDate, soundDate, soundTimeShort } from "@/lib/time/sound-time";
 import { CapacityGauge } from "@/components/stats/CapacityGauge";
+import { WeatherStrip } from "@/components/weather/WeatherStrip";
 import { Reliability } from "@/components/stats/Reliability";
 import { slotKeyFor } from "@/lib/stats/reliability";
 import { AlertBanner } from "./AlertBanner";
@@ -29,8 +31,6 @@ import { DateStrip } from "./DateStrip";
 import { DepartureList, type DepartureItem } from "./DepartureList";
 import { FaresPanel } from "./FaresPanel";
 import styles from "./trip.module.css";
-
-const YOUR_RUN_KEY = "fs.your-run";
 
 export function TripView({ slug }: { slug: string }) {
   useMode(); // keeps the Sound-time day/dusk/night stamp alive on this page
@@ -58,11 +58,7 @@ export function TripView({ slug }: { slug: string }) {
 
   // Remember this as "your run" for the picker.
   useEffect(() => {
-    try {
-      window.localStorage.setItem(YOUR_RUN_KEY, slug);
-    } catch {
-      /* private mode */
-    }
+    writeStorage(YOUR_RUN_KEY, slug);
   }, [slug]);
 
   const dayView = useMemo(() => {
@@ -141,6 +137,15 @@ export function TripView({ slug }: { slug: string }) {
 
         <AlertBanner alerts={matchedAlerts} />
         <AnswerLine next={next} />
+        {/* Both ends of the crossing at the viewed sailing's hour; today
+            with nothing left still shows now. Outside the forecast
+            horizon the strip renders nothing (honest absence). */}
+        <WeatherStrip
+          dep={entry.dep}
+          arr={entry.arr}
+          atMs={focusMs ?? (isToday ? now : null)}
+          nowMs={now}
+        />
 
         {rangeNote && <p className={styles.rangeNote}>{rangeNote}</p>}
 

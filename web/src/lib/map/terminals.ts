@@ -77,6 +77,10 @@ export function addTerminalMarkers(
       .filter(Boolean)
       .join(" ");
     el.innerHTML = `<i></i><span>${hint.label ?? term.name}</span>`;
+    // The weather chip updater (controller.syncWeather) finds its terminal
+    // by this id; the chip element is appended there, not here, so a map
+    // without weather data is simply a map without chips.
+    el.dataset.terminal = String(term.id);
 
     return new maplibregl.Marker({
       element: el,
