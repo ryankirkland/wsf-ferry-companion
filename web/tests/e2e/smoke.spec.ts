@@ -189,3 +189,28 @@ test("the landing page hydrates without a React error", async ({ page }) => {
   // And the clock is a real time, not the placeholder.
   await expect(page.locator("body")).not.toContainText("--:--");
 });
+
+test("the staleness banner speaks the DATA's clock, not the page's", async ({ page }) => {
+  // Caught live during the 2026-08-19 WSDOT outage: the snapshot FILE
+  // kept serving while its contents froze, and the banner tracked the
+  // rider's load time - overstating freshness during the exact event
+  // it exists for. A fresh page load over a 40-minute-old snapshot must
+  // say the snapshot's time.
+  const frozenAt = Date.now() - 40 * 60_000;
+  const fleet = JSON.parse(fixture("fleet-frame-0.json"));
+  fleet.generated_at = new Date(frozenAt).toISOString();
+  await interceptData(page);
+  await page.route("**/data/fleet.json", (r) =>
+    r.fulfill({ body: JSON.stringify(fleet), contentType: "application/json" }),
+  );
+  await page.goto("/");
+
+  const banner = page.locator('[class*="staleBanner"]');
+  await expect(banner).toBeVisible({ timeout: 20_000 });
+  const frozenClock = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(frozenAt));
+  await expect(banner).toContainText(frozenClock);
+});
