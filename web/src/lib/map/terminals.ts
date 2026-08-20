@@ -24,6 +24,12 @@ export interface LabelHint {
    *  stagger: below-left and below-right stacks can sit shoulder to
    *  shoulder where two above-stacks could not. */
   below?: boolean;
+  /** Name at every zoom, weather chip only past the declutter zoom.
+   *  For dense clusters (the San Juans above all): three names can be
+   *  staggered into a 25px blob at the zoom floor; three chips cannot.
+   *  Safe because none of these sit in the DEFAULT phone framing - the
+   *  trap that sank the triangle's chip-hiding compromise. */
+  chipLate?: boolean;
 }
 
 /** Per-terminal treatment, keyed by TerminalID. Markers stack
@@ -31,24 +37,34 @@ export interface LabelHint {
  *  2026-08-19: the old sideways rows sprawled across the water and
  *  hid the boats), so shore side no longer matters. */
 export const LABEL_HINTS: Record<number, LabelHint> = {
-  1: { label: "Anacortes", minor: true },
+  // Owner's 2026-08-20 call, second round: EVERY rider port names itself
+  // at full zoom-out - first the Fauntleroy triangle, then the whole
+  // northern network (Anacortes, the San Juans, Coupeville, Port
+  // Townsend) and the Tacoma pair. `minor` now covers only the yard.
+  1: { label: "Anacortes", chipLate: true },
   3: { label: "Bainbridge" },
   4: { },
   5: { label: "Clinton" },
   7: { label: "Seattle" },
   8: { label: "Edmonds" },
   9: { label: "Fauntleroy", stagger: "right" },
-  10: { label: "Friday Harbor", minor: true },
-  11: { label: "Coupeville", minor: true },
+  // The San Juans at the zoom floor: Orcas/Shaw/Lopez dots sit within
+  // ~10px of each other. Orcas holds the row above, Shaw hangs
+  // below-right, Lopez below-left, Friday Harbor slides west - each
+  // label over its own island or open water.
+  10: { label: "Friday Harbor", stagger: "left", chipLate: true },
+  11: { label: "Coupeville", chipLate: true },
   12: { },
-  13: { label: "Lopez", minor: true },
+  13: { label: "Lopez", stagger: "left", below: true, chipLate: true },
   14: { label: "Mukilteo" },
-  15: { label: "Orcas", minor: true },
-  16: { label: "Pt. Defiance", minor: true },
-  17: { label: "Port Townsend", minor: true },
-  18: { label: "Shaw", minor: true },
+  15: { label: "Orcas", chipLate: true },
+  // Tacoma pair: same column, 7px apart at the floor - Tahlequah keeps
+  // the row above (south tip of Vashon), Pt. Defiance hangs below.
+  16: { label: "Pt. Defiance", below: true, chipLate: true },
+  17: { label: "Port Townsend", below: true, chipLate: true },
+  18: { label: "Shaw", stagger: "right", below: true, chipLate: true },
   20: { label: "Southworth", stagger: "left", below: true },
-  21: { label: "Tahlequah", minor: true },
+  21: { label: "Tahlequah", chipLate: true },
   22: { label: "Vashon", stagger: "right", below: true },
   122: { label: "Eagle Harbor yard", soft: true, minor: true },
 };
@@ -84,6 +100,7 @@ export function addTerminalMarkers(
       hint.minor ? "minor" : "",
       hint.stagger ? `stag-${hint.stagger}` : "",
       hint.below ? "stag-below" : "",
+      hint.chipLate ? "chip-late" : "",
     ]
       .filter(Boolean)
       .join(" ");

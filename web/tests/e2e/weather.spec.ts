@@ -80,8 +80,11 @@ test("map terminals carry icon + temperature chips", async ({ page }) => {
   await page.route("**/assets/vessels/*-t.png", (r) => r.fulfill({ status: 404, body: "" }));
   await page.goto("/");
 
-  const chips = page.locator('[data-terminal] .wx');
-  await expect(chips.first()).toBeVisible({ timeout: 20_000 });
-  await expect(chips.first().locator("svg")).toBeAttached();
-  await expect(chips.first()).toContainText("°");
+  // Seattle: an always-on chip. DOM-order .first() is Anacortes, whose
+  // chip is chip-late (dense northern cluster) and correctly hidden
+  // below the declutter zoom - phone-ish framings sit under it.
+  const chip = page.locator('[data-terminal="7"] .wx');
+  await expect(chip).toBeVisible({ timeout: 20_000 });
+  await expect(chip.locator("svg")).toBeAttached();
+  await expect(chip).toContainText("°");
 });
