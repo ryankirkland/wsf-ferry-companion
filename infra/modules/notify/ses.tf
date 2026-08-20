@@ -79,3 +79,28 @@ resource "aws_sesv2_configuration_set_event_destination" "sns" {
     }
   }
 }
+
+# Cognito sends through this identity (DEVELOPER mode) since the
+# production-access grant: SES requires an explicit sending-authorization
+# policy on the identity for the cognito-idp service - configured here so
+# the console never has to do it silently.
+data "aws_caller_identity" "current" {}
+
+resource "aws_sesv2_email_identity_policy" "cognito_sending" {
+  email_identity = aws_sesv2_email_identity.domain.email_identity
+  policy_name    = "cognito-sending"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCognitoSending"
+      Effect    = "Allow"
+      Principal = { Service = "cognito-idp.amazonaws.com" }
+      Action    = ["ses:SendEmail", "ses:SendRawEmail"]
+      Resource  = aws_sesv2_email_identity.domain.arn
+      Condition = {
+        StringEquals = { "aws:SourceAccount" = data.aws_caller_identity.current.account_id }
+        ArnLike      = { "aws:SourceArn" = aws_cognito_user_pool.users.arn }
+      }
+    }]
+  })
+}
