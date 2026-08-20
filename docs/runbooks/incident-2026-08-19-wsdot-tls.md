@@ -1,8 +1,8 @@
-# Incident: WSDOT data outage, 2026-08-19 21:36 PT - 2026-08-20
+# Incident: WSDOT data outage, 2026-08-19 21:36 PT - 2026-08-20 09:08 PT
 
-36 hours of every WSDOT poller failing, initially misdiagnosed as a
-cloud-IP block. Kept as a runbook because the misdiagnosis pattern is
-the reusable lesson.
+Eleven and a half hours of every WSDOT poller failing, initially
+misdiagnosed as a cloud-IP block. Kept as a runbook because the
+misdiagnosis pattern is the reusable lesson.
 
 ## Timeline (PT)
 
@@ -32,6 +32,12 @@ the reusable lesson.
   verification intact. Reproduced fail->pass locally before shipping:
   certifi-only context fails with the exact Lambda error; adding the
   intermediate returns 200.
+- **09:08:54 (16:08:54Z)** - recovery: first fresh `fleet.json` on the
+  first poll after the apply; capacity and alerts followed within the
+  next minute (21 vessels, 15 underway, 7 bulletins). Missed
+  vesselhistory rows backfill via the nightly sync's 7-day lookback;
+  the capacity-snapshot gap is permanent and carries the stats
+  pipeline's labeled-gap treatment.
 
 ## Lessons
 

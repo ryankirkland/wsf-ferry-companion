@@ -50,8 +50,8 @@ def _tls_context() -> ssl.SSLContext:
 
     Since their 2026-08-19 maintenance, www.wsdot.wa.gov presents a bare
     leaf certificate with no intermediate. Browsers repair that via AIA
-    chasing; strict clients correctly fail CERTIFICATE_VERIFY_FAILED - a
-    36 h outage that looked exactly like a cloud-IP block. Loading the
+    chasing; strict clients correctly fail CERTIFICATE_VERIFY_FAILED - an
+    11.5 h outage that looked exactly like a cloud-IP block. Loading the
     intermediate locally keeps FULL verification: the chain must still
     anchor at a trusted root. See certs/digicert-ev-rsa-ca-g2.pem for
     provenance; remove both once WSDOT serves a complete chain.

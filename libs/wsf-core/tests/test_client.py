@@ -154,7 +154,7 @@ class TestTlsChainSupplement:
     leaf certificate; _tls_context supplies the missing DigiCert
     intermediate while keeping full verification. These tests pin the
     supplement's presence and integrity - a lost package-data file would
-    resurface the 36 h CERTIFICATE_VERIFY_FAILED outage silently."""
+    resurface the 11.5 h CERTIFICATE_VERIFY_FAILED outage silently."""
 
     def test_intermediate_ships_with_the_package(self):
         from importlib import resources
