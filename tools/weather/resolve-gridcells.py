@@ -31,10 +31,7 @@ from pathlib import Path
 
 import httpx
 
-OUT = (
-    Path(__file__).resolve().parents[2]
-    / "services/weather/src/wsf_weather/gridcells.json"
-)
+OUT = Path(__file__).resolve().parents[2] / "services/weather/src/wsf_weather/gridcells.json"
 UA = {"User-Agent": "ferrysound.com weather (contact: via site)"}
 TERMINALS_URL = "https://ferrysound.com/data/terminals.json"
 AIRNOW_DISTANCE_MI = 30
@@ -84,8 +81,10 @@ def main() -> None:
             else:
                 print(f"  {t['name']:22} forecast {fc.status_code} - SHIPPING AS UNCOVERED")
         else:
-            print(f"  {t['name']:22} points {points.status_code} - uncovered "
-                  "(expected for Sidney B.C.)")
+            print(
+                f"  {t['name']:22} points {points.status_code} - uncovered "
+                "(expected for Sidney B.C.)"
+            )
 
         obs = httpx.get(
             "https://www.airnowapi.org/aq/observation/latLong/current/",
