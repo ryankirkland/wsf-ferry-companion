@@ -48,12 +48,29 @@ describe("terminal label hints", () => {
     }
   });
 
-  it("names the anchors at every zoom and defers the rest", () => {
-    const anchors = [3, 4, 5, 7, 8, 12, 14];
-    for (const id of anchors) expect(LABEL_HINTS[id]?.minor).toBeFalsy();
-    // Everything else waits for room, so twenty labels never overlap at once.
-    const minors = Object.entries(LABEL_HINTS).filter(([, h]) => h.minor);
-    expect(minors.length).toBeGreaterThanOrEqual(9);
+  it("names every rider port at every zoom; only the yard defers", () => {
+    // Owner's 2026-08-20 walks, both rounds: first the Fauntleroy
+    // triangle, then the whole northern network vanished at far zoom.
+    // `minor` is now exclusively the yard's tier - a rider port with
+    // minor:true is a regression to invisible-until-zoomed.
+    for (const [id, hint] of Object.entries(LABEL_HINTS)) {
+      if (id === "122") continue;
+      expect(hint.minor, `rider port ${id} demoted to minor`).toBeFalsy();
+    }
+    expect(LABEL_HINTS[122]?.minor).toBe(true);
+  });
+
+  it("dense clusters defer chips, never names", () => {
+    // Three staggered NAMES fit in the San Juans' 25px blob at the zoom
+    // floor; three 75px chips cannot. chip-late is safe only for ports
+    // outside the default phone framing - the triangle (9/20/22) must
+    // NEVER get it, that exact compromise already failed the owner once.
+    for (const id of [1, 10, 11, 13, 15, 16, 17, 18, 21]) {
+      expect(LABEL_HINTS[id]?.chipLate, `terminal ${id} lost chip-late`).toBe(true);
+    }
+    for (const id of [9, 20, 22]) {
+      expect(LABEL_HINTS[id]?.chipLate, `triangle terminal ${id} hides its chip`).toBeFalsy();
+    }
   });
 
   it("keeps the Fauntleroy triangle named at full zoom-out, staggered", () => {

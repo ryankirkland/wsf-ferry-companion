@@ -169,6 +169,21 @@ snapshots, so specs hover via chase-the-hull mouse moves, and the
 hover target must be a marker that actually receives its own center
 point (companions sit under another hull).
 
+**Every rider port names itself at every zoom** (owner's 2026-08-20
+walk, second round: the whole northern network - Anacortes, the San
+Juans, Coupeville, Port Townsend - plus the Tacoma pair rendered as
+bare dots until z11.4). `minor` is now exclusively the yard's tier.
+The San Juans are the knot: Orcas/Shaw/Lopez dots sit within ~10px of
+each other at the zoom floor, solved with the stagger axes - Orcas
+holds the row above, Shaw hangs below-right, Lopez below-left, Friday
+Harbor slides west - each label over its own island or open water
+(verified by screenshot at z8 and z9). Their weather chips are
+`chipLate`: name at every zoom, chip past the declutter zoom - three
+staggered names fit in that blob, three 75px chips cannot. chipLate is
+safe ONLY for ports outside the default phone framing (the trap that
+sank the triangle's chip-hiding compromise); a unit test enforces that
+the triangle never gets it.
+
 **The Fauntleroy triangle staggers instead of demoting** (owner's
 2026-08-20 walk: three commuter terminals vanishing at full zoom-out is
 worse than any crowding). `LabelHint.stagger` slides names+chips sideways off the shared screen

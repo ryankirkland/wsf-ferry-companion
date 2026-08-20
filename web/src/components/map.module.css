@@ -282,6 +282,15 @@ html[data-mode="night"] .vm :global(svg) {
   flex-direction: column-reverse;
 }
 
+/* chip-late: name at every zoom, chip past the declutter zoom. The
+ * dense clusters (San Juans, Tacoma pair, Coupeville/PT) fit staggered
+ * NAMES at the zoom floor but not three 75px chips in a 25px blob.
+ * Unlike the triangle's retired chip-hiding, none of these sit in the
+ * default phone framing, so the default view never loses weather. */
+:global(.z-lo) .term:global(.chip-late) :global(.wx) {
+  display: none;
+}
+
 /* Terminal weather chip: icon + temp riding the label, same declutter
  * rules as the name (owner's density pick: icon + temperature). */
 .term :global(.wx) {
