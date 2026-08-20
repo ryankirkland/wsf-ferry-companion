@@ -20,6 +20,7 @@
 - **F6 Weather**: see `docs/features/weather.md` for the NWS+AirNow poller, the pinned gridcell dim, the /data/weather.json contract, and the honesty rules (as_of = forecaster publish time, last-good fallbacks always metered, labeled absences). Update that file whenever the feature changes.
 
 ## Operations
+- **Learnings**: `docs/learnings.md` is the living retrospective - diagnosis discipline (the TLS false flag), cost lessons (the invalidation burn), honesty rules, API quirks, testing traps. Add to it whenever an incident or fix teaches a transferable rule.
 - **Observability**: `docs/runbooks/observability.md` covers reading application logs (13 Lambda log groups + the EMF metric namespaces), tracking cost (the two budgets, the run-rate command, what July actually decomposed to), and user activity - homegrown site analytics (see above) now covers page views, clicks, referrers, and coarse geography; CloudFront access logging itself remains off (the analytics pipeline is a separate first-party beacon, not raw request logs, and never persists IPs). Update it when monitoring changes.
 
 ## General Guidelines
