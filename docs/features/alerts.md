@@ -89,8 +89,12 @@ documented option if ParseCoverage proves the regex weak.
   The notifier policy carries a temporary `SandboxRecipientIdentities`
   statement (account-own identities wildcard) marked REMOVE at grant -
   found live via the SendFailure audit log naming the missing ARN.
-- Remaining for M3 exit (W2), all gated on the production-access grant
-  (case reopened + answered 2026-08-18): Cognito email sender switch to
-  SES (confirmation codes out of spam) -> remove the "check spam" signup
-  copy -> remove the sandbox IAM statement -> PRD acceptance walk +
-  ADR-0003 tile revisit at exit review.
+- 2026-08-20: **production access GRANTED** (50,000/day, 14/sec).
+  Same-day switch: Cognito sends DEVELOPER-mode through the ferrysound.com
+  SES identity (DKIM-signed confirmation codes; an explicit
+  sending-authorization policy on the identity permits cognito-idp,
+  scoped to this pool), the "check spam" signup copy is gone, and the
+  sandbox-era SandboxRecipientIdentities IAM statement is removed -
+  recipients are no longer identities, so SendAlertEmail's domain scope
+  is again the whole story. Alerts are now deliverable to ANY subscriber.
+- M3 exit remaining: PRD acceptance walk + ADR-0003 tile revisit.

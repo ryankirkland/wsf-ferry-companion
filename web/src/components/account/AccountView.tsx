@@ -56,9 +56,7 @@ export function AccountView() {
         router.push(next);
       } else if (mode === "signup") {
         await signUp(email, password);
-        setNotice(
-          `We emailed a confirmation code to ${email.trim().toLowerCase()} - it often lands in spam, so check there too.`,
-        );
+        setNotice(`We emailed a confirmation code to ${email.trim().toLowerCase()}.`);
         setMode("confirm");
       } else if (mode === "confirm") {
         await confirmSignUp(email, code);

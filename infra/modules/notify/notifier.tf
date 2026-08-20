@@ -38,20 +38,6 @@ data "aws_iam_policy_document" "notifier" {
     ]
   }
 
-  # TEMPORARY - sandbox only. SES in sandbox authorizes the RECIPIENT's
-  # verified identity as a resource too, so canary sends to the owner's
-  # verified address fail AccessDenied under the domain-scoped statement
-  # above (caught live 2026-08-18: the send-audit SendFailure log named
-  # the recipient identity ARN). The wildcard covers only this account's
-  # own identities - the sending domain and the owner's test address.
-  # REMOVE when production access is granted: recipients stop being
-  # identities and SendAlertEmail alone is the correct scope again.
-  statement {
-    sid       = "SandboxRecipientIdentities"
-    actions   = ["ses:SendEmail", "ses:SendRawEmail"]
-    resources = [replace(aws_sesv2_email_identity.domain.arn, "/identity/.*/", "identity/*")]
-  }
-
   statement {
     sid       = "OnFailureDestination"
     actions   = ["sns:Publish"]
