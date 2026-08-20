@@ -1,0 +1,99 @@
+/* F6 weather chips - trip-page strip + AQI tones. EPA category colors,
+ * softened onto the Paper Sound grounds; the category NAME always rides
+ * along, so color is never the only signal. */
+
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.4rem;
+  align-items: center;
+  margin: 0.35rem 0 0.15rem;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+}
+
+.place {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+
+.place strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.placeName {
+  font-family: var(--font-gabarito), sans-serif;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.detail {
+  color: var(--ink-soft);
+}
+
+.stale {
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
+.aqi {
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.aqi-good {
+  background: #dff0e6;
+  color: #106648;
+}
+
+.aqi-moderate {
+  background: #f7edc9;
+  color: #7a6210;
+}
+
+.aqi-usg {
+  background: #fce8cf;
+  color: #8a5310;
+}
+
+.aqi-unhealthy {
+  background: #fadbd6;
+  color: #8f2f21;
+}
+
+.aqi-severe {
+  background: #ecd6ef;
+  color: #6d2378;
+}
+
+html[data-mode="night"] .aqi-good {
+  background: #17352a;
+  color: #8fd9b8;
+}
+
+html[data-mode="night"] .aqi-moderate {
+  background: #38311a;
+  color: #e6cf7f;
+}
+
+html[data-mode="night"] .aqi-usg {
+  background: #3b2d1c;
+  color: #eab676;
+}
+
+html[data-mode="night"] .aqi-unhealthy {
+  background: #3d211d;
+  color: #f0a294;
+}
+
+html[data-mode="night"] .aqi-severe {
+  background: #33203a;
+  color: #d9a4e3;
+}

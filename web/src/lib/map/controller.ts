@@ -18,6 +18,8 @@ import {
 } from "./terminals";
 import { servedTerminalIds } from "@/lib/data/pairs-served";
 import { getTerminalDims } from "@/lib/data/dims";
+import { getWeather, nowRow } from "@/lib/data/weather";
+import { glyphMarkup } from "@/lib/weather-glyphs";
 import { vesselScaleForZoom } from "./vessels/anchor";
 import { VesselMarkerPool } from "./vessels/markers";
 
@@ -41,6 +43,7 @@ export class PaperSoundMap {
   private resizeObserver: ResizeObserver;
   private resizeTimer: number | undefined;
   private terminalMarkers: Marker[] = [];
+  private weatherTimer?: number;
   private vesselPool: VesselMarkerPool | null = null;
   private pendingFleet: VesselFix[] | null = null;
   private reducedMotion: MediaQueryList;
@@ -98,6 +101,11 @@ export class PaperSoundMap {
             );
             dedupePlaceLabels(this.map, suppressedTownNames(terminals));
             this.syncLabelZoom();
+            // Weather chips ride the terminal markers; refreshed on the
+            // contract's cadence. Weather failing to load costs chips,
+            // never the map.
+            void this.syncWeather();
+            this.weatherTimer = window.setInterval(() => void this.syncWeather(), 10 * 60_000);
           })
           .catch(() => undefined);
         this.vesselPool = new VesselMarkerPool(this.map, {
@@ -225,9 +233,35 @@ export class PaperSoundMap {
     document.removeEventListener("visibilitychange", this.onVisibility);
     this.resizeObserver.disconnect();
     window.clearTimeout(this.resizeTimer);
+    window.clearInterval(this.weatherTimer);
     this.vesselPool?.destroy();
     this.terminalMarkers.forEach((m) => m.remove());
     this.listeners = {};
     this.map.remove();
+  }
+
+  /** Icon + temperature beside each terminal name (owner's pick from the
+   *  density options). Chips follow the label's own declutter rules via
+   *  CSS; missing weather removes the chip, never fakes one. */
+  private async syncWeather(): Promise<void> {
+    const doc = await getWeather();
+    if (this.destroyed) return;
+    for (const marker of this.terminalMarkers) {
+      const el = marker.getElement();
+      const t = doc?.terminals[el.dataset.terminal ?? ""];
+      const row = nowRow(t);
+      let chip = el.querySelector<HTMLElement>(".wx");
+      if (!row) {
+        chip?.remove();
+        continue;
+      }
+      if (!chip) {
+        chip = document.createElement("em");
+        chip.className = "wx";
+        el.appendChild(chip);
+      }
+      const temp = row[1] !== null ? `<b>${row[1]}°</b>` : "";
+      chip.innerHTML = `${glyphMarkup(row[2], 13)}${temp}`;
+    }
   }
 }

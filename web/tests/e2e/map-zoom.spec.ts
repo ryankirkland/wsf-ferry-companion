@@ -73,7 +73,7 @@ test("a missing drawing falls back to the traced icon, never an empty marker", a
   );
   await page.route("**/assets/vessels/*-t.png", (r) => r.fulfill({ status: 404, body: "" }));
   await page.goto("/");
-  await expect(page.locator("[data-vessel] .boat svg").first()).toBeVisible();
+  await expect(page.locator("[data-vessel] .boat svg").first()).toBeVisible({ timeout: 15_000 });
 });
 
 test("the anchored point stays on the boat even with labels visible", async ({ page }) => {

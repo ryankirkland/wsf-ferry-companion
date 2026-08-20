@@ -246,3 +246,26 @@ html[data-mode="night"] .vm :global(svg) {
   opacity: 0;
   pointer-events: none;
 }
+
+/* Terminal weather chip: icon + temp riding the label, same declutter
+ * rules as the name (owner's density pick: icon + temperature). */
+.term :global(.wx) {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.term :global(.wx b) {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Below the declutter zoom, minor terminals lose their chips with their
+ * names; the anchors keep both. */
+:global(.labels-far) .term:global(.minor) :global(.wx) {
+  opacity: 0;
+}

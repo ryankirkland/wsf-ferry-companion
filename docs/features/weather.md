@@ -55,12 +55,25 @@ the day - including the air, in smoke season.
 
 ## Frontend (W1)
 
-Planned: Paper Sound icon set keyed by token; trip-page weather strip
-(both terminals, sailing-time row selected from `hours`); marker chips
-(icon + temp) on map + ambient; AQI chip with EPA category colors.
+- `lib/data/weather.ts`: TTL-cached fetch; `hourFor(terminal, ms)` owns
+  the horizon rule (nothing rendered outside NWS's published hours);
+  `aqiTone` maps EPA thresholds (theirs, not ours).
+- `lib/weather-glyphs.ts`: the ONE source of glyph artwork, consumed by
+  the React `WeatherIcon` (trip pages) and the DOM-built map chips.
+- Trip pages: `WeatherStrip` under the answer line - both terminals at
+  the VIEWED sailing's hour (today with nothing left shows now), short
+  text, rain chance >=15%, wind >=12 mph, AQI chip always (category
+  name always rides the color). A stale forecast (>12 h) says so.
+- Map + ambient: icon + temperature chips on terminal labels
+  (controller.syncWeather, 10-min refresh), following the labels' own
+  declutter rules; missing weather removes chips, never fakes them.
 
 ## Status
 
+- 2026-08-19 (late): W1 shipped - strip, chips, glyph set, fixture
+  template, 5 unit + 3 e2e specs; every poll banked to raw/weather/ for
+  the future weather-vs-delay join (owner's call). AirNow outage at
+  first publish rode the last-good design exactly as intended.
 - 2026-08-19: explorations (NWS + AirNow) committed; gridcells pinned;
   poller + tests + infra written; live-fire local run against real
   upstreams: 20/21 covered, 0 errors, Seattle 72F Mostly Clear AQI 54
