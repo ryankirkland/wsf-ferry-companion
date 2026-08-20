@@ -109,6 +109,14 @@ matching Ryan's "exempt people who don't want it" framing rather than a blocking
 replaced with copy naming both facts: alerts-only accounts (still true, no newsletters) and
 anonymous, non-advertising, opt-outable analytics (new).
 
+Since 2026-08-20 the banner shares a fixed bottom-center **notice stack**
+(`components/chrome/notices.module.css`) with the first-visit data-provenance card
+(`chrome/DataNotice.tsx`, owner's ask: name the sources - WSDOT, NWS, AirNow (EPA) - state
+non-affiliation, and give a feedback mailto). The stack owns the positioning and the
+FAB-clearance rule once, so notices stack in a column instead of fighting over `bottom`.
+Each card dismisses independently (`fs.data-notice-seen:v1` for the provenance card).
+E2E specs that model returning users pre-seed both seen-flags.
+
 ## Update this file
 
 Whenever the collected-fields list, the retention/aggregation shape, the consent copy, or the

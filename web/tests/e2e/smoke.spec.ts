@@ -176,6 +176,29 @@ test("the consent banner never blocks the boat FAB", async ({ page }) => {
   await expect(page.getByRole("link", { name: /Trip planner/ })).toBeVisible();
 });
 
+test("the data-source notice shows once, names the sources, and stays dismissed", async ({
+  page,
+}) => {
+  await interceptData(page);
+  await page.goto("/");
+
+  const notice = page.getByTestId("data-notice");
+  await expect(notice).toBeVisible();
+  await expect(notice).toContainText("Washington State Ferries");
+  await expect(notice).toContainText("National Weather Service");
+  await expect(notice).toContainText("AirNow");
+  // The feedback address is a real mailto, not just text.
+  await expect(notice.locator('a[href^="mailto:"]')).toBeVisible();
+
+  await notice.getByRole("button", { name: "Got it" }).click();
+  await expect(notice).toHaveCount(0);
+
+  // Dismissal persists across reloads.
+  await page.reload();
+  await page.waitForTimeout(1500);
+  await expect(page.getByTestId("data-notice")).toHaveCount(0);
+});
+
 test("the landing page hydrates without a React error", async ({ page }) => {
   // The masthead clock was baked at BUILD time into the static HTML, so
   // every real visitor hydrated against a stale time string and React

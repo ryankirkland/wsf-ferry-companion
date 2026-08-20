@@ -155,6 +155,20 @@ Center); these are plain markers with no collision engine. Minor terminals
 name themselves from `LABEL_ALL_ZOOM` (11.4); their dots never leave, so a
 terminal is never invisible, only unnamed.
 
+**Boat names and status are hover-only** (owner's 2026-08-20 call:
+labels on every hull read as clutter - the silhouettes carry the map).
+Name + status live in a small paper tip that appears on hover and never
+takes pointer events; click still opens the full vessel card, and touch
+- which has no hover - goes straight there. The tip stays absolutely
+positioned outside the marker's layout box so anchor:center keeps the
+lat/lon pinned to the hull. This retired the z-lo and lbl-off
+label-declutter CSS: hidden is now the default at every zoom, and a
+hover is explicit enough intent to answer even on a moored-cluster
+companion's "+N" carrier. E2E note: underway boats glide between
+snapshots, so specs hover via chase-the-hull mouse moves, and the
+hover target must be a marker that actually receives its own center
+point (companions sit under another hull).
+
 **The Fauntleroy triangle staggers instead of demoting** (owner's
 2026-08-20 walk: three commuter terminals vanishing at full zoom-out is
 worse than any crowding). `LabelHint.stagger` slides names+chips sideways off the shared screen
