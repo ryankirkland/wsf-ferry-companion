@@ -34,9 +34,22 @@ from wsf_weather.metrics import emit
 UA = {"User-Agent": "ferrysound.com weather poller (contact: via site)"}
 NWS_RETRY_WAIT_S = 3
 HOURS_PUBLISHED = 156  # NWS's full hourly horizon (~6.5 days)
+# Publishing beats completeness: leave this much budget for the S3 put.
+PUBLISH_RESERVE_MS = 20_000
 
 _gridcells: dict | None = None
 _airnow_key: str | None = None
+
+# Force IPv4: airnowapi.org advertises AAAA records, httpx has no
+# happy-eyeballs, and Lambdas have no IPv6 route - the connect hung for
+# its full timeout on every call (live, first deploy 2026-08-19) while
+# the same code sailed locally. Binding 0.0.0.0 pins every connection
+# to IPv4; harmless for NWS, which worked either way.
+_client = httpx.Client(
+    transport=httpx.HTTPTransport(local_address="0.0.0.0"),
+    headers=UA,
+    timeout=15,
+)
 
 
 def _cells() -> dict:
@@ -55,23 +68,31 @@ def _key() -> str:
     return _airnow_key
 
 
-def _get_json(url: str, params: dict | None = None) -> dict | list | None:
-    """One retry on 5xx (NWS has documented multi-office 503 stretches);
-    None on any final failure - the caller falls back to last-good."""
+def _get_json(url: str, params: dict | None = None, retry: bool = True) -> dict | list | None:
+    """One retry on 5xx/transport errors (NWS has documented multi-office
+    503 stretches); None on any final failure - the caller falls back to
+    last-good. The failure REASON is always logged: the first deploy's
+    silent Nones cost a diagnosis round-trip."""
+    reason = "unknown"
     for attempt in (1, 2):
         try:
-            resp = httpx.get(url, params=params, headers=UA, timeout=20)
-            if resp.status_code >= 500 and attempt == 1:
+            resp = _client.get(url, params=params)
+            if resp.status_code >= 500 and retry and attempt == 1:
                 time.sleep(NWS_RETRY_WAIT_S)
                 continue
             if resp.status_code != 200:
-                return None
+                reason = f"http {resp.status_code}"
+                break
             return resp.json()
-        except httpx.HTTPError:
-            if attempt == 1:
+        except httpx.HTTPError as exc:
+            reason = type(exc).__name__
+            if retry and attempt == 1:
                 time.sleep(NWS_RETRY_WAIT_S)
                 continue
-            return None
+            break
+        if not retry:
+            break
+    print(json.dumps({"FetchFailed": {"url": url.split("?")[0], "reason": reason}}))
     return None
 
 
@@ -107,6 +128,8 @@ def _hours_from_forecast(fc: dict) -> tuple[list, str | None]:
 
 
 def _aqi_for_area(lat: float, lon: float) -> dict | None:
+    # No retry: AQI is the garnish, and six areas must never eat the time
+    # budget the forecast publish needs.
     rows = _get_json(
         "https://www.airnowapi.org/aq/observation/latLong/current/",
         params={
@@ -116,6 +139,7 @@ def _aqi_for_area(lat: float, lon: float) -> dict | None:
             "distance": 30,
             "API_KEY": _key(),
         },
+        retry=False,
     )
     if not rows or not isinstance(rows, list):
         return None
@@ -166,10 +190,18 @@ def lambda_handler(event, context):
             print(json.dumps({"NwsCellError": {"cell": list(cell)}}))
 
     # One AirNow observation per reporting area, via its representative
-    # terminal's pinned coordinates.
+    # terminal's pinned coordinates. The remaining-time guard exists
+    # because the first deploy died mid-AirNow at the Lambda ceiling and
+    # never reached the publish: forecasts without AQI beat nothing.
     by_id = {t["terminal_id"]: t for t in dim["terminals"]}
     area_aqi: dict[str, dict | None] = {}
     for area, rep_id in dim["airnow_area_representatives"].items():
+        remaining = context.get_remaining_time_in_millis() if context else None
+        if remaining is not None and remaining < PUBLISH_RESERVE_MS:
+            counts["AirNowAreaErrors"] += 1
+            print(json.dumps({"AirNowSkipped": {"area": area, "remaining_ms": remaining}}))
+            area_aqi[area] = None
+            continue
         rep = by_id[rep_id]
         aqi = _aqi_for_area(rep["lat"], rep["lon"])
         if aqi is None:
