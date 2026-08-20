@@ -120,6 +120,12 @@ def lambda_handler(event, context):
         archive.flush()
     except Exception as exc:  # archive loss is not serving-impacting: log only
         print(f"ArchiveFailure: {exc}")
+    # The reason must reach CloudWatch, not just DDB meta: during the
+    # 2026-08-19 WSDOT TLS outage this poller emitted bare PollFailure
+    # counts while its siblings logged the exception - diagnosis had to
+    # detour through their log groups.
+    if last_error is not None:
+        print(f"LastPollError: {last_error}")
     writer.write_meta(
         polls_ok=counts["PollSuccess"],
         polls_failed=counts["PollFailure"] + counts["AuthFailure"] + counts["EmptyFleet"],
