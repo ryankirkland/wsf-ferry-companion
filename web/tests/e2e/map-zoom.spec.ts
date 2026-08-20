@@ -76,31 +76,103 @@ test("a missing drawing falls back to the traced icon, never an empty marker", a
   await expect(page.locator("[data-vessel] .boat svg").first()).toBeVisible({ timeout: 15_000 });
 });
 
-test("the anchored point stays on the boat even with labels visible", async ({ page }) => {
-  await openMap(page);
-  await wheelZoom(page, 10); // past the declutter zoom so labels render
-
-  const m = await page.evaluate(() => {
-    // A marker whose labels are actually shown (moored-cluster companions
-    // hide theirs) - that is the case that used to inflate the box.
+/** The vessel marker nearest the viewport center, with its current
+ *  on-screen coordinates. Underway boats glide between snapshots, so
+ *  locator.hover() never sees them "stable" - specs move the raw mouse
+ *  to the returned point instead, which needs no stability and lands on
+ *  the hull before any glide can carry it away. */
+async function vesselNearCenter(page: Page) {
+  const v = await page.evaluate(() => {
+    const candidates: { id: string; cx: number; cy: number; d: number }[] = [];
     for (const el of document.querySelectorAll<HTMLElement>("[data-vessel]")) {
-      const nm = el.querySelector<HTMLElement>(".nm");
-      const boatEl = el.querySelector<HTMLElement>(".boat img, .boat svg");
-      if (!nm || !boatEl || getComputedStyle(nm).display === "none") continue;
-      const box = el.getBoundingClientRect(); // MapLibre pins its center to the lat/lon
-      const boat = boatEl.getBoundingClientRect(); // where the hull is actually drawn
-      return {
-        found: true,
-        offX: Math.abs(box.left + box.width / 2 - (boat.left + boat.width / 2)),
-        offY: Math.abs(box.top + box.height / 2 - (boat.top + boat.height / 2)),
-      };
+      const r = el.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      if (cx < 40 || cy < 130 || cx > innerWidth - 40 || cy > innerHeight - 170) continue;
+      candidates.push({
+        id: el.dataset.vessel ?? "",
+        cx,
+        cy,
+        d: Math.hypot(cx - innerWidth / 2, cy - innerHeight / 2),
+      });
     }
-    return { found: false, offX: -1, offY: -1 };
+    candidates.sort((a, b) => a.d - b.d);
+    // Moored-cluster companions sit UNDER another hull - the top boat
+    // owns the pointer (for real users too), so only a marker that
+    // actually receives its own center point can be hovered.
+    for (const c of candidates) {
+      const el = document.querySelector(`[data-vessel="${c.id}"]`);
+      const hit = document.elementFromPoint(c.cx, c.cy);
+      if (el && hit && el.contains(hit)) return c;
+    }
+    return null;
+  });
+  expect(v, "no hoverable vessel marker inside the viewport").not.toBeNull();
+  return v!;
+}
+
+/** Underway boats glide a few px per frame, so a single mouse.move can
+ *  land on water the hull just left. Chase it: re-read the CURRENT
+ *  center, move there, and poll until the tip's hover transition lands
+ *  on full opacity. */
+async function hoverVessel(page: Page, id: string) {
+  await expect
+    .poll(async () => {
+      const pos = await page.evaluate((vid) => {
+        const el = document.querySelector<HTMLElement>(`[data-vessel="${vid}"]`);
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+      }, id);
+      if (!pos) return "marker gone";
+      await page.mouse.move(pos.cx, pos.cy);
+      return page.evaluate(
+        (vid) => getComputedStyle(document.querySelector(`[data-vessel="${vid}"] .tip`)!).opacity,
+        id,
+      );
+    })
+    .toBe("1");
+}
+
+test("the anchored point stays on the boat even with the tip showing", async ({ page }) => {
+  await openMap(page);
+
+  // Hover so the tip is actually rendered - the case that used to
+  // inflate the box when labels were in flow. (The old zoom-in step
+  // existed only to get labels past the declutter gate; hover renders
+  // the tip at any zoom.)
+  const v = await vesselNearCenter(page);
+  await hoverVessel(page, v.id);
+  const first = page.locator(`[data-vessel="${v.id}"]`);
+
+  const m = await first.evaluate((el) => {
+    const boatEl = el.querySelector<HTMLElement>(".boat img, .boat svg")!;
+    const box = el.getBoundingClientRect(); // MapLibre pins its center to the lat/lon
+    const boat = boatEl.getBoundingClientRect(); // where the hull is actually drawn
+    return {
+      offX: Math.abs(box.left + box.width / 2 - (boat.left + boat.width / 2)),
+      offY: Math.abs(box.top + box.height / 2 - (boat.top + boat.height / 2)),
+    };
   });
 
-  expect(m.found).toBe(true);
   // Sub-2px: the anchored box IS the boat. In-flow labels used to put
   // this at ~14px vertical.
   expect(m.offY).toBeLessThan(2);
   expect(m.offX).toBeLessThan(2);
+});
+
+test("boat info is hover-only: hidden at rest, tip on hover", async ({ page }) => {
+  await openMap(page);
+
+  const v = await vesselNearCenter(page);
+  const tip = page.locator(`[data-vessel="${v.id}"] .tip`);
+  // Hidden by default - the silhouettes carry the map.
+  await expect(tip).toHaveCSS("opacity", "0");
+
+  await hoverVessel(page, v.id);
+  await expect(tip.locator(".nm")).not.toBeEmpty();
+
+  // Unhover hides it again.
+  await page.mouse.move(5, 5);
+  await expect(tip).toHaveCSS("opacity", "0");
 });

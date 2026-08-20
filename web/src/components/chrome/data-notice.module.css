@@ -1,8 +1,8 @@
-/* Unobtrusive bottom banner, Paper Sound tokens - a notice, not a modal.
- * Fixed positioning (and the FAB-clearance rule) lives on the shared
- * notice stack (chrome/notices.module.css); this is just the card. */
+/* Provenance card - same visual language as the consent banner; the
+ * fixed positioning lives on the shared notice stack (notices.module.css),
+ * so this is just the card. */
 
-.banner {
+.card {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -22,15 +22,22 @@
   line-height: 1.45;
 }
 
-.actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-left: auto;
+.copy a {
+  color: var(--accent);
+  font-weight: 650;
+  text-decoration: none;
 }
 
-.optOut,
+.copy a:hover {
+  text-decoration: underline;
+}
+
 .gotIt {
+  margin-left: auto;
+  border: none;
   border-radius: 0.6rem;
+  background: var(--accent);
+  color: var(--card);
   font: inherit;
   font-weight: 650;
   font-size: 0.82rem;
@@ -39,35 +46,13 @@
   white-space: nowrap;
 }
 
-.optOut {
-  background: none;
-  border: 1px solid var(--card-line);
-  color: var(--ink-soft);
-}
-
-.optOut:hover {
-  border-color: var(--accent);
-  color: var(--ink);
-}
-
-.gotIt {
-  border: none;
-  background: var(--accent);
-  color: var(--card);
-}
-
 @media (max-width: 30rem) {
-  .banner {
+  .card {
     padding: 0.75rem 0.85rem;
   }
 
-  .actions {
+  .gotIt {
     margin-left: 0;
     width: 100%;
-  }
-
-  .optOut,
-  .gotIt {
-    flex: 1;
   }
 }

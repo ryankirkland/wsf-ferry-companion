@@ -185,32 +185,52 @@ html[data-mode="night"] .vm :global(svg) {
   opacity: 0.8;
 }
 
-.vm :global(.nm) {
+/* Name + status ride in a hover tip, hidden by default (owner's
+ * 2026-08-20 call: labels on every hull read as clutter). The tip stays
+ * absolutely positioned OUT of the marker's layout box for the same
+ * reason the labels were - the box must be the boat alone so
+ * anchor:center pins the lat/lon to the hull. pointer-events:none so
+ * the tip never steals the click that opens the full card. */
+.vm :global(.tip) {
   position: absolute;
-  top: calc(100% + 3px + (var(--vm-scale, 1) - 1) * 7px);
+  top: calc(100% + 4px + (var(--vm-scale, 1) - 1) * 7px);
   left: 50%;
   transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--halo);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 18%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  white-space: nowrap;
+}
+
+.vm:hover :global(.tip) {
+  opacity: 1;
+}
+
+.vm :global(.nm) {
   font-family: var(--font-gabarito), sans-serif;
   font-weight: 700;
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink);
-  text-shadow:
-    0 0 6px var(--halo),
-    0 0 2px var(--halo);
-  white-space: nowrap;
 }
 
 .vm :global(.st) {
-  position: absolute;
-  top: calc(100% + 17px + (var(--vm-scale, 1) - 1) * 7px);
-  left: 50%;
-  transform: translateX(-50%);
   font-size: 9.5px;
   color: var(--ink-soft);
-  text-shadow: 0 0 5px var(--halo);
-  white-space: nowrap;
+}
+
+/* An underway boat without an ETA has empty status - no stray gap. */
+.vm :global(.st):empty {
+  display: none;
 }
 
 .vm:global(.muted) {
@@ -222,21 +242,13 @@ html[data-mode="night"] .vm :global(svg) {
   filter: saturate(0.35);
 }
 
-/* Declutter: below zoom 10.2 the small text yields to the boats. */
-:global(.z-lo) .vm :global(.nm),
-:global(.z-lo) .vm :global(.st) {
-  display: none;
-}
-
-/* Below the declutter zoom the boats used to take a one-step 52px
- * shrink; the continuous --vm-scale ramp (see .boat above) covers the
- * whole zoom range now, so z-lo only handles label declutter. */
-
-/* Moored-cluster declutter: companions render sprite-only (see cluster.ts). */
-.vm:global(.lbl-off) :global(.nm),
-.vm:global(.lbl-off) :global(.st) {
-  display: none;
-}
+/* The z-lo and lbl-off label-declutter rules are gone: with labels
+ * hover-only, hidden IS the default at every zoom, and a hover is
+ * explicit enough intent to answer even at far zoom or on a
+ * moored-cluster companion. The cluster's "+N" naming still rides the
+ * visible boat's tip. Below the declutter zoom the boats used to take a
+ * one-step 52px shrink; the continuous --vm-scale ramp (see .boat
+ * above) covers the whole zoom range now. */
 
 /* Zoomed out, only the anchor terminals name themselves - twenty DOM
  * labels at the default framing overlapped each other and the basemap.

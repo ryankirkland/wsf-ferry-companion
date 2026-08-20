@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { ConsentBanner } from "@/components/analytics/ConsentBanner";
 import { ConstructionNotice } from "@/components/chrome/ConstructionNotice";
+import { DataNotice } from "@/components/chrome/DataNotice";
 import { PageviewTracker } from "@/components/analytics/PageviewTracker";
+import noticeStyles from "@/components/chrome/notices.module.css";
 import "@/styles/tokens.css";
 import "./globals.css";
 
@@ -49,7 +51,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <PageviewTracker />
-        <ConsentBanner />
+        <div className={noticeStyles.stack}>
+          <DataNotice />
+          <ConsentBanner />
+        </div>
         <ConstructionNotice />
       </body>
     </html>

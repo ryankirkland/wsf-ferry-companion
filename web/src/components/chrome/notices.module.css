@@ -1,0 +1,41 @@
+/* The single fixed bottom-center slot every first-visit notice shares
+ * (data-source disclaimer, analytics consent). One home for the
+ * positioning and the FAB-clearance rule - two cards fighting over
+ * `bottom` was how notices used to overlap. Cards stack in a column;
+ * a dismissed card simply leaves the flow. */
+
+.stack {
+  position: fixed;
+  left: 1rem;
+  right: 1rem;
+  bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  z-index: 50;
+  margin: 0 auto;
+  max-width: 34rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  pointer-events: none;
+}
+
+.stack > * {
+  pointer-events: auto;
+}
+
+@media (max-width: 30rem) {
+  .stack {
+    left: 0.6rem;
+    right: 0.6rem;
+  }
+}
+
+/* Clear the boat FAB on narrow screens: the stack sat directly on top of
+ * the map page's ONLY navigation control and swallowed its taps - a first
+ * visit began with an unusable menu. The FAB is 48px + a 1.25rem bottom
+ * margin, so 5.5rem floats the stack above it. Wider than 640px the
+ * centered stack clears the corner on its own. */
+@media (max-width: 640px) {
+  .stack {
+    bottom: max(5.5rem, calc(env(safe-area-inset-bottom, 0px) + 4.5rem));
+  }
+}

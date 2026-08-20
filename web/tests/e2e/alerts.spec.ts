@@ -28,6 +28,11 @@ async function seedSession(page: Page) {
       localStorage.setItem(`${prefix}.${email}.accessToken`, accessT);
       localStorage.setItem(`${prefix}.${email}.refreshToken`, "fake-refresh");
       localStorage.setItem(`${prefix}.${email}.clockDrift`, "0");
+      // A signed-in user is a returning user: the first-visit notices
+      // were dismissed long ago (fresh-context default leaves them up,
+      // where they'd sit over this page's Subscribe button).
+      localStorage.setItem("wsf_analytics_consent_seen", "1");
+      localStorage.setItem("fs.data-notice-seen:v1", "1");
     },
     { prefix: p, email: EMAIL, idT: id, accessT: access },
   );

@@ -180,7 +180,11 @@ export class VesselMarkerPool {
     const el = document.createElement("div");
     el.className = this.opts.vesselClassName;
     el.dataset.vessel = String(fix.id);
-    el.innerHTML = `<div class="boat"></div><div class="wake"></div><div class="nm"></div><div class="st"></div>`;
+    // Name + status live inside a hover tip (owner's 2026-08-20 call:
+    // labels on every hull read as clutter - the silhouettes carry the
+    // map). Click still opens the full card; touch has no hover and goes
+    // straight there.
+    el.innerHTML = `<div class="boat"></div><div class="wake"></div><div class="tip"><div class="nm"></div><div class="st"></div></div>`;
     this.applyClassIcon(el, fix.id);
     const nameEl = el.querySelector<HTMLElement>(".nm")!;
     const statusEl = el.querySelector<HTMLElement>(".st")!;
