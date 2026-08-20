@@ -57,6 +57,12 @@ export class PaperSoundMap {
       style: opts.styleUrl,
       center: [-122.48, 47.685],
       zoom: 10.35,
+      // Full zoom-out is the whole Sound, not the whole planet: the
+      // label system (staggered triangle included) is designed to stay
+      // legible down to exactly this floor, and a world view serves no
+      // ferry rider (owner's 2026-08-20 walk: Fauntleroy/Vashon/
+      // Southworth must survive full zoom-out).
+      minZoom: 8,
       dragRotate: false,
       pitchWithRotate: false,
       attributionControl: { compact: true },
@@ -261,7 +267,7 @@ export class PaperSoundMap {
         el.prepend(chip); // top of the stack: chip over name over dot
       }
       const temp = row[1] !== null ? `<b>${row[1]}°</b>` : "";
-      chip.innerHTML = `${glyphMarkup(row[2], 17)}${temp}`;
+      chip.innerHTML = `${glyphMarkup(row[2], 26)}${temp}`;
     }
   }
 }

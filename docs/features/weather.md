@@ -63,8 +63,13 @@ the day - including the air, in smoke season.
   Flat filled shapes on a fixed palette (amber sun, gray cloud, blue
   rain), not line drawings - the owner's 2026-08-20 call after the
   stroked set proved "very hard to decipher" at chip sizes, and flat
-  color is the map's native language. Sizes run ~30% larger everywhere
-  (strip 24 px, map chips 17 px + 14 px temps, AQI chips 0.98rem).
+  color is the map's native language. Sized for glanceability after two
+  owner passes (+30% then +50%, 2026-08-20): strip icons 36 px at
+  1.68rem text, AQI chips 1.47rem, map chips 26 px icons + 21 px temps.
+  Map chips on the staggered Fauntleroy/Vashon/Southworth markers hide
+  below the vessel-declutter zoom (their chip rows collide with
+  neighboring names there); the names themselves never hide - see
+  realtime-map.md for the stagger system.
 - Trip pages: `WeatherStrip` under the answer line - both terminals at
   the VIEWED sailing's hour (today with nothing left shows now), short
   text, rain chance >=15%, wind >=12 mph, AQI chip always (category
