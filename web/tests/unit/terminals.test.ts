@@ -65,6 +65,12 @@ describe("terminal label hints", () => {
       expect(LABEL_HINTS[id]?.minor, `terminal ${id} demoted`).toBeFalsy();
       expect(LABEL_HINTS[id]?.stagger, `terminal ${id} unstaggered`).toBeDefined();
     }
+    // Southworth and Vashon hang BELOW their dots: above-stacks put
+    // Southworth's chip row on Bremerton's name row from the zoom floor
+    // to ~z10, which forced the chips to hide - and phones frame the map
+    // just under the declutter zoom, so the triangle lost its weather.
+    expect(LABEL_HINTS[20]?.below, "Southworth stacks above again").toBe(true);
+    expect(LABEL_HINTS[22]?.below, "Vashon stacks above again").toBe(true);
   });
 });
 
