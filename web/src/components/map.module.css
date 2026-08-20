@@ -251,9 +251,9 @@ html[data-mode="night"] .vm :global(svg) {
 .term :global(.wx) {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   font-style: normal;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--ink-soft);
 }
 

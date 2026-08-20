@@ -63,7 +63,7 @@ export function WeatherStrip({
         row ? (
           <span key={t.name} className={styles.place}>
             <span className={styles.placeName}>{t.name}</span>
-            <WeatherIcon token={row[2]} />
+            <WeatherIcon token={row[2]} size={24} />
             {row[1] !== null && <strong>{row[1]}°</strong>}
             <span className={styles.detail}>{row[6]}</span>
             {row[3] >= 15 && <span className={styles.detail}>{row[3]}% rain</span>}
