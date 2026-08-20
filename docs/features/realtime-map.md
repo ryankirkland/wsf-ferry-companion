@@ -157,17 +157,21 @@ terminal is never invisible, only unnamed.
 
 **The Fauntleroy triangle staggers instead of demoting** (owner's
 2026-08-20 walk: three commuter terminals vanishing at full zoom-out is
-worse than any crowding). `LabelHint.stagger` slides Southworth's and
-Fauntleroy's name+chip sideways off their shared screen row at far zoom
-(re-centering when there's room) and hangs Vashon's whole stack below
-its dot over the island; the dots hold the coordinates throughout. Their
-weather chips alone still defer to the vessel-declutter zoom - from the
-zoom floor to ~z10 Southworth's chip row coincides with Bremerton's name
-row and no sideways offset separates them. The map also gained
-`minZoom: 8`: full zoom-out is the whole Sound, not the whole planet,
-which is what makes "legible at full zoom-out" a testable guarantee.
-"White Center" joined the suppressed basemap names - Fauntleroy's
-right-staggered label lands on it.
+worse than any crowding). `LabelHint.stagger` slides names+chips sideways off the shared screen
+row at far zoom (re-centering when there's room), and `below` hangs a
+whole stack under its dot; the dots hold the coordinates throughout.
+Fauntleroy staggers right; Southworth hangs below-left and Vashon
+below-right, which is what lets all three carry weather chips at every
+zoom - the first cut kept Southworth's stack above its dot and its chip
+row collided with Bremerton's name from the zoom floor to ~z10, so the
+chips deferred to the declutter zoom, and on a phone's default framing
+(just under that zoom) the triangle showed no weather at all. Two
+below-stacks can sit shoulder to shoulder where two above-stacks could
+not. The map also gained `minZoom: 8`: full zoom-out is the whole
+Sound, not the whole planet, which is what makes "legible at full
+zoom-out" a testable guarantee. "White Center" and "Burien" joined the
+suppressed basemap names - Fauntleroy's and Vashon's right-staggered
+labels land on them.
 
 **Attribution.** The boat FAB sat on top of the credits, rendering
 "Terrain: Mapzen via AWS Open Data" as "apzen via AWS Open Data".

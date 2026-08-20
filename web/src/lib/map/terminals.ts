@@ -17,10 +17,13 @@ export interface LabelHint {
   /** Names itself only once zoomed in - see LABEL_ALL_ZOOM. */
   minor?: boolean;
   /** Collision-avoidance placement for terminals that share a screen row
-   *  at far zoom. "left"/"right" slide the name+chip sideways while the
-   *  dot stays on the coordinate (far zoom only - centered when close);
-   *  "below" hangs the whole stack under the dot at every zoom. */
-  stagger?: "left" | "right" | "below";
+   *  at far zoom: slides the name+chip sideways while the dot stays on
+   *  the coordinate (far zoom only - centered when close). */
+  stagger?: "left" | "right";
+  /** Hangs the whole stack under the dot at every zoom. Composes with
+   *  stagger: below-left and below-right stacks can sit shoulder to
+   *  shoulder where two above-stacks could not. */
+  below?: boolean;
 }
 
 /** Per-terminal treatment, keyed by TerminalID. Markers stack
@@ -44,9 +47,9 @@ export const LABEL_HINTS: Record<number, LabelHint> = {
   16: { label: "Pt. Defiance", minor: true },
   17: { label: "Port Townsend", minor: true },
   18: { label: "Shaw", minor: true },
-  20: { label: "Southworth", stagger: "left" },
+  20: { label: "Southworth", stagger: "left", below: true },
   21: { label: "Tahlequah", minor: true },
-  22: { label: "Vashon", stagger: "below" },
+  22: { label: "Vashon", stagger: "right", below: true },
   122: { label: "Eagle Harbor yard", soft: true, minor: true },
 };
 
@@ -80,6 +83,7 @@ export function addTerminalMarkers(
       hint.soft ? "soft" : "",
       hint.minor ? "minor" : "",
       hint.stagger ? `stag-${hint.stagger}` : "",
+      hint.below ? "stag-below" : "",
     ]
       .filter(Boolean)
       .join(" ");
@@ -92,7 +96,7 @@ export function addTerminalMarkers(
     el.innerHTML = `<span>${hint.label ?? term.name}</span><i></i>`;
     el.dataset.terminal = String(term.id);
 
-    const below = hint.stagger === "below";
+    const below = hint.below === true;
     return new maplibregl.Marker({
       element: el,
       anchor: below ? "top" : "bottom",
@@ -109,8 +113,16 @@ export function suppressedTownNames(terminals: TerminalDim[]): string[] {
   // The dim's names double as the basemap's for most towns; the ones that
   // differ are listed alongside rather than instead, since a miss here is
   // only a duplicate label, never a missing one.
-  // White Center rides with Fauntleroy: its basemap text sits exactly
-  // where Fauntleroy's right-staggered label lands at far zoom.
-  const extras = ["Bainbridge Island", "Vashon", "Friday Harbor", "Port Townsend", "White Center"];
+  // White Center rides with Fauntleroy, Burien with Vashon: their
+  // basemap texts sit exactly where those right-staggered labels land
+  // at far zoom.
+  const extras = [
+    "Bainbridge Island",
+    "Vashon",
+    "Friday Harbor",
+    "Port Townsend",
+    "White Center",
+    "Burien",
+  ];
   return [...new Set([...terminals.map((t) => t.name), ...extras])];
 }

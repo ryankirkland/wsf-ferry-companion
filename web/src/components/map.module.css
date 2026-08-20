@@ -253,28 +253,19 @@ html[data-mode="night"] .vm :global(svg) {
  * zoomed in, there's room, so labels re-center. */
 :global(.labels-far) .term:global(.stag-left) span,
 :global(.labels-far) .term:global(.stag-left) :global(.wx) {
-  transform: translateX(-40px);
+  transform: translateX(-48px);
 }
 
 :global(.labels-far) .term:global(.stag-right) span,
 :global(.labels-far) .term:global(.stag-right) :global(.wx) {
-  transform: translateX(40px);
+  transform: translateX(48px);
 }
 
-/* Below the vessel declutter zoom the staggered names keep only their
- * names: Southworth's chip row coincides with Bremerton's name row from
- * the zoom floor all the way to ~z10, and no sideways offset separates
- * them. The names are the promise; the chips return one pinch in. */
-:global(.z-lo) .term:global(.stag-left) :global(.wx),
-:global(.z-lo) .term:global(.stag-right) :global(.wx),
-:global(.z-lo) .term:global(.stag-below) :global(.wx) {
-  display: none;
-}
-
-/* "Below" hangs the whole stack under the dot (Vashon: the label rests
- * on the island instead of the crowded row above). DOM order is
- * unchanged - the chip that syncWeather prepends lands visually at the
- * outer end either way. */
+/* "Below" hangs the whole stack under the dot - Southworth (below-left)
+ * and Vashon (below-right) rest under their row while Fauntleroy and
+ * Bremerton keep the row above, which is what lets all four carry
+ * weather chips at every zoom. DOM order is unchanged - the chip that
+ * syncWeather prepends lands visually at the outer end either way. */
 .term:global(.stag-below) {
   flex-direction: column-reverse;
 }

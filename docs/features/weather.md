@@ -66,10 +66,12 @@ the day - including the air, in smoke season.
   color is the map's native language. Sized for glanceability after two
   owner passes (+30% then +50%, 2026-08-20): strip icons 36 px at
   1.68rem text, AQI chips 1.47rem, map chips 26 px icons + 21 px temps.
-  Map chips on the staggered Fauntleroy/Vashon/Southworth markers hide
-  below the vessel-declutter zoom (their chip rows collide with
-  neighboring names there); the names themselves never hide - see
-  realtime-map.md for the stagger system.
+  The staggered Fauntleroy/Vashon/Southworth markers carry name AND chip
+  at every zoom - a first cut hid their chips below the declutter zoom,
+  which on a phone's default framing meant no weather at all (owner
+  caught it same day); hanging Southworth below-left and Vashon
+  below-right freed the chip rows instead. See realtime-map.md for the
+  stagger system.
 - Trip pages: `WeatherStrip` under the answer line - both terminals at
   the VIEWED sailing's hour (today with nothing left shows now), short
   text, rain chance >=15%, wind >=12 mph, AQI chip always (category
