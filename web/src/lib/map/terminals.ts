@@ -1,5 +1,5 @@
-// Terminal dot + tracked-caps label markers, side-aware so a label
-// extends over water rather than inland.
+// Terminal markers: a vertical stack of weather chip over tracked-caps
+// name over dot, centered on the coordinate.
 //
 // The list comes from the terminals dim, not a hardcoded table. The
 // original six anchors were the M1 prototype's central-Sound framing, and
@@ -10,8 +10,6 @@ import maplibregl, { type Map as MLMap, type Marker } from "maplibre-gl";
 import type { TerminalDim } from "@/lib/data/dims";
 
 export interface LabelHint {
-  /** Label sits LEFT of the dot (the terminal is on the water's east shore). */
-  side?: "right";
   /** Dimmer treatment: not a place a rider boards. */
   soft?: boolean;
   /** Shorter label where the dim's official name crowds the map. */
@@ -20,30 +18,31 @@ export interface LabelHint {
   minor?: boolean;
 }
 
-/** Per-terminal placement, keyed by TerminalID. Anything absent takes the
- *  default (label to the right of the dot). Sides are set from where the
- *  water actually is and checked on screen, not guessed in bulk. */
+/** Per-terminal treatment, keyed by TerminalID. Markers stack
+ *  vertically - weather chip over name over dot (owner's call,
+ *  2026-08-19: the old sideways rows sprawled across the water and
+ *  hid the boats), so shore side no longer matters. */
 export const LABEL_HINTS: Record<number, LabelHint> = {
   1: { label: "Anacortes", minor: true },
-  3: { side: "right", label: "Bainbridge" },
-  4: { side: "right" },
-  5: { side: "right", label: "Clinton" },
-  7: { side: "right", label: "Seattle" },
-  8: { side: "right", label: "Edmonds" },
-  9: { side: "right", label: "Fauntleroy", minor: true },
-  10: { side: "right", label: "Friday Harbor", minor: true },
-  11: { side: "right", label: "Coupeville", minor: true },
-  12: { side: "right" },
+  3: { label: "Bainbridge" },
+  4: { },
+  5: { label: "Clinton" },
+  7: { label: "Seattle" },
+  8: { label: "Edmonds" },
+  9: { label: "Fauntleroy", minor: true },
+  10: { label: "Friday Harbor", minor: true },
+  11: { label: "Coupeville", minor: true },
+  12: { },
   13: { label: "Lopez", minor: true },
-  14: { side: "right", label: "Mukilteo" },
+  14: { label: "Mukilteo" },
   15: { label: "Orcas", minor: true },
-  16: { side: "right", label: "Pt. Defiance", minor: true },
-  17: { side: "right", label: "Port Townsend", minor: true },
+  16: { label: "Pt. Defiance", minor: true },
+  17: { label: "Port Townsend", minor: true },
   18: { label: "Shaw", minor: true },
-  20: { side: "right", label: "Southworth", minor: true },
+  20: { label: "Southworth", minor: true },
   21: { label: "Tahlequah", minor: true },
-  22: { side: "right", label: "Vashon", minor: true },
-  122: { side: "right", label: "Eagle Harbor yard", soft: true, minor: true },
+  22: { label: "Vashon", minor: true },
+  122: { label: "Eagle Harbor yard", soft: true, minor: true },
 };
 
 /** Zoom at or above which every terminal names itself. Below it, only the
@@ -68,24 +67,20 @@ export function addTerminalMarkers(
   return terminals.map((term) => {
     const hint = LABEL_HINTS[term.id] ?? {};
     const el = document.createElement("div");
-    el.className = [
-      className,
-      hint.soft ? "soft" : "",
-      hint.side === "right" ? "right" : "",
-      hint.minor ? "minor" : "",
-    ]
+    el.className = [className, hint.soft ? "soft" : "", hint.minor ? "minor" : ""]
       .filter(Boolean)
       .join(" ");
-    el.innerHTML = `<i></i><span>${hint.label ?? term.name}</span>`;
-    // The weather chip updater (controller.syncWeather) finds its terminal
-    // by this id; the chip element is appended there, not here, so a map
-    // without weather data is simply a map without chips.
+    // Vertical stack: (weather chip - prepended by controller.syncWeather)
+    // over name over dot; the dot's center sits on the coordinate via the
+    // bottom anchor. A map without weather data is simply a map without
+    // chips.
+    el.innerHTML = `<span>${hint.label ?? term.name}</span><i></i>`;
     el.dataset.terminal = String(term.id);
 
     return new maplibregl.Marker({
       element: el,
-      anchor: hint.side === "right" ? "right" : "left",
-      offset: hint.side === "right" ? [-8, 0] : [8, 0],
+      anchor: "bottom",
+      offset: [0, 4],
     })
       .setLngLat([term.lon, term.lat])
       .addTo(map);
