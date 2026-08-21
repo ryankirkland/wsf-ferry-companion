@@ -20,7 +20,7 @@ import { servedTerminalIds } from "@/lib/data/pairs-served";
 import { getTerminalDims } from "@/lib/data/dims";
 import { getWeather, nowRow } from "@/lib/data/weather";
 import { glyphMarkup } from "@/lib/weather-glyphs";
-import { readHiddenRoutes, terminalHidden } from "@/lib/map/routes";
+import { readHiddenRoutes, readHideOutOfService, terminalHidden } from "@/lib/map/routes";
 import { vesselScaleForZoom } from "./vessels/anchor";
 import { VesselMarkerPool } from "./vessels/markers";
 
@@ -48,6 +48,7 @@ export class PaperSoundMap {
   // live via setHiddenRoutes. Ambient reads the same store - no panel,
   // same filter.
   private hiddenRoutes: ReadonlySet<string> = readHiddenRoutes();
+  private hideOutOfService = readHideOutOfService();
   private weatherTimer?: number;
   private vesselPool: VesselMarkerPool | null = null;
   private pendingFleet: VesselFix[] | null = null;
@@ -126,6 +127,7 @@ export class PaperSoundMap {
           onClick: opts.ambient ? undefined : opts.onVesselClick,
         });
         this.vesselPool.setHiddenRoutes(this.hiddenRoutes);
+        this.vesselPool.setHideOutOfService(this.hideOutOfService);
         if (this.pendingFleet) {
           this.vesselPool.applySnapshot(this.pendingFleet);
           this.pendingFleet = null;
@@ -209,6 +211,11 @@ export class PaperSoundMap {
     this.hiddenRoutes = hidden;
     this.vesselPool?.setHiddenRoutes(hidden);
     this.applyTerminalRouteFilter();
+  }
+
+  setHideOutOfService(hide: boolean): void {
+    this.hideOutOfService = hide;
+    this.vesselPool?.setHideOutOfService(hide);
   }
 
   private applyTerminalRouteFilter(): void {

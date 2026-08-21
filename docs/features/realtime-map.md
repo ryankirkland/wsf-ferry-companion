@@ -177,7 +177,12 @@ fleet feed's eight OpRouteAbbrev strings (first placement was a pill
 under the mode switcher; it sat on the masthead clock - owner's catch,
 2026-08-21). While filtering, the circle fills accent and carries a
 visible-route count badge, and the mobile notice stack floats above
-the whole two-circle column (`lib/map/routes.ts` -
+the whole two-circle column. Below a divider, an "Out-of-service
+boats" toggle (owner's follow-up: tied-up boats are dock clutter)
+hides insvc-false vessels - these report no routes, so the route
+checkboxes can never reach them; the badge counts routes only, but
+either filter lights the accent fill. Stored at `fs.hide-oos:v1`,
+default shown (`lib/map/routes.ts` -
 curated taxonomy, unit-tested against the fixture so a new WSF route
 fails a test instead of sailing unfilterable). Unchecking hides a
 route's boats and its EXCLUSIVE terminals (Seattle stays while either

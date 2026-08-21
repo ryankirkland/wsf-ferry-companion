@@ -10,7 +10,7 @@
 // unit test pins every fixture/live abbrev to this table so a new route
 // shows up as a test failure, never as an invisibly-unfiltered boat.
 
-import { HIDDEN_ROUTES_KEY, readStorage, writeStorage } from "@/lib/storage";
+import { HIDDEN_ROUTES_KEY, HIDE_OOS_KEY, readStorage, writeStorage } from "@/lib/storage";
 
 export interface RouteDef {
   abbrev: string;
@@ -66,4 +66,17 @@ export function readHiddenRoutes(): Set<string> {
 
 export function writeHiddenRoutes(hidden: ReadonlySet<string>): void {
   writeStorage(HIDDEN_ROUTES_KEY, JSON.stringify([...hidden]));
+}
+
+/** Out-of-service toggle (owner's follow-up, 2026-08-21: tied-up boats
+ *  are dock clutter). Out-of-service = the feed's insvc flag, false -
+ *  which also covers yard boats. These report no routes, so the route
+ *  checkboxes can never reach them; this is their own switch. Default
+ *  is SHOWN (missing/corrupt value degrades to showing boats). */
+export function readHideOutOfService(): boolean {
+  return readStorage(HIDE_OOS_KEY) === "1";
+}
+
+export function writeHideOutOfService(hide: boolean): void {
+  writeStorage(HIDE_OOS_KEY, hide ? "1" : "0");
 }

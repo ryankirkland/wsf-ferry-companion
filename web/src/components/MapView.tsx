@@ -40,7 +40,10 @@ export function MapView({
       <LoadingVeil gone={state.ready} failed={state.failed} onRetry={retry} />
       {state.ready && <StalenessBanner feedState={fleet.feedState} lastGoodAt={fleet.lastGoodAt} />}
       {state.ready && !ambient && (
-        <RoutePanel onChange={(hidden) => controllerRef.current?.setHiddenRoutes(hidden)} />
+        <RoutePanel
+          onChange={(hidden) => controllerRef.current?.setHiddenRoutes(hidden)}
+          onOosChange={(hide) => controllerRef.current?.setHideOutOfService(hide)}
+        />
       )}
       {state.degraded && (
         <p className={styles.degraded}>Having trouble drawing the Sound - still trying.</p>

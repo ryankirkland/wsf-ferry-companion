@@ -10,7 +10,13 @@
 // ambient applies it with no panel of its own.
 
 import { useEffect, useRef, useState } from "react";
-import { ROUTES, readHiddenRoutes, writeHiddenRoutes } from "@/lib/map/routes";
+import {
+  ROUTES,
+  readHiddenRoutes,
+  readHideOutOfService,
+  writeHiddenRoutes,
+  writeHideOutOfService,
+} from "@/lib/map/routes";
 import styles from "./route-panel.module.css";
 
 /** Two boats joined by a dotted S-curve - the route, as the map draws
@@ -38,17 +44,23 @@ function RouteGlyph() {
 
 export function RoutePanel({
   onChange,
+  onOosChange,
 }: {
   onChange: (hidden: ReadonlySet<string>) => void;
+  onOosChange: (hide: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
+  const [hideOos, setHideOos] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Async read, same pattern as the notice cards: keeps the stored
     // preference out of the render-sync path.
-    const t = window.setTimeout(() => setHidden(readHiddenRoutes()), 0);
+    const t = window.setTimeout(() => {
+      setHidden(readHiddenRoutes());
+      setHideOos(readHideOutOfService());
+    }, 0);
     return () => window.clearTimeout(t);
   }, []);
 
@@ -74,7 +86,17 @@ export function RoutePanel({
     apply(next);
   };
 
-  const filtering = hidden.size > 0;
+  const toggleOos = () => {
+    const next = !hideOos;
+    setHideOos(next);
+    writeHideOutOfService(next);
+    onOosChange(next);
+  };
+
+  // The accent fill says "this map is filtered" - either way; the badge
+  // counts routes only (an 8-route badge for a boats-only filter would
+  // mislead).
+  const filtering = hidden.size > 0 || hideOos;
 
   return (
     <div className={styles.root} ref={rootRef} data-testid="route-panel">
@@ -86,7 +108,7 @@ export function RoutePanel({
         onClick={() => setOpen((o) => !o)}
       >
         <RouteGlyph />
-        {filtering && (
+        {hidden.size > 0 && (
           <span className={styles.badge} data-testid="route-count" aria-hidden="true">
             {ROUTES.length - hidden.size}
           </span>
@@ -105,10 +127,14 @@ export function RoutePanel({
               {r.label}
             </label>
           ))}
+          <label className={`${styles.row} ${styles.oosRow}`}>
+            <input type="checkbox" checked={!hideOos} onChange={toggleOos} />
+            Out-of-service boats
+          </label>
           <button
             type="button"
             className={styles.all}
-            disabled={!filtering}
+            disabled={hidden.size === 0}
             onClick={() => apply(new Set())}
           >
             Show all routes
