@@ -77,3 +77,27 @@ test("unchecking a route hides its boats and exclusive terminals; persists", asy
   await expect(page.locator(`[data-vessel="${sanJuanBoat.id}"]`)).toBeVisible();
   await expect(page.locator('[data-terminal="1"]')).toBeVisible();
 });
+
+test("out-of-service boats get their own toggle; persists", async ({ page }) => {
+  await openMap(page);
+
+  // Sealth (28) is tied up: insvc false, no routes - unreachable by the
+  // route checkboxes, which is exactly why the toggle exists.
+  const oosBoat = page.locator('[data-vessel="28"]');
+  await expect(oosBoat).toBeVisible();
+
+  await page.getByRole("button", { name: "Routes", exact: true }).click();
+  await page.getByRole("checkbox", { name: "Out-of-service boats" }).uncheck();
+
+  await expect(oosBoat).not.toBeVisible();
+  // In-service boats are untouched.
+  await expect(page.locator(`[data-vessel="${bremertonBoat.id}"]`)).toBeVisible();
+
+  await page.reload();
+  await page.waitForSelector(`[data-vessel="${bremertonBoat.id}"] .boat svg`);
+  await expect(page.locator('[data-vessel="28"]')).not.toBeVisible();
+
+  await page.getByRole("button", { name: "Routes", exact: true }).click();
+  await page.getByRole("checkbox", { name: "Out-of-service boats" }).check();
+  await expect(page.locator('[data-vessel="28"]')).toBeVisible();
+});

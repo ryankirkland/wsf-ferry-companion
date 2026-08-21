@@ -31,6 +31,8 @@ interface Handle {
   /** Last known route abbrevs - lets a filter change re-apply without
    *  waiting for the next snapshot. */
   routes: string[];
+  /** Last known in-service flag, same reason. */
+  insvc: boolean;
 }
 
 export interface MarkerPoolOptions {
@@ -51,6 +53,7 @@ export class VesselMarkerPool {
   private glides: GlideLoop;
   private lastSnapshotAt: number | null = null;
   private hiddenRoutes: ReadonlySet<string> = new Set();
+  private hideOutOfService = false;
   // VesselID -> class info. Dims usually resolve after the first fleet
   // snapshot, so markers born before then get retrofitted.
   private classes = new Map<number, ClassInfo>();
@@ -152,6 +155,15 @@ export class VesselMarkerPool {
     }
   }
 
+  /** Out-of-service toggle: tied-up boats (insvc false, yard included)
+   *  report no routes, so the route filter can never reach them. */
+  setHideOutOfService(hide: boolean): void {
+    this.hideOutOfService = hide;
+    for (const h of this.handles.values()) {
+      h.el.classList.toggle("svc-off", hide && !h.insvc);
+    }
+  }
+
   destroy(): void {
     this.glides.stop();
     this.handles.forEach((h) => h.marker.remove());
@@ -227,6 +239,7 @@ export class VesselMarkerPool {
       lon: fix.lon,
       missedSnapshots: 0,
       routes: fix.routes,
+      insvc: fix.insvc,
     };
   }
 
@@ -239,7 +252,9 @@ export class VesselMarkerPool {
   ): void {
     handle.el.classList.toggle("lbl-off", labelHidden);
     handle.routes = fix.routes;
+    handle.insvc = fix.insvc;
     handle.el.classList.toggle("route-off", vesselHidden(fix.routes, this.hiddenRoutes));
+    handle.el.classList.toggle("svc-off", this.hideOutOfService && !fix.insvc);
     const nameText = companions > 0 ? `${fix.name} +${companions}` : fix.name;
     if (nameText !== handle.nameEl.textContent) handle.nameEl.textContent = nameText;
 

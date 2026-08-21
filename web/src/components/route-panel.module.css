@@ -87,6 +87,15 @@
   cursor: pointer;
 }
 
+/* Not a route: the tied-up boats (insvc false) that no route checkbox
+ * can reach. A rule line separates the two ideas. */
+.oosRow {
+  margin-top: 0.35rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--card-line);
+  color: var(--ink-soft);
+}
+
 .all {
   margin-top: 0.4rem;
   border: none;

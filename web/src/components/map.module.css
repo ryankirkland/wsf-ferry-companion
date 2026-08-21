@@ -235,8 +235,9 @@ html[data-mode="night"] .vm :global(svg) {
 
 /* Route filter: deselected routes' boats and exclusive terminals stop
  * rendering entirely - display, not opacity, so hover tips and taps
- * can't reach ghosts. */
+ * can't reach ghosts. svc-off is the out-of-service toggle's class. */
 .vm:global(.route-off),
+.vm:global(.svc-off),
 .term:global(.route-off) {
   display: none;
 }
