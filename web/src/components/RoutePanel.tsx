@@ -2,14 +2,39 @@
 
 // Route filter control (owner's ask, 2026-08-20: checkboxes that hide
 // routes, saved as a preference - "I care mostly about where Bremerton
-// and Southworth routes are; the others become noise"). A pill under
-// the mode switcher opens a checklist; unchecking a route hides its
-// boats and exclusive terminals. Preference persists per device
-// (localStorage); ambient applies it with no panel of its own.
+// and Southworth routes are; the others become noise"). A circle above
+// the boat FAB (owner's placement call, 2026-08-21: the top-right pill
+// sat on the clock) whose icon is two boats joined by a dotted S-curve;
+// it opens a checklist card. Unchecking a route hides its boats and
+// exclusive terminals. Preference persists per device (localStorage);
+// ambient applies it with no panel of its own.
 
 import { useEffect, useRef, useState } from "react";
 import { ROUTES, readHiddenRoutes, writeHiddenRoutes } from "@/lib/map/routes";
 import styles from "./route-panel.module.css";
+
+/** Two boats joined by a dotted S-curve - the route, as the map draws
+ *  routes. Hulls match the FAB's silhouette language. */
+function RouteGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      <path
+        d="M6.2 16.4 C 13.4 15.4, 10.2 9.6, 17.6 8.6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeDasharray="0.1 3"
+      />
+      <g fill="currentColor">
+        <rect x="3.4" y="17.1" width="3.6" height="1.6" rx="0.5" />
+        <path d="M1.4 19.1h8.2l-1.4 2.3H2.8z" />
+        <rect x="16.4" y="2.9" width="3.6" height="1.6" rx="0.5" />
+        <path d="M14.4 4.9h8.2l-1.4 2.3h-5.4z" />
+      </g>
+    </svg>
+  );
+}
 
 export function RoutePanel({
   onChange,
@@ -55,11 +80,17 @@ export function RoutePanel({
     <div className={styles.root} ref={rootRef} data-testid="route-panel">
       <button
         type="button"
-        className={filtering ? `${styles.pill} ${styles.pillActive}` : styles.pill}
+        className={filtering ? `${styles.circle} ${styles.circleActive}` : styles.circle}
+        aria-label="Routes"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
-        Routes{filtering ? ` · ${ROUTES.length - hidden.size}` : ""}
+        <RouteGlyph />
+        {filtering && (
+          <span className={styles.badge} data-testid="route-count" aria-hidden="true">
+            {ROUTES.length - hidden.size}
+          </span>
+        )}
       </button>
 
       {open && (
