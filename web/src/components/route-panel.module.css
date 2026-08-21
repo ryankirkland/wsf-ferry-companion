@@ -8,7 +8,11 @@
   position: fixed;
   left: max(1rem, env(safe-area-inset-left, 0px));
   bottom: max(5rem, calc(env(safe-area-inset-bottom, 0px) + 4.5rem));
-  z-index: 30;
+  /* Above the first-visit notice stack (z 50): on phones the opened
+   * card and the consent banner share screen space, and a control the
+   * user just tapped must win - the third instance of the
+   * overlay-eats-control bug class (FAB, then Subscribe, now this). */
+  z-index: 60;
 }
 
 .circle {
