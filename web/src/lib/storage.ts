@@ -14,6 +14,7 @@ export const YOUR_RUN_KEY = "fs.your-run";
 export const CONSENT_SEEN_KEY = "wsf_analytics_consent_seen";
 export const ANALYTICS_OPTOUT_KEY = "wsf_analytics_optout";
 export const DATA_NOTICE_SEEN_KEY = "fs.data-notice-seen:v1";
+export const HIDDEN_ROUTES_KEY = "fs.hidden-routes:v1";
 
 export function readStorage(key: string): string | null {
   try {
