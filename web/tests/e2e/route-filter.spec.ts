@@ -34,6 +34,12 @@ async function openMap(page: Page) {
     r.fulfill({ body: fixture("pairs-index.json"), contentType: "application/json" }),
   );
   await page.route("**/assets/vessels/*-t.png", (r) => r.fulfill({ status: 404, body: "" }));
+  // First-visit notice cards sit over the bottom-left control column
+  // until dismissed - these specs model a user past that.
+  await page.addInitScript(() => {
+    localStorage.setItem("wsf_analytics_consent_seen", "1");
+    localStorage.setItem("fs.data-notice-seen:v1", "1");
+  });
   await page.goto("/");
   await page.waitForSelector("[data-vessel] .boat svg");
   await page.waitForSelector('[data-terminal="1"]', { state: "attached" });
@@ -47,7 +53,7 @@ test("unchecking a route hides its boats and exclusive terminals; persists", asy
   const anacortes = page.locator('[data-terminal="1"]');
   await expect(sjBoat).toHaveCount(1);
 
-  await page.getByRole("button", { name: /^Routes/ }).click();
+  await page.getByRole("button", { name: "Routes", exact: true }).click();
   await page.getByRole("checkbox", { name: "Anacortes - San Juans" }).uncheck();
 
   await expect(sjBoat).not.toBeVisible();
@@ -62,10 +68,11 @@ test("unchecking a route hides its boats and exclusive terminals; persists", asy
   await page.waitForSelector(`[data-vessel="${bremertonBoat.id}"] .boat svg`);
   await page.waitForSelector('[data-terminal="1"]', { state: "attached" });
   await expect(page.locator(`[data-vessel="${sanJuanBoat.id}"]`)).not.toBeVisible();
-  await expect(page.getByRole("button", { name: /Routes · 7/ })).toBeVisible();
+  // The circle carries a visible-routes badge while filtering.
+  await expect(page.getByTestId("route-count")).toHaveText("7");
 
   // Show all restores everything.
-  await page.getByRole("button", { name: /Routes · 7/ }).click();
+  await page.getByRole("button", { name: "Routes", exact: true }).click();
   await page.getByRole("button", { name: "Show all routes" }).click();
   await expect(page.locator(`[data-vessel="${sanJuanBoat.id}"]`)).toBeVisible();
   await expect(page.locator('[data-terminal="1"]')).toBeVisible();

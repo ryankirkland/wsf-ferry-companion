@@ -171,8 +171,13 @@ point (companions sit under another hull).
 
 **Route filter** (owner's ask, 2026-08-20: "I care mostly about where
 Bremerton and Southworth routes are - the others become noise"). A
-"Routes" pill under the mode switcher opens a checkbox card keyed on
-the fleet feed's eight OpRouteAbbrev strings (`lib/map/routes.ts` -
+circle above the boat FAB - two boats joined by a dotted S-curve, the
+route as the map draws routes - opens a checkbox card keyed on the
+fleet feed's eight OpRouteAbbrev strings (first placement was a pill
+under the mode switcher; it sat on the masthead clock - owner's catch,
+2026-08-21). While filtering, the circle fills accent and carries a
+visible-route count badge, and the mobile notice stack floats above
+the whole two-circle column (`lib/map/routes.ts` -
 curated taxonomy, unit-tested against the fixture so a new WSF route
 fails a test instead of sailing unfilterable). Unchecking hides a
 route's boats and its EXCLUSIVE terminals (Seattle stays while either

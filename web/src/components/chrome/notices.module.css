@@ -29,13 +29,14 @@
   }
 }
 
-/* Clear the boat FAB on narrow screens: the stack sat directly on top of
- * the map page's ONLY navigation control and swallowed its taps - a first
- * visit began with an unusable menu. The FAB is 48px + a 1.25rem bottom
- * margin, so 5.5rem floats the stack above it. Wider than 640px the
+/* Clear the bottom-left control column on narrow screens: the stack sat
+ * directly on top of the map page's ONLY navigation control and
+ * swallowed its taps - a first visit began with an unusable menu. The
+ * column is now two 3rem circles (boat FAB at 1.25rem, route filter
+ * above it), so the stack floats above both. Wider than 640px the
  * centered stack clears the corner on its own. */
 @media (max-width: 640px) {
   .stack {
-    bottom: max(5.5rem, calc(env(safe-area-inset-bottom, 0px) + 4.5rem));
+    bottom: max(8.75rem, calc(env(safe-area-inset-bottom, 0px) + 8.25rem));
   }
 }
