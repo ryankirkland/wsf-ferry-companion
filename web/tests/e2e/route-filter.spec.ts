@@ -101,3 +101,31 @@ test("out-of-service boats get their own toggle; persists", async ({ page }) => 
   await page.getByRole("checkbox", { name: "Out-of-service boats" }).check();
   await expect(page.locator('[data-vessel="28"]')).toBeVisible();
 });
+
+test("the opened panel wins over first-visit notice cards", async ({ page }) => {
+  // NO seen-flag seeding: this is the true first visit, notices up. On
+  // phones the panel card and the consent banner share screen space -
+  // a control the user just tapped must take the tap (the third
+  // instance of the overlay-eats-control class: FAB, Subscribe, this).
+  const fleet = JSON.parse(fixture("fleet-frame-0.json"));
+  fleet.generated_at = new Date().toISOString();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route("**/data/fleet.json", (r) => r.fulfill(json(fleet)));
+  await page.route("**/data/vessels.json", (r) =>
+    r.fulfill({ body: fixture("vessels.json"), contentType: "application/json" }),
+  );
+  await page.route("**/data/terminals.json", (r) =>
+    r.fulfill({ body: fixture("terminals.json"), contentType: "application/json" }),
+  );
+  await page.route("**/data/pairs/index.json", (r) =>
+    r.fulfill({ body: fixture("pairs-index.json"), contentType: "application/json" }),
+  );
+  await page.route("**/assets/vessels/*-t.png", (r) => r.fulfill({ status: 404, body: "" }));
+  await page.goto("/");
+  await page.waitForSelector("[data-vessel] .boat svg");
+  await expect(page.getByTestId("consent-banner")).toBeVisible();
+
+  await page.getByRole("button", { name: "Routes", exact: true }).click();
+  await page.getByRole("checkbox", { name: "Out-of-service boats" }).uncheck({ timeout: 5000 });
+  await expect(page.locator('[data-vessel="28"]')).not.toBeVisible();
+});
