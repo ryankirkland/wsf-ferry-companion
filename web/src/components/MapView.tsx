@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { LoadingVeil } from "@/components/chrome/LoadingVeil";
+import { RoutePanel } from "@/components/RoutePanel";
 import { StalenessBanner } from "@/components/chrome/StalenessBanner";
 import { useMapController } from "@/hooks/use-map-controller";
 import type { FleetUpdate } from "@/lib/data/fleet-poller";
@@ -38,6 +39,9 @@ export function MapView({
       <div ref={containerRef} className={styles.map} data-testid="map-container" />
       <LoadingVeil gone={state.ready} failed={state.failed} onRetry={retry} />
       {state.ready && <StalenessBanner feedState={fleet.feedState} lastGoodAt={fleet.lastGoodAt} />}
+      {state.ready && !ambient && (
+        <RoutePanel onChange={(hidden) => controllerRef.current?.setHiddenRoutes(hidden)} />
+      )}
       {state.degraded && (
         <p className={styles.degraded}>Having trouble drawing the Sound - still trying.</p>
       )}

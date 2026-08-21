@@ -233,6 +233,14 @@ html[data-mode="night"] .vm :global(svg) {
   display: none;
 }
 
+/* Route filter: deselected routes' boats and exclusive terminals stop
+ * rendering entirely - display, not opacity, so hover tips and taps
+ * can't reach ghosts. */
+.vm:global(.route-off),
+.term:global(.route-off) {
+  display: none;
+}
+
 .vm:global(.muted) {
   opacity: 0.62;
 }

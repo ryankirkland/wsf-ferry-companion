@@ -20,6 +20,7 @@ import { servedTerminalIds } from "@/lib/data/pairs-served";
 import { getTerminalDims } from "@/lib/data/dims";
 import { getWeather, nowRow } from "@/lib/data/weather";
 import { glyphMarkup } from "@/lib/weather-glyphs";
+import { readHiddenRoutes, terminalHidden } from "@/lib/map/routes";
 import { vesselScaleForZoom } from "./vessels/anchor";
 import { VesselMarkerPool } from "./vessels/markers";
 
@@ -43,6 +44,10 @@ export class PaperSoundMap {
   private resizeObserver: ResizeObserver;
   private resizeTimer: number | undefined;
   private terminalMarkers: Marker[] = [];
+  // Stored preference read once at construction; the panel updates it
+  // live via setHiddenRoutes. Ambient reads the same store - no panel,
+  // same filter.
+  private hiddenRoutes: ReadonlySet<string> = readHiddenRoutes();
   private weatherTimer?: number;
   private vesselPool: VesselMarkerPool | null = null;
   private pendingFleet: VesselFix[] | null = null;
@@ -106,6 +111,7 @@ export class PaperSoundMap {
               terminals,
             );
             dedupePlaceLabels(this.map, suppressedTownNames(terminals));
+            this.applyTerminalRouteFilter();
             this.syncLabelZoom();
             // Weather chips ride the terminal markers; refreshed on the
             // contract's cadence. Weather failing to load costs chips,
@@ -119,6 +125,7 @@ export class PaperSoundMap {
           reducedMotion: () => this.reducedMotion.matches,
           onClick: opts.ambient ? undefined : opts.onVesselClick,
         });
+        this.vesselPool.setHiddenRoutes(this.hiddenRoutes);
         if (this.pendingFleet) {
           this.vesselPool.applySnapshot(this.pendingFleet);
           this.pendingFleet = null;
@@ -191,6 +198,25 @@ export class PaperSoundMap {
   applySnapshot(vessels: VesselFix[]): void {
     if (this.vesselPool) this.vesselPool.applySnapshot(vessels);
     else this.pendingFleet = vessels;
+  }
+
+  /** Route filter (owner's ask: "the others become noise"): hidden
+   *  routes' boats and their exclusive terminals stop rendering via the
+   *  route-off class - pool bookkeeping and marker DOM stay intact, so
+   *  toggling is instant and reversible. Applies to ambient too: a wall
+   *  display of YOUR routes is the point. */
+  setHiddenRoutes(hidden: ReadonlySet<string>): void {
+    this.hiddenRoutes = hidden;
+    this.vesselPool?.setHiddenRoutes(hidden);
+    this.applyTerminalRouteFilter();
+  }
+
+  private applyTerminalRouteFilter(): void {
+    for (const marker of this.terminalMarkers) {
+      const el = marker.getElement();
+      const id = Number(el.dataset.terminal);
+      el.classList.toggle("route-off", terminalHidden(id, this.hiddenRoutes));
+    }
   }
 
   /** Minor terminals name themselves only when there is room for the

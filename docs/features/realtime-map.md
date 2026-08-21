@@ -169,6 +169,24 @@ snapshots, so specs hover via chase-the-hull mouse moves, and the
 hover target must be a marker that actually receives its own center
 point (companions sit under another hull).
 
+**Route filter** (owner's ask, 2026-08-20: "I care mostly about where
+Bremerton and Southworth routes are - the others become noise"). A
+"Routes" pill under the mode switcher opens a checkbox card keyed on
+the fleet feed's eight OpRouteAbbrev strings (`lib/map/routes.ts` -
+curated taxonomy, unit-tested against the fixture so a new WSF route
+fails a test instead of sailing unfilterable). Unchecking hides a
+route's boats and its EXCLUSIVE terminals (Seattle stays while either
+of its routes is visible); a boat reporting no routes (yard moves,
+repositioning) is never hidden - filtering trims noise, it must not
+make real boats vanish unaccountably. Hiding is the route-off class
+(display:none), so pool bookkeeping, glide state, and DOM reuse stay
+intact and toggling is instant. The basemap's dotted OSM ferry lines
+stay - they are one class=ferry layer, not per-route features, and are
+texture at 0.45 opacity. Preference persists per device
+(`fs.hidden-routes:v1`); ambient applies it with no panel of its own -
+a wall display of YOUR routes is the point. Account-level sync is a
+candidate follow-up.
+
 **Every rider port names itself at every zoom** (owner's 2026-08-20
 walk, second round: the whole northern network - Anacortes, the San
 Juans, Coupeville, Port Townsend - plus the Tacoma pair rendered as

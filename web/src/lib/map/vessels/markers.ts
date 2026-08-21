@@ -13,6 +13,7 @@ import { getTerminalDims, getVesselDims } from "@/lib/data/dims";
 import { VESSEL_ANCHOR_PX } from "./anchor";
 import { classIcon, classSvg, REFERENCE_FEET } from "./class-icons";
 import { GlideLoop } from "./interpolate";
+import { vesselHidden } from "@/lib/map/routes";
 
 const MOVING_KN = 0.5; // docked boats drift 0.1-0.4 kn with noisy headings
 
@@ -27,6 +28,9 @@ interface Handle {
   lat: number;
   lon: number;
   missedSnapshots: number;
+  /** Last known route abbrevs - lets a filter change re-apply without
+   *  waiting for the next snapshot. */
+  routes: string[];
 }
 
 export interface MarkerPoolOptions {
@@ -46,6 +50,7 @@ export class VesselMarkerPool {
   private handles = new Map<number, Handle>();
   private glides: GlideLoop;
   private lastSnapshotAt: number | null = null;
+  private hiddenRoutes: ReadonlySet<string> = new Set();
   // VesselID -> class info. Dims usually resolve after the first fleet
   // snapshot, so markers born before then get retrofitted.
   private classes = new Map<number, ClassInfo>();
@@ -137,6 +142,16 @@ export class VesselMarkerPool {
     this.glides.snapAll();
   }
 
+  /** Route filter: hidden boats keep their handles (glide state, DOM
+   *  reuse) and simply stop rendering - a filter toggle must not churn
+   *  the pool's bookkeeping. */
+  setHiddenRoutes(hidden: ReadonlySet<string>): void {
+    this.hiddenRoutes = hidden;
+    for (const h of this.handles.values()) {
+      h.el.classList.toggle("route-off", vesselHidden(h.routes, hidden));
+    }
+  }
+
   destroy(): void {
     this.glides.stop();
     this.handles.forEach((h) => h.marker.remove());
@@ -202,7 +217,17 @@ export class VesselMarkerPool {
     const marker = new maplibregl.Marker({ element: el, anchor: "center" })
       .setLngLat([fix.lon, fix.lat])
       .addTo(this.map);
-    return { marker, el, nameEl, statusEl, flip: false, lat: fix.lat, lon: fix.lon, missedSnapshots: 0 };
+    return {
+      marker,
+      el,
+      nameEl,
+      statusEl,
+      flip: false,
+      lat: fix.lat,
+      lon: fix.lon,
+      missedSnapshots: 0,
+      routes: fix.routes,
+    };
   }
 
   private updateState(
@@ -213,6 +238,8 @@ export class VesselMarkerPool {
     companions: number,
   ): void {
     handle.el.classList.toggle("lbl-off", labelHidden);
+    handle.routes = fix.routes;
+    handle.el.classList.toggle("route-off", vesselHidden(fix.routes, this.hiddenRoutes));
     const nameText = companions > 0 ? `${fix.name} +${companions}` : fix.name;
     if (nameText !== handle.nameEl.textContent) handle.nameEl.textContent = nameText;
 
