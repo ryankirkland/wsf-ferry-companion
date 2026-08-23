@@ -50,8 +50,17 @@ the day - including the air, in smoke season.
   the frontend owns the artwork); unknown conditions degrade to a
   generic bucket, never break.
 - Alarms: `weather-not-published` (2 h of silence = dead pipeline;
-  missing data breaches) and `weather-degraded` (sustained last-good
-  leaning; one-off NWS 503 stretches deliberately stay under it).
+  missing data breaches) and `weather-degraded`, which asks whether the
+  upstream integration is DEAD - >400 fallbacks in 12 h, i.e. no fresh
+  reading for half a day (expired key, moved endpoint, silently broken
+  parse), not merely flaky. **Retuned 2026-08-22**: the first version
+  summed >30 over 3 h, which real flaky days clear routinely (sums of
+  23-73 that day), so it oscillated across the threshold and, with
+  `ok_actions` also wired, sent eight emails in one afternoon for a
+  condition that never changed and that no human could act on. AirNow
+  503/502 stretches are the fallback's JOB, not an incident. The metric
+  stays (it is the honesty meter - how often riders see stale AQI);
+  only the paging question changed.
 
 ## Frontend (W1)
 
