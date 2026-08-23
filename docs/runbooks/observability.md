@@ -177,10 +177,20 @@ and August proved it wrong - actuals through Aug 14 ran ~$0.47/day, then
    realtime map's design cost, not a defect.
 
 The original line items stand: $0.50 hosted zone, ~$0.04 Athena, and
-**~$0.60 of CloudWatch alarms** - six past the 10-alarm free tier
-(created 2026-07-31; August is the first month that bills them; the
-trimmable ones are `stats-data-lag` and `analytics-empty-night`, both
-partly covered by `stats-not-fresh`).
+**~$1.00 of CloudWatch alarms** - 20 alarms, 10 past the free tier at
+$0.10 each (August is the first month that bills them).
+
+**Alarm cost is not the reason to delete an alarm.** At a dime each,
+the question is always signal, never spend. An earlier version of this
+section flagged `stats-data-lag` and `analytics-empty-night` as
+"trimmable, partly covered by `stats-not-fresh`" - re-reading their
+definitions on 2026-08-22 says otherwise, and they stay. `stats-not-fresh`
+only asks "did we publish"; the other two catch the cases where
+publishing SUCCEEDS on rotten evidence (transform behind by >2 days;
+every vessel returning zero history rows). Those are silent-failure
+detectors of exactly the class this project fears most, and neither has
+ever fired falsely. What DOES justify surgery is noise: see
+`weather-degraded` below.
 
 **By service, this month:**
 

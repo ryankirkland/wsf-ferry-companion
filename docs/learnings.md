@@ -42,6 +42,39 @@ of distinct investigations, not one problem; and any code path only
 production executes needs a query-shape or contract test, because mocks
 cannot fail the way the real service does.
 
+## 1b. Alarms: page on what a human can DO
+
+**A flapping alarm is worse than no alarm** (`weather-degraded`,
+retuned 2026-08-22). It summed last-good fallbacks over 3 h with a
+threshold real flaky days clear routinely, so it oscillated across the
+line - and with `ok_actions` also wired, every oscillation double-tapped
+the ops topic: eight emails in one afternoon for a condition that never
+changed. Worse, the condition was **not actionable**: AirNow returning
+502s is precisely what the last-good fallback exists to absorb, and no
+human can fix a third party's weekend.
+
+Rules:
+- Alarm on the actionable question, not the observable one. "AirNow
+  hiccuped" is observable; "no fresh reading in 12 h, so our key or
+  endpoint is probably dead" is actionable. Same metric, different
+  question.
+- Keep the metric, change the alarm. `LastGoodFallbacks` is the honesty
+  meter and belongs on a dashboard forever; only the paging threshold
+  was wrong.
+- Wire `ok_actions` only where the recovery itself is news. Recovery
+  from someone else's outage is not.
+- Set thresholds from MEASURED distributions, not intuition: pull the
+  metric's real values first (3 h sums ran 23-73 against a threshold of
+  30), then place the line above every observed benign day and below the
+  genuine failure.
+- **Alarm cost is never the reason to delete an alarm.** At $0.10 per
+  alarm-month the entire 20-alarm set is ~$1/mo. The same review
+  reversed an earlier "trimmable" note on `stats-data-lag` and
+  `analytics-empty-night`: re-reading them showed each catches a
+  distinct silent failure (publishing succeeds on rotten evidence) that
+  `stats-not-fresh` cannot see, and neither has ever fired falsely.
+  Judge alarms by signal and noise; the dimes are irrelevant.
+
 ## 2. Cost: never trust upstream's word for "changed"
 
 **The invalidation burn (#76, `3fa720a`).** WSDOT flips the terminals

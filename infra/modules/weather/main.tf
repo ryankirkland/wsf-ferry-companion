@@ -145,21 +145,35 @@ resource "aws_cloudwatch_metric_alarm" "weather_stale" {
   ok_actions          = [var.alarms_topic_arn]
 }
 
-# Publishing fine but persistently on last-good: NWS or AirNow has been
-# failing for hours and every "fresh" publish is quietly re-serving old
-# entries. One-off blips (their changelog admits 503 stretches) stay
-# below this threshold on purpose.
+# Publishing fine but the upstream integration is DEAD: not "AirNow had
+# a bad afternoon" (their 502/timeout stretches are routine, the
+# last-good fallback handles them exactly as designed, and there is no
+# action for a human to take) but "no fresh reading has arrived in half
+# a day" - an expired API key, a moved endpoint, a parse that silently
+# stopped matching. That is rare, actionable, and worth an email.
+#
+# Threshold math (retuned 2026-08-22 after the first version flapped
+# eight emails in one day): the poller runs every 30 min over 21
+# terminals, 20 of which carry an AirNow area, so a 12 h window holds at
+# most 24 x 41 = 984 fallbacks, and a TOTAL AQI blackout for those 12 h
+# is 24 x 20 = 480. Real flaky-but-working days measure ~190 per 12 h
+# (2026-08-22: 3 h sums of 23-73 against the old threshold of 30, which
+# is why it sat on the line and oscillated). 400 sits above every
+# observed flaky day and below a genuine blackout.
+#
+# No ok_actions: recovery from a third party's outage is not news, and
+# double-tapping the ops topic on every transition is how an inbox
+# earns the right to be ignored (docs/learnings.md, theme 1).
 resource "aws_cloudwatch_metric_alarm" "weather_degraded" {
   alarm_name          = "wsf-prod-weather-degraded"
-  alarm_description   = "Sustained upstream failures - weather.json is publishing but leaning on last-good entries for hours."
+  alarm_description   = "No fresh weather/AQI for ~12h - the upstream integration looks broken, not merely flaky. Check the API key and the FetchFailed reasons in the poller log."
   namespace           = "WSF/Weather"
   metric_name         = "LastGoodFallbacks"
   statistic           = "Sum"
-  period              = 10800
+  period              = 43200
   evaluation_periods  = 1
-  threshold           = 30
+  threshold           = 400
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
   alarm_actions       = [var.alarms_topic_arn]
-  ok_actions          = [var.alarms_topic_arn]
 }
