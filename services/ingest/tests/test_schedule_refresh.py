@@ -311,3 +311,94 @@ def test_force_rebuild_ignores_unmoved_tokens(aws, monkeypatch, fake):
     assert counts["PairDatesPublished"] == 4  # full horizon again, tokens unchanged
     assert counts["FaresPublished"] == 38
     assert fake.pair_calls > calls_after_first
+
+
+def test_pair_items_are_written_once_then_gated(aws, monkeypatch, fake):
+    """~134,000 write units/day were identical rewrites (audit 2026-08-23):
+    today+tomorrow x 38 pairs x ~188 runs, 99.85% byte-identical."""
+    from boto3.dynamodb.conditions import Key
+
+    _run(monkeypatch, fake)
+    first = aws["table"].query(KeyConditionExpression=Key("PK").eq("PAIR#0007#0003"))
+    assert first["Count"] == 23
+
+    # Token churn with identical content: the 99.85% case. The horizon is
+    # rebuilt and every pair-date refetched, but nothing actually changed.
+    writes = {"n": 0}
+    real_batch = aws["table"].batch_writer
+
+    def counting_batch(*args, **kwargs):
+        writes["n"] += 1
+        return real_batch(*args, **kwargs)
+
+    aws["table"].batch_writer = counting_batch
+    fake.tokens["schedule"] = "S2"
+    counts = _run(monkeypatch, fake)
+
+    assert counts["PairDatesUnchanged"] == 4, "the horizon really was rebuilt"
+    assert writes["n"] == 0, "unchanged sailings must not be rewritten"
+    # ...and the items are still there for the alert-citation join.
+    again = aws["table"].query(KeyConditionExpression=Key("PK").eq("PAIR#0007#0003"))
+    assert again["Count"] == 23
+
+
+def test_items_are_written_even_when_the_s3_file_is_gated(aws, monkeypatch, fake):
+    """The scenario the separate namespace exists for.
+
+    A date's S3 file is published the moment it ENTERS the 14-day horizon,
+    days before that date reaches the today/tomorrow window where DynamoDB
+    items are written. So by then its S3 hash is already recorded. If the
+    two shared one gate, the items would never be written at all - and the
+    alert-citation join reads them.
+
+    Simulated exactly: keep the S3 gate entries from a real run, drop the
+    item-gate entries and the items themselves, then churn the token so the
+    horizon rebuilds with identical content. The S3 publishes are all
+    gated; the items must still come back."""
+    from boto3.dynamodb.conditions import Key
+    from wsf_ingest import schedule_refresh
+
+    table = aws["table"]
+    _run(monkeypatch, fake)
+
+    hashes = schedule_refresh._load_hashes(table)
+    s3_only = {k: v for k, v in hashes.items() if not k.startswith(schedule_refresh._ITEMS_PREFIX)}
+    assert len(s3_only) < len(hashes), "the run should have recorded item-gate entries"
+    schedule_refresh._save_hashes(table, s3_only)
+
+    existing = table.query(KeyConditionExpression=Key("PK").eq("PAIR#0007#0003"))["Items"]
+    with table.batch_writer() as batch:
+        for item in existing:
+            batch.delete_item(Key={"PK": item["PK"], "SK": item["SK"]})
+    assert table.query(KeyConditionExpression=Key("PK").eq("PAIR#0007#0003"))["Count"] == 0
+
+    fake.tokens["schedule"] = "S2"
+    counts = _run(monkeypatch, fake)
+
+    assert counts["PairDatesPublished"] == 0, "every S3 file was gated, as intended"
+    resp = table.query(KeyConditionExpression=Key("PK").eq("PAIR#0007#0003"))
+    assert resp["Count"] == 23, "items must be rewritten even when the S3 gate says skip"
+
+
+def test_item_hashes_are_pruned_once_the_day_passes(aws):
+    """Unpruned, this map grows daily inside ONE DynamoDB item and
+    eventually trips the 400 KB limit, which stops publishing outright."""
+    from datetime import date as _date
+
+    from wsf_ingest import schedule_refresh
+
+    p = schedule_refresh._ITEMS_PREFIX
+    hashes = {
+        f"{p}7-3/2026-07-20": "old",
+        f"{p}7-3/2026-07-24": "today",
+        f"{p}7-3/2026-07-25": "tomorrow",
+        "data/pairs/index.json": "keep-me",
+        f"{p}7-3/not-a-date": "keep-me-too",
+    }
+    dropped = schedule_refresh._prune_item_hashes(hashes, _date(2026, 7, 24))
+
+    assert dropped == 1
+    assert f"{p}7-3/2026-07-20" not in hashes
+    assert f"{p}7-3/2026-07-24" in hashes and f"{p}7-3/2026-07-25" in hashes
+    assert hashes["data/pairs/index.json"] == "keep-me", "S3 gate entries are untouched"
+    assert hashes[f"{p}7-3/not-a-date"] == "keep-me-too", "unparseable keys are left alone"
