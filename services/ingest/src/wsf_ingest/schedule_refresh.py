@@ -109,6 +109,12 @@ def _put_json(s3, key: str, payload: dict, max_age: int = 60) -> None:
 # trip planner reads sailings, not timestamps; source_token is provenance).
 _VOLATILE_KEYS = ("generated_at", "retrieved_at", "source_token")
 _HASHES_SK = "PUBLISHHASH#v1"
+# Namespace for the DynamoDB pair-item gate. Separate from the S3 keys
+# because the two are written on different schedules (see the call site),
+# and pruned by service date because these items are only ever written for
+# today and tomorrow - an unpruned map would push the single hash item
+# toward DynamoDB's 400 KB ceiling.
+_ITEMS_PREFIX = "items/pairs/"
 
 
 def _content_hash(payload: dict) -> str:
@@ -121,6 +127,28 @@ def _content_hash(payload: dict) -> str:
 def _load_hashes(table) -> dict[str, str]:
     item = table.get_item(Key={"PK": META_PK, "SK": _HASHES_SK}).get("Item", {})
     return dict(item.get("hashes", {}))
+
+
+def _prune_item_hashes(hashes: dict[str, str], today: date) -> int:
+    """Drop pair-item gate entries for service dates now in the past.
+
+    Pair items are only ever written for today and tomorrow, so an entry
+    older than today can never gate anything again. Without this the map
+    grows every day inside ONE DynamoDB item and eventually trips the
+    400 KB limit, at which point publishing stops with a ValidationException.
+    """
+    stale = []
+    for key in hashes:
+        if not key.startswith(_ITEMS_PREFIX):
+            continue
+        try:
+            if date.fromisoformat(key.rsplit("/", 1)[-1]) < today:
+                stale.append(key)
+        except ValueError:  # unparseable: leave it rather than guess
+            continue
+    for key in stale:
+        del hashes[key]
+    return len(stale)
 
 
 def _save_hashes(table, hashes: dict[str, str]) -> None:
@@ -178,6 +206,7 @@ def lambda_handler(event, context):
         "FaresUnchanged": 0,
     }
     hashes = _load_hashes(table)
+    _prune_item_hashes(hashes, today)
     hashes_before = dict(hashes)
 
     force = mode == "force-rebuild"
@@ -353,10 +382,25 @@ def _publish_dates(
                 published += 1
             else:
                 skipped += 1
-            # Not gated: the alert-citation join reads these items, and their
-            # freshness must not depend on whether the S3 file changed.
+            # Gated on the item content, NOT on whether the S3 file moved.
+            #
+            # The two cannot share a gate: a date's S3 file is published the
+            # moment it enters the 14-day horizon, so by the time that date
+            # reaches date_i <= 1 - the only window where items are written -
+            # its S3 hash is usually already recorded. Gating on that would
+            # mean the items were never written at all, and the
+            # alert-citation join reads them. Hence a separate namespace,
+            # pruned below so it cannot grow without bound.
+            #
+            # Before this gate the refresher rewrote today+tomorrow for all
+            # 38 pairs on every one of ~188 daily runs: ~134,000 write units
+            # a day, 99.85% of them byte-identical (audit 2026-08-23).
             if write_pair_items and date_i <= 1:
-                _write_pair_items(day)
+                items_key = f"{_ITEMS_PREFIX}{dep}-{arr}/{service_date.isoformat()}"
+                items_digest = _content_hash(day)
+                if force or hashes.get(items_key) != items_digest:
+                    _write_pair_items(day)
+                    hashes[items_key] = items_digest
 
     if full:
         schedule_meta = envelopes[(pairs[0], first_date)] if pairs else {}
