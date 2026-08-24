@@ -46,6 +46,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${gabarito.variable} ${inter.variable}`}
     >
       <head>
+        {/* The map's two cross-origin hosts. Neither is discoverable until
+            MapLibre parses the style JSON, by which point a cold DNS+TLS
+            handshake sits directly on the path to the first tile - and on
+            a phone that is 100-300 ms each. Warming them during HTML parse
+            costs nothing on routes that never open a map. */}
+        <link rel="preconnect" href="https://tiles.openfreemap.org" crossOrigin="" />
+        <link rel="preconnect" href="https://s3.amazonaws.com" crossOrigin="" />
         <script dangerouslySetInnerHTML={{ __html: modeScript }} />
       </head>
       <body>

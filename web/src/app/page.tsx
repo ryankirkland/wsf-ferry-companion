@@ -14,7 +14,19 @@ import styles from "./page.module.css";
 // nav control (BoatFab) until it downloaded and parsed
 // (bundle-dynamic-imports). Dynamic keeps the same loading visual - the
 // veil - while the map chunk streams in behind an interactive page.
-const MapView = dynamic(() => import("@/components/MapView").then((m) => m.MapView), {
+//
+// The import is kicked off at MODULE scope, not left to first render.
+// next/dynamic otherwise waits for the component to render, which waits
+// for hydration: measured 2026-08-23 on a throttled phone, the map chunk
+// was not even REQUESTED until ~2,000 ms, and first-boat landed at ~12 s.
+// /ambient, which imports the map statically, requested it at ~300 ms and
+// beat this page by a full second despite shipping more code - the cost
+// was never the bytes, it was discovering them late. Starting the fetch
+// as this module evaluates gets it going while React is still hydrating,
+// and the veil still covers the gap.
+const mapViewModule = import("@/components/MapView");
+
+const MapView = dynamic(() => mapViewModule.then((m) => m.MapView), {
   ssr: false,
   loading: () => <LoadingVeil gone={false} />,
 });
