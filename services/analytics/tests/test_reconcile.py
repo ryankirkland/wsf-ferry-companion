@@ -170,3 +170,63 @@ def test_key_time_filters_candidates_without_a_fetch(aws):
 
     assert slots[("2026-07-30", 3, 7)] == {"06:10"}
     assert gets["n"] == 1, "the out-of-window object should never be fetched"
+
+
+def test_key_time_parses_what_the_archive_writer_actually_produces(aws):
+    """Couples the reader to the writer.
+
+    _key_time reads the flush time out of the S3 key so candidates can be
+    filtered without a GET. If that parsing ever stops matching
+    ArchiveBatch's key format, `candidates` comes back EMPTY and
+    scheduled_by_pair_day returns {} - which reconcile reports as zero
+    scheduled sailings, i.e. a silent 0% cancellation rate rather than an
+    error. This test fails instead.
+    """
+    from datetime import UTC, datetime
+
+    from wsf_analytics import reconcile
+    from wsf_core.archive import ArchiveBatch
+
+    moments = [
+        datetime(2026, 7, 30, 0, 1, tzinfo=UTC),
+        datetime(2026, 7, 30, 14, 35, tzinfo=UTC),
+        datetime(2026, 7, 30, 23, 59, tzinfo=UTC),
+    ]
+    for moment in moments:
+        batch = ArchiveBatch(aws["s3"], "wsf-test-raw")
+        batch.add(fetched_at=moment, status=200, body={"probe": True})
+        key = batch.flush(dataset="schedule_refresh", now=moment)
+        assert key is not None
+        parsed = reconcile._key_time(key)
+        assert parsed == moment, f"{key} parsed as {parsed}, expected {moment}"
+
+    # The suffixed variant the backfill writes must not break parsing either.
+    batch = ArchiveBatch(aws["s3"], "wsf-test-raw")
+    batch.add(fetched_at=moments[1], status=200, body={"probe": True})
+    key = batch.flush(dataset="schedule_refresh", now=moments[1], suffix="tacoma-2015")
+    assert reconcile._key_time(key) == moments[1], f"suffixed key {key} failed to parse"
+
+
+def test_end_to_end_through_the_real_writer(aws):
+    """The whole path with no hand-written keys: ArchiveBatch writes the
+    objects, scheduled_by_pair_day reads them back."""
+    from datetime import UTC, datetime
+
+    from wsf_core.archive import ArchiveBatch
+
+    # Morning snapshot: one sailing. Evening snapshot: the real day-of plan.
+    for moment, times in [
+        (datetime(2026, 7, 30, 13, 0, tzinfo=UTC), [T0610]),
+        (datetime(2026, 7, 30, 23, 0, tzinfo=UTC), [T0610, T0755]),
+    ]:
+        batch = ArchiveBatch(aws["s3"], "wsf-test-raw")
+        batch.add(
+            fetched_at=moment,
+            status=200,
+            body=json.loads(schedule_line(moment.isoformat(), times))["body"],
+        )
+        batch.flush(dataset="schedule_refresh", now=moment)
+
+    slots = reconcile.scheduled_by_pair_day(aws["s3"], "wsf-test-raw", [date(2026, 7, 30)])
+    assert slots, "reconcile read nothing back from the writer's own keys"
+    assert slots[("2026-07-30", 3, 7)] == {"06:10", "07:55"}
