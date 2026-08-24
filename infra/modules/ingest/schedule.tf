@@ -13,8 +13,18 @@
 
 data "aws_iam_policy_document" "schedule_refresh" {
   statement {
-    sid       = "HotTableReadWrite"
-    actions   = ["dynamodb:BatchWriteItem", "dynamodb:PutItem", "dynamodb:GetItem"]
+    sid = "HotTableReadWrite"
+    # UpdateItem: _write_horizon updates the HORIZON item in place rather
+    # than replacing it, because three call sites write that item and only
+    # one of them knows the last-full-rebuild stamp. Granted 2026-08-23
+    # after the switch to update_item shipped without it - the rebuild ran,
+    # the stamp write threw AccessDenied, and every run rebuilt again.
+    actions = [
+      "dynamodb:BatchWriteItem",
+      "dynamodb:PutItem",
+      "dynamodb:GetItem",
+      "dynamodb:UpdateItem",
+    ]
     resources = [aws_dynamodb_table.hot.arn]
   }
 
