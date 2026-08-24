@@ -273,6 +273,15 @@ resource "aws_cloudwatch_log_group" "transform" {
   retention_in_days = 30
 }
 
+# Async-invoke retries OFF (see the stats twin in stats.tf). sync
+# invokes transform asynchronously; a transform failure would otherwise
+# re-read the whole 4.2M-row archive up to three times. The nightly
+# sweep is the retry.
+resource "aws_lambda_function_event_invoke_config" "transform" {
+  function_name          = aws_lambda_function.transform.function_name
+  maximum_retry_attempts = 0
+}
+
 resource "aws_lambda_function" "transform" {
   function_name    = "wsf-prod-analytics-transform"
   role             = aws_iam_role.transform.arn

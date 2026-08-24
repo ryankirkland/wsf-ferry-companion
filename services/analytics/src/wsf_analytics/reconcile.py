@@ -48,7 +48,8 @@ Honesty rules baked in:
 import gzip
 import json
 from collections import defaultdict
-from datetime import date, datetime, time, timedelta
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from wsf_core.dotnet_dates import parse_dotnet_date
@@ -58,66 +59,133 @@ TRACKING_FLOOR = date(2026, 7, 29)  # first day of schedule archiving
 WINDOW_DAYS = 30
 SCHEDULE_PREFIX = "raw/schedule_refresh/"
 
+# How many archive objects to read per service day, newest-first. Each
+# full-horizon rebuild archives EVERY pair-date in one batch, so the
+# newest snapshot before a day's deadline normally carries that whole
+# day on its own; the extra reads only backfill gaps if a batch was
+# partial. Reading all ~180 objects per day instead is what drove this
+# Lambda into its 600 s timeout (see docs/learnings.md).
+SNAPSHOTS_PER_DAY = 4
 
-def _archive_keys(s3, bucket: str, days: list[date]) -> list[str]:
-    # A snapshot taken Pacific-evening lands in the NEXT UTC dt partition,
-    # so each service day needs its own dt and the following one.
-    wanted = {d.isoformat() for d in days} | {(d + timedelta(days=1)).isoformat() for d in days}
-    keys = []
-    for prefix_day in sorted(wanted):
+
+def _partition_keys(s3, bucket: str, partitions: set[str]) -> dict[str, list[str]]:
+    """dt-partition -> its object keys. LIST is cheap; GET is not."""
+    out: dict[str, list[str]] = {}
+    for prefix_day in sorted(partitions):
+        keys: list[str] = []
         for page in s3.get_paginator("list_objects_v2").paginate(
             Bucket=bucket, Prefix=f"{SCHEDULE_PREFIX}dt={prefix_day}/"
         ):
             keys += [o["Key"] for o in page.get("Contents", [])]
-    return keys
+        out[prefix_day] = keys
+    return out
 
 
-def scheduled_by_pair_day(s3, bucket: str, days: list[date]) -> dict[tuple, set[str]]:
-    """(service_date, dep, arr) -> {HH:MM} from the last day-of snapshot."""
+def _key_time(key: str) -> datetime | None:
+    """UTC flush time encoded in the key: .../dt=YYYY-MM-DD/HHMM[-sfx].ndjson.gz"""
+    try:
+        parts = key.rsplit("/", 2)
+        day = date.fromisoformat(parts[-2].removeprefix("dt="))
+        hhmm = parts[-1].split(".")[0].split("-")[0]
+        return datetime.combine(day, time(int(hhmm[:2]), int(hhmm[2:4])), tzinfo=UTC)
+    except (IndexError, ValueError):
+        return None
+
+
+def _deadline(service_day: date) -> datetime:
+    """Only snapshots a rider could have seen that day count."""
+    return datetime.combine(service_day, time(23, 59, 59), tzinfo=SOUND_TZ)
+
+
+def _day_slots(s3, bucket: str, service_day: date, keys: list[str]) -> dict[tuple, set[str]]:
+    """Slots for ONE service day, reading newest-first and stopping early."""
+    day_iso = service_day.isoformat()
+    deadline = _deadline(service_day)
+    # The key's own flush time filters candidates without a single GET.
+    candidates = sorted(
+        (k for k in keys if (t := _key_time(k)) is not None and t <= deadline),
+        reverse=True,
+    )[:SNAPSHOTS_PER_DAY]
+
     best_at: dict[tuple, str] = {}
     slots: dict[tuple, set[str]] = {}
-    wanted_days = {d.isoformat() for d in days}
-
-    for key in _archive_keys(s3, bucket, days):
+    for key in candidates:
         blob = s3.get_object(Bucket=bucket, Key=key)["Body"].read()
         for line in gzip.decompress(blob).decode().strip().split("\n"):
             if not line:
                 continue
             record = json.loads(line)
             body = record.get("body") or {}
-            if "pair" not in body or body.get("date") not in wanted_days:
+            if "pair" not in body or body.get("date") != day_iso:
                 continue
-            service_day = date.fromisoformat(body["date"])
             fetched_at = record.get("fetched_at", "")
-            # Only snapshots a rider could have seen that day count.
-            deadline = datetime.combine(service_day, time(23, 59, 59), tzinfo=SOUND_TZ)
             try:
                 if datetime.fromisoformat(fetched_at) > deadline:
                     continue
             except ValueError:
                 continue
-
-            dep, arr = body["pair"]
-            entry = (body["date"], dep, arr)
-            if best_at.get(entry, "") > fetched_at:
-                continue
-            times = set()
-            for combo in (body.get("schedule") or {}).get("TerminalCombos", []):
-                if (
-                    combo.get("DepartingTerminalID") != dep
-                    or combo.get("ArrivingTerminalID") != arr
-                ):
-                    continue
-                for sailing in combo.get("Times", []):
-                    departs = parse_dotnet_date(sailing.get("DepartingTime"))
-                    if departs is None:
-                        continue
-                    local = departs.astimezone(SOUND_TZ)
-                    if local.date() == service_day:
-                        times.add(local.strftime("%H:%M"))
-            best_at[entry] = fetched_at
-            slots[entry] = times
+            _absorb(body, service_day, fetched_at, best_at, slots)
     return slots
+
+
+def scheduled_by_pair_day(s3, bucket: str, days: list[date]) -> dict[tuple, set[str]]:
+    """(service_date, dep, arr) -> {HH:MM} from the last day-of snapshot.
+
+    Reads the newest few snapshots per service day rather than the whole
+    archive window: the answer only ever depends on the last snapshot a
+    rider could have seen, and the old full-window scan grew ~36 s per
+    day of window until it exceeded any timeout Lambda allows.
+    """
+    if not days:
+        return {}
+    # A snapshot taken Pacific-evening lands in the NEXT UTC dt partition,
+    # so each service day needs its own dt and the following one.
+    partitions = {d.isoformat() for d in days} | {(d + timedelta(days=1)).isoformat() for d in days}
+    by_partition = _partition_keys(s3, bucket, partitions)
+
+    def for_day(service_day: date) -> dict[tuple, set[str]]:
+        keys = by_partition.get(service_day.isoformat(), []) + by_partition.get(
+            (service_day + timedelta(days=1)).isoformat(), []
+        )
+        return _day_slots(s3, bucket, service_day, keys)
+
+    slots: dict[tuple, set[str]] = {}
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        for day_slots in pool.map(for_day, days):
+            slots.update(day_slots)
+    return slots
+
+
+def _absorb(
+    body: dict,
+    service_day: date,
+    fetched_at: str,
+    best_at: dict[tuple, str],
+    slots: dict[tuple, set[str]],
+) -> None:
+    """Fold one archived pair-date envelope into the slot map.
+
+    Last-snapshot-wins, unchanged from the original full-window scan:
+    an older `fetched_at` never overwrites a newer one, so reading the
+    candidates in any order still yields the day-of truth.
+    """
+    dep, arr = body["pair"]
+    entry = (body["date"], dep, arr)
+    if best_at.get(entry, "") > fetched_at:
+        return
+    times = set()
+    for combo in (body.get("schedule") or {}).get("TerminalCombos", []):
+        if combo.get("DepartingTerminalID") != dep or combo.get("ArrivingTerminalID") != arr:
+            continue
+        for sailing in combo.get("Times", []):
+            departs = parse_dotnet_date(sailing.get("DepartingTime"))
+            if departs is None:
+                continue
+            local = departs.astimezone(SOUND_TZ)
+            if local.date() == service_day:
+                times.add(local.strftime("%H:%M"))
+    best_at[entry] = fetched_at
+    slots[entry] = times
 
 
 def reconcile(scheduled: dict[tuple, set[str]], sailed_rows: list[dict]) -> dict:
