@@ -70,8 +70,78 @@ resource "aws_cloudfront_response_headers_policy" "data_cors" {
   }
 }
 
-data "aws_cloudfront_response_headers_policy" "security_headers" {
-  name = "Managed-SecurityHeadersPolicy"
+# AWS's Managed-SecurityHeadersPolicy - which this replaced - carries
+# HSTS, nosniff, frame-options and referrer-policy but NO
+# Content-Security-Policy. CSP is what makes an
+# injected string inert rather than executable, and this site does render
+# upstream-authored text (WSDOT terminal and vessel names, NWS values,
+# alert prose). Those sinks are escaped as of 2026-08-23, but escaping is
+# a property every future edit has to preserve; CSP is the net underneath.
+#
+# script-src keeps 'unsafe-inline': a static export has no request-time
+# nonce, and Next inlines its RSC payload as <script> on every page. So
+# this does not stop injected inline script. What it DOES stop is the part
+# that turns an injection into a breach - connect-src bounds where anything
+# can be sent, so a stolen Cognito token has nowhere to go; script-src
+# blocks pulling a remote payload; base-uri and object-src close two
+# classic escapes; frame-ancestors stops clickjacking the alerts UI.
+#
+# The map style, glyph and sprite URLs are absolute (config.ts), so the
+# site's own origin is named explicitly rather than left to 'self' - same
+# thing in production, but it makes the dependency visible and lets the
+# policy be verified against a local build.
+#
+# worker-src blob: is LOAD-BEARING - MapLibre runs its tile parser in a
+# blob worker and the map is blank without it. Verified against the built
+# export before shipping, not after.
+locals {
+  csp = join("; ", [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https://${var.domain_name} https://tiles.openfreemap.org https://s3.amazonaws.com",
+    "font-src 'self'",
+    "connect-src 'self' https://${var.domain_name} https://api.${var.domain_name} https://cognito-idp.us-west-2.amazonaws.com https://tiles.openfreemap.org https://s3.amazonaws.com",
+    "worker-src blob:",
+    "child-src blob:",
+    "frame-ancestors 'none'",
+    "base-uri 'none'",
+    "object-src 'none'",
+    "form-action 'self'",
+    "upgrade-insecure-requests",
+  ])
+}
+
+resource "aws_cloudfront_response_headers_policy" "site_security" {
+  name = "wsf-site-security"
+
+  security_headers_config {
+    content_type_options {
+      override = true
+    }
+    frame_options {
+      frame_option = "DENY"
+      override     = true
+    }
+    referrer_policy {
+      referrer_policy = "strict-origin-when-cross-origin"
+      override        = true
+    }
+    strict_transport_security {
+      access_control_max_age_sec = 31536000
+      include_subdomains         = true
+      override                   = true
+    }
+    xss_protection {
+      mode_block = true
+      protection = true
+      override   = true
+    }
+    content_security_policy {
+      content_security_policy = local.csp
+      override                = true
+    }
+  }
 }
 
 # Site analytics: /v1/events is fronted by this distribution (not called
@@ -182,7 +252,7 @@ resource "aws_cloudfront_distribution" "site" {
     cached_methods             = ["GET", "HEAD"]
     compress                   = true
     cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
-    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.site_security.id
 
     function_association {
       event_type   = "viewer-request"
@@ -238,7 +308,7 @@ resource "aws_cloudfront_distribution" "site" {
     compress                   = true
     cache_policy_id            = data.aws_cloudfront_cache_policy.caching_disabled.id
     origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer_except_host_header.id
-    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.site_security.id
   }
 
 

@@ -299,8 +299,17 @@ export class PaperSoundMap {
         chip.className = "wx";
         el.prepend(chip); // top of the stack: chip over name over dot
       }
-      const temp = row[1] !== null ? `<b>${row[1]}°</b>` : "";
-      chip.innerHTML = `${glyphMarkup(row[2], 26)}${temp}`;
+      // The glyph is ours (a lookup into a static table - see
+      // weather-glyphs.ts), so it may be markup. The temperature is NWS's
+      // raw JSON value and must not be: `!== null` alone lets a string
+      // through, and a string is markup. Build it as text.
+      chip.replaceChildren();
+      chip.insertAdjacentHTML("afterbegin", glyphMarkup(row[2], 26));
+      if (Number.isFinite(Number(row[1]))) {
+        const temp = document.createElement("b");
+        temp.textContent = `${Number(row[1])}°`;
+        chip.append(temp);
+      }
     }
   }
 }

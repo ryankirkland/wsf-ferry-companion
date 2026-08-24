@@ -53,8 +53,16 @@ jobs:
         with:
           tflint_version: v0.64.0
 
+      # GITHUB_TOKEN: `tflint --init` downloads the AWS ruleset from GitHub
+      # releases, and unauthenticated it shares the runner's IP-based rate
+      # limit with every other Actions job on that host. That budget ran out
+      # twice on 2026-08-23 and failed this lane on a plugin download while
+      # the Terraform itself was fine. Authenticated requests get their own,
+      # far larger allowance.
       - name: tflint
         working-directory: infra
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tflint --init --config "$(pwd)/.tflint.hcl"
           tflint --recursive --config "$(pwd)/.tflint.hcl" --format compact

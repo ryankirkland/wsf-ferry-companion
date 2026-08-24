@@ -110,7 +110,15 @@ export function addTerminalMarkers(
     // chips. A "below" stagger reverses the column (CSS) and anchors at
     // the top, so the dot still owns the coordinate with the stack
     // hanging under it.
-    el.innerHTML = `<span>${hint.label ?? term.name}</span><i></i>`;
+    // textContent, not innerHTML: term.name is WSDOT's TerminalName carried
+    // through the dim verbatim, and this fallback branch IS live (terminals
+    // 4 and 12 carry no label, as does any id absent from LABEL_HINTS). An
+    // upstream field containing markup would otherwise execute on our
+    // origin, where the Cognito session lives in localStorage.
+    const name = document.createElement("span");
+    name.textContent = hint.label ?? term.name;
+    const dot = document.createElement("i");
+    el.replaceChildren(name, dot);
     el.dataset.terminal = String(term.id);
 
     const below = hint.below === true;
