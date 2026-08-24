@@ -23,8 +23,13 @@ fields (generated_at/retrieved_at/source_token) and skipped when identical
 to what is already served. DynamoDB pair items are NOT gated: the alert
 citation join reads them, and their freshness must not depend on file
 churn. force-rebuild bypasses the gate. The 532-call fetch itself still
-runs on every token move (the `ScheduleRefreshDecision` log remains the
-instrument for that); gating the fetch phase is the follow-up, task 44.
+ran on every token move until 2026-08-23: WSDOT flips that token on
+essentially EVERY check (96/96 runs measured), so it was 538 upstream
+calls every 15 minutes to learn nothing - ~52,000 requests/day. The full
+horizon re-fetch is now rate-limited by FULL_REBUILD_MIN_INTERVAL_H
+(default 3 h) rather than driven by the token; same-day truth still
+arrives through the alerts-driven today-refresh, and the horizon roll
+still publishes the new edge date daily.
 
 Everything fetched is archived raw (fetch-time keys): upstream cannot serve
 past dates, so this archive is the only history - load-bearing for M4.
@@ -211,6 +216,13 @@ def lambda_handler(event, context):
 
     force = mode == "force-rebuild"
     schedule_token_moved = schedule_token != stored_sched_token
+    last_full_utc = horizon_item.get("last_full_utc")
+    rebuild_due = force or _full_rebuild_due(last_full_utc, datetime.now(UTC))
+    will_rebuild = (
+        mode != "today-refresh"
+        and (force or schedule_token_moved or stored_from is None)
+        and rebuild_due
+    )
     print(
         json.dumps(
             {
@@ -220,8 +232,9 @@ def lambda_handler(event, context):
                     "fares_token_moved": fares_token != stored_fares_token,
                     "stored_from": stored_from,
                     "today": today.isoformat(),
-                    "will_rebuild_horizon": mode != "today-refresh"
-                    and (force or schedule_token_moved or stored_from is None),
+                    "last_full_utc": last_full_utc,
+                    "rebuild_due": rebuild_due,
+                    "will_rebuild_horizon": will_rebuild,
                 }
             }
         )
@@ -231,11 +244,16 @@ def lambda_handler(event, context):
             client, table, s3, today, hashes
         )
     else:
-        if force or schedule_token_moved or stored_from is None:
+        if will_rebuild:
             counts["PairDatesPublished"], counts["PairDatesUnchanged"] = _rebuild_horizon(
                 client, table, s3, today, hashes, force=force
             )
+            # Both stamps move together: the token records WHAT we last saw,
+            # last_full_utc records WHEN we last looked. Storing the token on
+            # a skipped rebuild would tell the next run the content had been
+            # examined when it had not.
             _put_token(table, "schedule", schedule_token)
+            _write_horizon(table, today, last_full_utc=datetime.now(UTC).isoformat())
         elif stored_from != today.isoformat():
             # Window rolled: publish just the newest date at the edge.
             new_date = today + timedelta(days=_horizon_days() - 1)
@@ -261,15 +279,59 @@ def lambda_handler(event, context):
     return counts
 
 
-def _write_horizon(table, today: date) -> None:
-    table.put_item(
-        Item={
-            "PK": META_PK,
-            "SK": "HORIZON#pairs",
-            "horizon_from": today.isoformat(),
-            "updated_at_utc": datetime.now(UTC).isoformat(),
-        }
+def _write_horizon(table, today: date, last_full_utc: str | None = None) -> None:
+    """Update in place, never put_item.
+
+    Three call sites write this item, one of them nested inside
+    _publish_dates, and only one of them knows `last_full_utc`. A put_item
+    from any of the others would silently erase that stamp - which reads as
+    "we have never rebuilt", sending the next run straight back to the
+    ~52,000-requests/day behaviour this gate exists to stop.
+    """
+    names = {"#hf": "horizon_from", "#ua": "updated_at_utc"}
+    values = {
+        ":hf": today.isoformat(),
+        ":ua": datetime.now(UTC).isoformat(),
+    }
+    expr = "SET #hf = :hf, #ua = :ua"
+    if last_full_utc:
+        names["#lf"] = "last_full_utc"
+        values[":lf"] = last_full_utc
+        expr += ", #lf = :lf"
+    table.update_item(
+        Key={"PK": META_PK, "SK": "HORIZON#pairs"},
+        UpdateExpression=expr,
+        ExpressionAttributeNames=names,
+        ExpressionAttributeValues=values,
     )
+
+
+def _full_rebuild_interval_h() -> float:
+    return float(os.environ.get("FULL_REBUILD_MIN_INTERVAL_H", "3"))
+
+
+def _full_rebuild_due(last_full_utc: str | None, now: datetime) -> bool:
+    """Has enough time passed to justify re-fetching the whole horizon?
+
+    WSDOT moves the schedule cacheflushdate on essentially EVERY check, so
+    the token is not a change signal - measured 2026-08-23, it moved on
+    96/96 runs while the content produced 80 published files and 53,386
+    unchanged ones. Rebuilding on the token therefore meant 538 upstream
+    calls every 15 minutes to learn nothing: ~52,000 requests/day, and the
+    single largest Lambda consumer in the account.
+
+    A published 14-day timetable is not a minute-fresh product. Same-day
+    truth still arrives promptly through the alerts-driven today-refresh,
+    and the horizon roll still publishes the new edge date daily; this
+    cadence governs only the speculative re-fetch of dates 2-14.
+    """
+    if not last_full_utc:
+        return True
+    try:
+        last = datetime.fromisoformat(last_full_utc)
+    except ValueError:
+        return True
+    return (now - last) >= timedelta(hours=_full_rebuild_interval_h())
 
 
 def _fetch_system(client: WsfClient, today: date):

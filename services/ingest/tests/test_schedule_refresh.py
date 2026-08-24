@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, date, timedelta
 
 import pytest
 from wsf_ingest import schedule_refresh
@@ -79,9 +80,12 @@ def fake(schedule_route_envelope, timeadj_rows_ingest, fares_verbose_ingest):
     )
 
 
-def _run(monkeypatch, fake, event=None):
+def _run(monkeypatch, fake, event=None, rebuild_interval_h="0"):
     monkeypatch.setenv("HORIZON_DAYS", "2")
     monkeypatch.setenv("UPSTREAM_SPACING_S", "0")
+    # Default 0 = no cadence gating, so the tests below exercise the CONTENT
+    # gate they were written for. The cadence gate has its own tests.
+    monkeypatch.setenv("FULL_REBUILD_MIN_INTERVAL_H", rebuild_interval_h)
     monkeypatch.setattr(schedule_refresh, "_client", fake)
     return schedule_refresh.lambda_handler(event or {}, None)
 
@@ -402,3 +406,61 @@ def test_item_hashes_are_pruned_once_the_day_passes(aws):
     assert f"{p}7-3/2026-07-24" in hashes and f"{p}7-3/2026-07-25" in hashes
     assert hashes["data/pairs/index.json"] == "keep-me", "S3 gate entries are untouched"
     assert hashes[f"{p}7-3/not-a-date"] == "keep-me-too", "unparseable keys are left alone"
+
+
+def test_full_rebuild_is_rate_limited_not_token_driven(aws, monkeypatch, fake):
+    """WSDOT moves the schedule token on essentially every check - measured
+    96/96 runs on 2026-08-23 - so rebuilding on the token meant 538 upstream
+    calls every 15 minutes to learn nothing: ~52,000 requests/day and the
+    largest Lambda consumer in the account."""
+    _run(monkeypatch, fake, rebuild_interval_h="3")
+    calls_after_first = fake.pair_calls
+
+    # Token churns again inside the window: no refetch at all.
+    fake.tokens["schedule"] = "S2"
+    counts = _run(monkeypatch, fake, rebuild_interval_h="3")
+    assert fake.pair_calls == calls_after_first, "no upstream refetch inside the window"
+    assert counts["PairDatesPublished"] == 0
+    assert counts["PairDatesUnchanged"] == 0
+
+
+def test_force_rebuild_ignores_the_cadence(aws, monkeypatch, fake):
+    _run(monkeypatch, fake, rebuild_interval_h="24")
+    calls_after_first = fake.pair_calls
+
+    _run(monkeypatch, fake, event={"mode": "force-rebuild"}, rebuild_interval_h="24")
+    assert fake.pair_calls > calls_after_first, "an operator force must always rebuild"
+
+
+def test_rebuild_due_reads_the_stamp():
+    from datetime import datetime as _dt
+
+    from wsf_ingest import schedule_refresh
+
+    now = _dt(2026, 8, 24, 12, 0, tzinfo=UTC)
+    monkey_h = schedule_refresh._full_rebuild_interval_h()
+    assert monkey_h > 0  # the deployed default is a real interval
+
+    assert schedule_refresh._full_rebuild_due(None, now) is True, "never rebuilt: go"
+    assert schedule_refresh._full_rebuild_due("not-a-timestamp", now) is True, "unparseable: go"
+    fresh = (now - timedelta(minutes=30)).isoformat()
+    assert schedule_refresh._full_rebuild_due(fresh, now) is False
+    stale = (now - timedelta(hours=9)).isoformat()
+    assert schedule_refresh._full_rebuild_due(stale, now) is True
+
+
+def test_horizon_roll_does_not_erase_the_rebuild_stamp(aws, monkeypatch, fake):
+    """Three call sites write the HORIZON item and only one knows the
+    stamp; a put_item from either of the others reads as 'never rebuilt'
+    and sends the next run straight back to rebuilding on every token."""
+    from wsf_ingest import schedule_refresh
+
+    table = aws["table"]
+    _run(monkeypatch, fake, rebuild_interval_h="3")
+    stamped = table.get_item(Key={"PK": schedule_refresh.META_PK, "SK": "HORIZON#pairs"})["Item"]
+    assert "last_full_utc" in stamped
+
+    schedule_refresh._write_horizon(table, date(2026, 7, 25))
+    after = table.get_item(Key={"PK": schedule_refresh.META_PK, "SK": "HORIZON#pairs"})["Item"]
+    assert after["last_full_utc"] == stamped["last_full_utc"], "the stamp must survive"
+    assert after["horizon_from"] == "2026-07-25", "and the roll must still take effect"
