@@ -109,3 +109,64 @@ def test_window_never_reaches_before_tracking_started():
     assert days[-1] == date(2026, 7, 31)
     # Only the tracking floor itself is in the history: nothing complete yet.
     assert reconcile.window_days(date(2026, 7, 29)) == []
+
+
+def test_reads_only_the_newest_snapshots_per_day(aws):
+    """The 2026-08-20 outage: this read EVERY object in the window, grew
+    ~36 s per day of window, and hit the 600 s ceiling with no way back
+    (a full 30-day window computed to ~975 s against Lambda's 900 s
+    maximum). The answer only ever depends on the last snapshot a rider
+    could have seen, so the read must stay bounded as history grows."""
+    # 40 snapshots across the service day, oldest first, each adding a
+    # sailing so the newest is distinguishable.
+    for i in range(40):
+        put_schedule(
+            aws,
+            [schedule_line(f"2026-07-30T{i // 2:02d}:00:00+00:00", [T0610])],
+            name=f"{i:02d}00.ndjson.gz" if i < 24 else f"23{i:02d}.ndjson.gz",
+        )
+    # The winner: newest key, and the only one carrying the 07:55 sailing.
+    put_schedule(
+        aws,
+        [schedule_line("2026-07-30T23:50:00+00:00", [T0610, T0755])],
+        name="2359.ndjson.gz",
+    )
+
+    gets = {"n": 0}
+    real_get = aws["s3"].get_object
+
+    def counting_get(**kwargs):
+        gets["n"] += 1
+        return real_get(**kwargs)
+
+    aws["s3"].get_object = counting_get
+    slots = reconcile.scheduled_by_pair_day(aws["s3"], "wsf-test-raw", [date(2026, 7, 30)])
+
+    assert slots[("2026-07-30", 3, 7)] == {"06:10", "07:55"}, "newest snapshot must still win"
+    assert gets["n"] <= reconcile.SNAPSHOTS_PER_DAY, (
+        f"read {gets['n']} objects for one service day - the read must stay bounded"
+    )
+
+
+def test_key_time_filters_candidates_without_a_fetch(aws):
+    # A snapshot flushed after the day's deadline is excluded by its KEY,
+    # so it never costs a GET at all.
+    put_schedule(aws, [schedule_line("2026-07-30T16:00:00+00:00", [T0610])], name="2300.ndjson.gz")
+    put_schedule(
+        aws,
+        [schedule_line("2026-07-31T20:00:00+00:00", [T0610, T0755])],
+        dt="2026-07-31",
+        name="2000.ndjson.gz",  # 20:00 UTC on the 31st: past the deadline
+    )
+    gets = {"n": 0}
+    real_get = aws["s3"].get_object
+
+    def counting_get(**kwargs):
+        gets["n"] += 1
+        return real_get(**kwargs)
+
+    aws["s3"].get_object = counting_get
+    slots = reconcile.scheduled_by_pair_day(aws["s3"], "wsf-test-raw", [date(2026, 7, 30)])
+
+    assert slots[("2026-07-30", 3, 7)] == {"06:10"}
+    assert gets["n"] == 1, "the out-of-window object should never be fetched"

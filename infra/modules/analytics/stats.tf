@@ -110,6 +110,19 @@ resource "aws_cloudwatch_log_group" "stats" {
   retention_in_days = 30
 }
 
+# Async-invoke retries OFF. transform invokes this function
+# asynchronously, where Lambda's default is 2 automatic retries on ANY
+# function error - including a timeout. The 2026-08-20 stats outage was
+# billed and re-queried three times per real trigger because of it (same
+# request ID, three 600 s attempts, Athena's nightly scan tripled from
+# 475 MB to 1.43 GB). The 05:15 PT catch-up cron IS the retry, and it
+# retries with fresh reasoning rather than re-running an identical
+# failure. Same rule as the schedule refresher (infra/modules/ingest).
+resource "aws_lambda_function_event_invoke_config" "stats" {
+  function_name          = aws_lambda_function.stats.function_name
+  maximum_retry_attempts = 0
+}
+
 resource "aws_lambda_function" "stats" {
   function_name    = "wsf-prod-analytics-stats"
   role             = aws_iam_role.stats.arn
