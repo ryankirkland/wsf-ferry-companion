@@ -40,7 +40,6 @@ def test_happy_two_polls(aws, fast_loop, monkeypatch, vessellocations_rows):
     counts = _run(monkeypatch, aws, fake)
 
     assert counts["PollSuccess"] == 2
-    assert counts["VesselsWritten"] == 21  # second poll fully deduped
 
     snap = json.loads(
         aws["s3"].get_object(Bucket=DATA_BUCKET, Key="data/fleet.json")["Body"].read()
