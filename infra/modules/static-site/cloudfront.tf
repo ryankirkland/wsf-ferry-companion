@@ -70,12 +70,9 @@ resource "aws_cloudfront_response_headers_policy" "data_cors" {
   }
 }
 
-data "aws_cloudfront_response_headers_policy" "security_headers" {
-  name = "Managed-SecurityHeadersPolicy"
-}
-
-# The managed policy above carries HSTS, nosniff, frame-options and
-# referrer-policy but NO Content-Security-Policy. CSP is what makes an
+# AWS's Managed-SecurityHeadersPolicy - which this replaced - carries
+# HSTS, nosniff, frame-options and referrer-policy but NO
+# Content-Security-Policy. CSP is what makes an
 # injected string inert rather than executable, and this site does render
 # upstream-authored text (WSDOT terminal and vessel names, NWS values,
 # alert prose). Those sinks are escaped as of 2026-08-23, but escaping is
