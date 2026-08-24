@@ -7,7 +7,12 @@ run is INTENDED to be a cheap token check, with a full rebuild only when:
 - the horizon window rolls (new day at the edge) -> just the new date
 - event {"mode": "today-refresh"}                -> today's files, with a
   ScheduleDivergence diff log: the standing instrument for whether
-  /schedule/{date} drops same-day alert-cancelled sailings.
+  /schedule/{date} drops same-day alert-cancelled sailings. Debounced to
+  TODAY_REFRESH_MIN_INTERVAL_MIN (default 60) since 2026-08-24 - the alerts
+  poller fires it on ANY bulletin change and WSF rewrites live delay
+  bulletins every few minutes, so it ran ~10x/hour for ~9,100 upstream
+  calls/day while publishing nothing and the instrument found no divergence
+  in three days.
 - event {"mode": "force-rebuild"}                -> full rebuild + fares,
   ignoring tokens - the operational lever after builder-logic changes
   (e.g. a quirk fix) that must reach the published files before the next
@@ -195,11 +200,32 @@ def lambda_handler(event, context):
     mode = (event or {}).get("mode", "scheduled")
     client, table, s3 = _wsf(), _table(), boto3.client("s3")
 
+    # The horizon item is read FIRST so the today-refresh debounce can decline
+    # before a single upstream call. Three WSDOT calls (two cacheflushdate,
+    # one validdaterange) happen below; deciding after them would still cost
+    # ~720 requests/day on runs that do nothing.
+    horizon_item = table.get_item(Key={"PK": META_PK, "SK": "HORIZON#pairs"}).get("Item", {})
+    if mode == "today-refresh" and not _today_refresh_due(
+        horizon_item.get("last_today_utc"), datetime.now(UTC)
+    ):
+        print(
+            json.dumps(
+                {
+                    "ScheduleRefreshDecision": {
+                        "mode": mode,
+                        "today_refresh_due": False,
+                        "last_today_utc": horizon_item.get("last_today_utc"),
+                        "will_rebuild_horizon": False,
+                    }
+                }
+            )
+        )
+        return {"PairDatesPublished": 0, "PairDatesUnchanged": 0}
+
     schedule_token = client.cache_flush_date("schedule")
     fares_token = client.cache_flush_date("fares")
     today = _server_today(client)
 
-    horizon_item = table.get_item(Key={"PK": META_PK, "SK": "HORIZON#pairs"}).get("Item", {})
     stored_from = horizon_item.get("horizon_from")
     stored_sched_token = _get_token(table, "schedule")
     stored_fares_token = _get_token(table, "fares")
@@ -243,6 +269,7 @@ def lambda_handler(event, context):
         counts["PairDatesPublished"], counts["PairDatesUnchanged"] = _refresh_today(
             client, table, s3, today, hashes
         )
+        _write_horizon(table, today, last_today_utc=datetime.now(UTC).isoformat())
     else:
         if will_rebuild:
             counts["PairDatesPublished"], counts["PairDatesUnchanged"] = _rebuild_horizon(
@@ -279,14 +306,19 @@ def lambda_handler(event, context):
     return counts
 
 
-def _write_horizon(table, today: date, last_full_utc: str | None = None) -> None:
+def _write_horizon(
+    table,
+    today: date,
+    last_full_utc: str | None = None,
+    last_today_utc: str | None = None,
+) -> None:
     """Update in place, never put_item.
 
-    Three call sites write this item, one of them nested inside
-    _publish_dates, and only one of them knows `last_full_utc`. A put_item
-    from any of the others would silently erase that stamp - which reads as
-    "we have never rebuilt", sending the next run straight back to the
-    ~52,000-requests/day behaviour this gate exists to stop.
+    Four call sites write this item, one of them nested inside
+    _publish_dates, and each knows at most one of the two cadence stamps. A
+    put_item from any of them would silently erase the others - which reads
+    as "we have never done that", sending the next run straight back to the
+    ~52,000-requests/day behaviour these gates exist to stop.
     """
     names = {"#hf": "horizon_from", "#ua": "updated_at_utc"}
     values = {
@@ -298,6 +330,10 @@ def _write_horizon(table, today: date, last_full_utc: str | None = None) -> None
         names["#lf"] = "last_full_utc"
         values[":lf"] = last_full_utc
         expr += ", #lf = :lf"
+    if last_today_utc:
+        names["#lt"] = "last_today_utc"
+        values[":lt"] = last_today_utc
+        expr += ", #lt = :lt"
     table.update_item(
         Key={"PK": META_PK, "SK": "HORIZON#pairs"},
         UpdateExpression=expr,
@@ -308,6 +344,39 @@ def _write_horizon(table, today: date, last_full_utc: str | None = None) -> None
 
 def _full_rebuild_interval_h() -> float:
     return float(os.environ.get("FULL_REBUILD_MIN_INTERVAL_H", "3"))
+
+
+def _today_refresh_interval_min() -> float:
+    return float(os.environ.get("TODAY_REFRESH_MIN_INTERVAL_MIN", "60"))
+
+
+def _today_refresh_due(last_today_utc: str | None, now: datetime) -> bool:
+    """Rate-limit the alerts-driven same-day refresh.
+
+    The alerts poller invokes today-refresh on ANY change to the bulletin
+    feed, and WSF rewrites live delay bulletins every few minutes as boats
+    fall behind - measured 2026-08-24, ~10 invocations/hour, each re-fetching
+    all 38 of today's pair schedules for ~9,100 upstream calls/day. A delay
+    is not a timetable change, and the numbers agree: over six hours those
+    runs published zero files, and the ScheduleDivergence instrument they
+    carry - the standing test for whether /schedule/{date} drops same-day
+    cancelled sailings - found nothing in three days of ~720 runs.
+
+    Hourly keeps that instrument alive at ~24 samples/day (so a change in
+    WSDOT's behaviour would still surface) for a tenth of the traffic. The
+    rider is not waiting on this path: a cancellation reaches them through
+    the alerts feature inside its 2-minute SLO, and a late boat shows in the
+    live signal engine - neither of which this gates. The exposure is that a
+    sailing WSF removes from the published timetable can take up to an hour
+    to leave /data/pairs/, by which time the alert has already told them.
+    """
+    if not last_today_utc:
+        return True
+    try:
+        last = datetime.fromisoformat(last_today_utc)
+    except ValueError:
+        return True
+    return (now - last) >= timedelta(minutes=_today_refresh_interval_min())
 
 
 def _full_rebuild_due(last_full_utc: str | None, now: datetime) -> bool:
