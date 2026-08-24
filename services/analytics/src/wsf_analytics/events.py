@@ -1,9 +1,12 @@
 """Site-analytics collector (F6 D1): a public, unauthenticated beacon hit
-by navigator.sendBeacon from every page load and tracked click. Reached
-only through the site's CloudFront distribution at /v1/events - never
-called directly - so CloudFront has already resolved geography into
-cloudfront-viewer-* headers and the real client IP into X-Forwarded-For
-(API Gateway's own sourceIp is CloudFront's edge IP, not the visitor's).
+by navigator.sendBeacon from every page load and tracked click. Normally reached
+through the site's CloudFront distribution at /v1/events, which resolves
+geography into cloudfront-viewer-* headers at the edge. It is NOT only
+reachable that way, though - the route also answers on the API's own
+domain with CloudFront out of the path - so every one of those headers is
+treated as client-authored: the viewer address is read from the hop
+CloudFront actually sets, and the geo fields are length- and
+charset-checked before they are stored (audit 2026-08-23).
 
 Validation is cheap and defensive: there's no upstream retry/DLQ for this
 endpoint and it's public, so a client sending garbage all night must 400,
@@ -30,6 +33,10 @@ SOUND_TZ = ZoneInfo("America/Los_Angeles")
 MAX_PATH = 200
 MAX_REFERRER = 100
 MAX_LABEL = 60
+# Geo headers are edge-set through CloudFront but arbitrary when the route
+# is reached directly - see _geo.
+MAX_COUNTRY = 2
+MAX_GEO = 64
 VALID_TYPES = ("pageview", "click")
 
 
@@ -46,12 +53,31 @@ def _headers(event: dict) -> dict:
 
 
 def _client_ip(event: dict) -> str:
-    xff = _headers(event).get("x-forwarded-for", "")
-    first = xff.split(",", 1)[0].strip()
-    if first:
-        return first
-    # Local/dev testing without CloudFront in front - never the real
-    # viewer IP once deployed, but keeps local invocation from crashing.
+    """The viewer's address, taken from the hop CloudFront actually sets.
+
+    ADR-0007 assumed "the real IP is the first hop of X-Forwarded-For,
+    which CloudFront always sets". CloudFront APPENDS the viewer address to
+    a viewer-supplied X-Forwarded-For rather than replacing it, so the
+    LEFTMOST hop is whatever the client sent - and this route is reachable
+    directly at the API's own domain with CloudFront out of the path
+    entirely. Anyone could mint unlimited distinct "visitors".
+
+    So: prefer CloudFront-Viewer-Address (edge-set, unspoofable through the
+    distribution), then the LAST X-Forwarded-For hop (the one appended
+    nearest us), and only then the socket address. Nothing here is
+    persisted - it exists solely inside the monthly visitor digest.
+    """
+    headers = _headers(event)
+    viewer = headers.get("cloudfront-viewer-address", "").strip()
+    if viewer:
+        # "203.0.113.4:51234", and IPv6 as "[2001:db8::1]:51234".
+        if viewer.startswith("["):
+            return viewer.rsplit("]", 1)[0].lstrip("[")
+        return viewer.rsplit(":", 1)[0] if viewer.count(":") == 1 else viewer
+    hops = [h.strip() for h in headers.get("x-forwarded-for", "").split(",") if h.strip()]
+    if hops:
+        return hops[-1]
+    # Local/dev invocation with no proxy in front.
     return (event.get("requestContext") or {}).get("http", {}).get("sourceIp", "")
 
 
@@ -65,12 +91,32 @@ def _visitor_hash(event: dict) -> str:
 
 
 def _geo(event: dict) -> dict:
+    """Coarse geography from the edge headers, bounded and validated.
+
+    These are edge-set through CloudFront but arbitrary when the route is
+    called directly, so nothing here is trusted for shape: an unbounded
+    client-authored string would otherwise land in S3, Athena and the admin
+    dashboard's geo breakdown.
+    """
     headers = _headers(event)
     return {
-        "country": headers.get("cloudfront-viewer-country") or "unknown",
-        "region": headers.get("cloudfront-viewer-country-region") or "unknown",
-        "city": headers.get("cloudfront-viewer-city") or "unknown",
+        "country": _geo_field(headers.get("cloudfront-viewer-country"), MAX_COUNTRY),
+        "region": _geo_field(headers.get("cloudfront-viewer-country-region"), MAX_GEO),
+        "city": _geo_field(headers.get("cloudfront-viewer-city"), MAX_GEO),
     }
+
+
+def _geo_field(raw, limit: int) -> str:
+    if not isinstance(raw, str):
+        return "unknown"
+    value = raw.strip()
+    if not value or len(value) > limit:
+        return "unknown"
+    # Place names carry letters, spaces, hyphens and apostrophes - nothing
+    # that needs escaping downstream.
+    if not all(c.isalnum() or c in " -'." for c in value):
+        return "unknown"
+    return value
 
 
 def _clean_path(raw) -> tuple[str | None, str | None]:
