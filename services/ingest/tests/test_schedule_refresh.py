@@ -20,11 +20,16 @@ class FakeWsf:
         self._fares = fares_payload
         self.pair_calls = 0
         self.fares_calls = 0
+        # Counted so a test can prove the debounce declines BEFORE any upstream
+        # contact - these three run at the top of the handler.
+        self.preflight_calls = 0
 
     def cache_flush_date(self, sub_api):
+        self.preflight_calls += 1
         return self.tokens[sub_api]
 
     def valid_date_range(self, sub_api):
+        self.preflight_calls += 1
         return {"DateFrom": SERVER_TODAY, "DateThru": "/Date(1798272000000-0800)/"}
 
     def terminals_and_mates_raw(self, d):
@@ -464,3 +469,75 @@ def test_horizon_roll_does_not_erase_the_rebuild_stamp(aws, monkeypatch, fake):
     after = table.get_item(Key={"PK": schedule_refresh.META_PK, "SK": "HORIZON#pairs"})["Item"]
     assert after["last_full_utc"] == stamped["last_full_utc"], "the stamp must survive"
     assert after["horizon_from"] == "2026-07-25", "and the roll must still take effect"
+
+
+def test_today_refresh_is_debounced(aws, monkeypatch, fake):
+    """The alerts poller invokes this on ANY bulletin change, and WSF rewrites
+    live delay bulletins every few minutes as boats fall behind: ~10
+    invocations/hour re-fetching all 38 of today's pairs, ~9,100 upstream
+    calls/day. Over six hours they published nothing, and the
+    ScheduleDivergence instrument found nothing in three days."""
+    _run(monkeypatch, fake)  # seeds the horizon
+    _run(monkeypatch, fake, event={"mode": "today-refresh"}, rebuild_interval_h="0")
+    calls_after_first = fake.pair_calls
+
+    # A second alerts change moments later must not re-fetch anything.
+    counts = _run(monkeypatch, fake, event={"mode": "today-refresh"}, rebuild_interval_h="0")
+    assert fake.pair_calls == calls_after_first, "debounced run must not touch upstream"
+    assert counts["PairDatesUnchanged"] == 0
+
+
+def test_the_debounce_declines_before_any_upstream_call(aws, monkeypatch, fake):
+    """Three WSDOT calls (two cacheflushdate, one validdaterange) happen at
+    the top of the handler. Deciding after them would still cost ~720
+    requests/day on runs that do nothing."""
+    _run(monkeypatch, fake)
+    _run(monkeypatch, fake, event={"mode": "today-refresh"}, rebuild_interval_h="0")
+    before = fake.preflight_calls
+    assert before > 0, "the fake should have recorded the handler's preflight calls"
+
+    _run(monkeypatch, fake, event={"mode": "today-refresh"}, rebuild_interval_h="0")
+    assert fake.preflight_calls == before, (
+        "a declined run must not even reach cacheflushdate/validdaterange"
+    )
+
+
+def test_today_refresh_runs_again_once_the_window_passes(aws, monkeypatch, fake):
+    _run(monkeypatch, fake)
+    _run(monkeypatch, fake, event={"mode": "today-refresh"}, rebuild_interval_h="0")
+    calls = fake.pair_calls
+
+    monkeypatch.setenv("TODAY_REFRESH_MIN_INTERVAL_MIN", "0")
+    _run(monkeypatch, fake, event={"mode": "today-refresh"}, rebuild_interval_h="0")
+    assert fake.pair_calls > calls, "the window must reopen"
+
+
+def test_today_refresh_due_reads_the_stamp():
+    from datetime import datetime as _dt
+
+    from wsf_ingest import schedule_refresh
+
+    now = _dt(2026, 8, 24, 12, 0, tzinfo=UTC)
+    assert schedule_refresh._today_refresh_due(None, now) is True
+    assert schedule_refresh._today_refresh_due("not-a-timestamp", now) is True
+    assert (
+        schedule_refresh._today_refresh_due((now - timedelta(minutes=5)).isoformat(), now) is False
+    )
+    assert (
+        schedule_refresh._today_refresh_due((now - timedelta(minutes=75)).isoformat(), now) is True
+    )
+
+
+def test_the_two_cadence_stamps_do_not_clobber_each_other(aws, monkeypatch, fake):
+    """Four call sites write the HORIZON item and each knows at most one
+    stamp; a put_item from any of them would erase the other and restore the
+    old traffic."""
+    from wsf_ingest import schedule_refresh
+
+    table = aws["table"]
+    _run(monkeypatch, fake, rebuild_interval_h="3")
+    _run(monkeypatch, fake, event={"mode": "today-refresh"}, rebuild_interval_h="3")
+
+    item = table.get_item(Key={"PK": schedule_refresh.META_PK, "SK": "HORIZON#pairs"})["Item"]
+    assert "last_full_utc" in item, "the rebuild stamp was erased"
+    assert "last_today_utc" in item, "the today-refresh stamp was erased"
