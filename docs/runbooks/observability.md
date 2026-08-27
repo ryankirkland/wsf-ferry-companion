@@ -173,8 +173,15 @@ and August proved it wrong - actuals through Aug 14 ran ~$0.47/day, then
 2. **S3 Tier-1 requests, ~$0.33/day** (~66k PUT-class requests/day from
    the pollers) - roughly 23x this section's "$0.43/mo" estimate.
    Structural; candidate fix is batching raw archive writes.
-3. **DynamoDB writes, ~$0.145/day** (~21 vessels x 5,760 polls) - the
-   realtime map's design cost, not a defect.
+3. **DynamoDB writes** were ~$0.145/day (~21 vessels x 5,760 polls) and were
+   described here as "the realtime map's design cost, not a defect". That was
+   wrong: the map never read them. The FLEET#/VESSEL# partition was retired
+   on 2026-08-24 (ADR-0005, amended) after an audit found no production
+   reader. Expect the DynamoDB line to fall by ~99%. **Also protect the raw
+   archive from blanket expiry**: raw/vessellocations/ and
+   raw/terminalsailingspace/ are the only position and capacity history that
+   exists - upstream cannot serve past values - and they are the substrate
+   for future wait-time modelling.
 
 The original line items stand: $0.50 hosted zone, ~$0.04 Athena, and
 **~$1.00 of CloudWatch alarms** - 20 alarms, 10 past the free tier at

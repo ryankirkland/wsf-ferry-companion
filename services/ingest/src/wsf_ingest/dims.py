@@ -16,9 +16,11 @@ Only a genuine content change (or {"mode": "force-rebuild"}) publishes
 /data/{vessels,terminals}.json, archives the raw payload, and invalidates
 the CloudFront path.
 
-Also carries the one-off Gate-2 benchmark (event {"mode": "gate2-bench"}):
-the in-region confirmation of ADR-0001's serving-read gate, run from the
-same runtime class that will serve M2 reads.
+The one-off Gate-2 benchmark lived here until 2026-08-24. It measured
+read latency against the FLEET#/VESSEL# rows to confirm ADR-0001's
+serving-read gate; those rows are retired (ADR-0005, amended) and the
+server-side read path it was validating was never built - the map reads
+the snapshot from CloudFront.
 """
 
 import hashlib
@@ -144,8 +146,6 @@ _DATASETS = {
 
 
 def lambda_handler(event, context):
-    if isinstance(event, dict) and event.get("mode") == "gate2-bench":
-        return gate2_bench()
 
     # {"mode": "force-rebuild"} republishes regardless of the token - the
     # operational lever for shipping a CONTRACT change (a new field) when
@@ -188,33 +188,3 @@ def lambda_handler(event, context):
 
     emit(DimsRefreshed=len(refreshed), DimsTokenChurn=token_churn)
     return {"refreshed": refreshed, "token_churn": token_churn}
-
-
-def gate2_bench() -> dict:
-    """ADR-0001 Gate-2 in-region confirmation: the spike's read patterns."""
-    table = _table()
-    get_ms: list[float] = []
-    query_ms: list[float] = []
-    for i in range(1000):
-        t0 = time.perf_counter()
-        table.get_item(Key={"PK": "FLEET", "SK": f"VESSEL#{(i % 21) + 1:04d}"})
-        get_ms.append((time.perf_counter() - t0) * 1000)
-    for _ in range(500):
-        t0 = time.perf_counter()
-        table.query(
-            KeyConditionExpression=boto3.dynamodb.conditions.Key("PK").eq("FLEET"),
-            Limit=5,
-        )
-        query_ms.append((time.perf_counter() - t0) * 1000)
-
-    def pctile(xs: list[float], p: float) -> float:
-        xs = sorted(xs)
-        return round(xs[min(len(xs) - 1, int(len(xs) * p / 100))], 2)
-
-    return {
-        "get_item_ms": {"p50": pctile(get_ms, 50), "p95": pctile(get_ms, 95)},
-        "query_ms": {"p50": pctile(query_ms, 50), "p95": pctile(query_ms, 95)},
-        "n": {"get": len(get_ms), "query": len(query_ms)},
-        "measured_from": "lambda in-region us-west-2",
-        "captured_at": datetime.now(UTC).isoformat(),
-    }

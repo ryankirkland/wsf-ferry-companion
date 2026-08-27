@@ -22,7 +22,7 @@ from wsf_core import VesselLocation, WsfApiError, WsfAuthError, WsfClient
 from wsf_core.ssm import get_access_code
 
 from wsf_ingest.archive import ArchiveBatch
-from wsf_ingest.ddb import FleetWriter
+from wsf_ingest.ddb import PollerState
 from wsf_ingest.metrics import emit
 from wsf_ingest.snapshot import build_snapshot
 
@@ -30,17 +30,17 @@ LATE_SKIP_S = 5.0
 RETRY_MIN_HEADROOM_S = 8.0
 
 _client: WsfClient | None = None
-_writer: FleetWriter | None = None
+_writer: PollerState | None = None
 
 
-def _deps() -> tuple[WsfClient, FleetWriter, object]:
-    """Module-lifetime client/writer/s3 (warm containers keep the dedup cache)."""
+def _deps() -> tuple[WsfClient, PollerState, object]:
+    """Module-lifetime client/state/s3 - warm containers reuse the HTTP pool."""
     global _client, _writer
     if _client is None:
         _client = WsfClient(get_access_code())
     if _writer is None:
         table = boto3.resource("dynamodb").Table(os.environ["TABLE_NAME"])
-        _writer = FleetWriter(table)
+        _writer = PollerState(table)
     return _client, _writer, boto3.client("s3")
 
 
@@ -65,7 +65,6 @@ def lambda_handler(event, context):
         "AuthFailure": 0,
         "EmptyFleet": 0,
         "SkippedPoll": 0,
-        "VesselsWritten": 0,
     }
     last_error: str | None = None
 
@@ -107,7 +106,6 @@ def lambda_handler(event, context):
             continue
 
         now = datetime.now(UTC)
-        counts["VesselsWritten"] += writer.write_changed(fleet, now)
         try:
             _put_snapshot(s3, fleet, now)
         except Exception as exc:  # snapshot is serving-impacting: count, keep looping

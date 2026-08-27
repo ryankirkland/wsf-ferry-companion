@@ -8,11 +8,22 @@
   position: fixed;
   left: max(1rem, env(safe-area-inset-left, 0px));
   bottom: max(5rem, calc(env(safe-area-inset-bottom, 0px) + 4.5rem));
-  /* Above the first-visit notice stack (z 50): on phones the opened
-   * card and the consent banner share screen space, and a control the
-   * user just tapped must win - the third instance of the
-   * overlay-eats-control bug class (FAB, then Subscribe, now this). */
-  z-index: 60;
+  /* The CLOSED circle is chrome, on the boat FAB's own plane (30) - so the
+   * vessel card (31) covers it the way it covers the FAB, and the nav
+   * drawer (39/40) covers it too. It sat at 60 for two days and floated
+   * over both. */
+  z-index: 30;
+}
+
+/* Only while the checklist is showing does it need to beat the first-visit
+ * notice stack (50): on a phone the open card and the consent banner share
+ * screen space, and a control the user just tapped must take the tap - the
+ * third instance of the overlay-eats-control bug class (FAB, then
+ * Subscribe, then this). Safe to raise only here, because opening the card
+ * or the drawer fires the outside-pointerdown handler that closes this
+ * panel - they are never open at the same time. */
+.rootOpen {
+  z-index: 51;
 }
 
 .circle {

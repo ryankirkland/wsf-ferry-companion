@@ -7,7 +7,12 @@ run is INTENDED to be a cheap token check, with a full rebuild only when:
 - the horizon window rolls (new day at the edge) -> just the new date
 - event {"mode": "today-refresh"}                -> today's files, with a
   ScheduleDivergence diff log: the standing instrument for whether
-  /schedule/{date} drops same-day alert-cancelled sailings.
+  /schedule/{date} drops same-day alert-cancelled sailings. Debounced to
+  TODAY_REFRESH_MIN_INTERVAL_MIN (default 60) since 2026-08-24 - the alerts
+  poller fires it on ANY bulletin change and WSF rewrites live delay
+  bulletins every few minutes, so it ran ~10x/hour for ~9,100 upstream
+  calls/day while publishing nothing and the instrument found no divergence
+  in three days.
 - event {"mode": "force-rebuild"}                -> full rebuild + fares,
   ignoring tokens - the operational lever after builder-logic changes
   (e.g. a quirk fix) that must reach the published files before the next
@@ -23,8 +28,13 @@ fields (generated_at/retrieved_at/source_token) and skipped when identical
 to what is already served. DynamoDB pair items are NOT gated: the alert
 citation join reads them, and their freshness must not depend on file
 churn. force-rebuild bypasses the gate. The 532-call fetch itself still
-runs on every token move (the `ScheduleRefreshDecision` log remains the
-instrument for that); gating the fetch phase is the follow-up, task 44.
+ran on every token move until 2026-08-23: WSDOT flips that token on
+essentially EVERY check (96/96 runs measured), so it was 538 upstream
+calls every 15 minutes to learn nothing - ~52,000 requests/day. The full
+horizon re-fetch is now rate-limited by FULL_REBUILD_MIN_INTERVAL_H
+(default 3 h) rather than driven by the token; same-day truth still
+arrives through the alerts-driven today-refresh, and the horizon roll
+still publishes the new edge date daily.
 
 Everything fetched is archived raw (fetch-time keys): upstream cannot serve
 past dates, so this archive is the only history - load-bearing for M4.
@@ -109,6 +119,12 @@ def _put_json(s3, key: str, payload: dict, max_age: int = 60) -> None:
 # trip planner reads sailings, not timestamps; source_token is provenance).
 _VOLATILE_KEYS = ("generated_at", "retrieved_at", "source_token")
 _HASHES_SK = "PUBLISHHASH#v1"
+# Namespace for the DynamoDB pair-item gate. Separate from the S3 keys
+# because the two are written on different schedules (see the call site),
+# and pruned by service date because these items are only ever written for
+# today and tomorrow - an unpruned map would push the single hash item
+# toward DynamoDB's 400 KB ceiling.
+_ITEMS_PREFIX = "items/pairs/"
 
 
 def _content_hash(payload: dict) -> str:
@@ -121,6 +137,28 @@ def _content_hash(payload: dict) -> str:
 def _load_hashes(table) -> dict[str, str]:
     item = table.get_item(Key={"PK": META_PK, "SK": _HASHES_SK}).get("Item", {})
     return dict(item.get("hashes", {}))
+
+
+def _prune_item_hashes(hashes: dict[str, str], today: date) -> int:
+    """Drop pair-item gate entries for service dates now in the past.
+
+    Pair items are only ever written for today and tomorrow, so an entry
+    older than today can never gate anything again. Without this the map
+    grows every day inside ONE DynamoDB item and eventually trips the
+    400 KB limit, at which point publishing stops with a ValidationException.
+    """
+    stale = []
+    for key in hashes:
+        if not key.startswith(_ITEMS_PREFIX):
+            continue
+        try:
+            if date.fromisoformat(key.rsplit("/", 1)[-1]) < today:
+                stale.append(key)
+        except ValueError:  # unparseable: leave it rather than guess
+            continue
+    for key in stale:
+        del hashes[key]
+    return len(stale)
 
 
 def _save_hashes(table, hashes: dict[str, str]) -> None:
@@ -162,11 +200,32 @@ def lambda_handler(event, context):
     mode = (event or {}).get("mode", "scheduled")
     client, table, s3 = _wsf(), _table(), boto3.client("s3")
 
+    # The horizon item is read FIRST so the today-refresh debounce can decline
+    # before a single upstream call. Three WSDOT calls (two cacheflushdate,
+    # one validdaterange) happen below; deciding after them would still cost
+    # ~720 requests/day on runs that do nothing.
+    horizon_item = table.get_item(Key={"PK": META_PK, "SK": "HORIZON#pairs"}).get("Item", {})
+    if mode == "today-refresh" and not _today_refresh_due(
+        horizon_item.get("last_today_utc"), datetime.now(UTC)
+    ):
+        print(
+            json.dumps(
+                {
+                    "ScheduleRefreshDecision": {
+                        "mode": mode,
+                        "today_refresh_due": False,
+                        "last_today_utc": horizon_item.get("last_today_utc"),
+                        "will_rebuild_horizon": False,
+                    }
+                }
+            )
+        )
+        return {"PairDatesPublished": 0, "PairDatesUnchanged": 0}
+
     schedule_token = client.cache_flush_date("schedule")
     fares_token = client.cache_flush_date("fares")
     today = _server_today(client)
 
-    horizon_item = table.get_item(Key={"PK": META_PK, "SK": "HORIZON#pairs"}).get("Item", {})
     stored_from = horizon_item.get("horizon_from")
     stored_sched_token = _get_token(table, "schedule")
     stored_fares_token = _get_token(table, "fares")
@@ -178,10 +237,18 @@ def lambda_handler(event, context):
         "FaresUnchanged": 0,
     }
     hashes = _load_hashes(table)
+    _prune_item_hashes(hashes, today)
     hashes_before = dict(hashes)
 
     force = mode == "force-rebuild"
     schedule_token_moved = schedule_token != stored_sched_token
+    last_full_utc = horizon_item.get("last_full_utc")
+    rebuild_due = force or _full_rebuild_due(last_full_utc, datetime.now(UTC))
+    will_rebuild = (
+        mode != "today-refresh"
+        and (force or schedule_token_moved or stored_from is None)
+        and rebuild_due
+    )
     print(
         json.dumps(
             {
@@ -191,8 +258,9 @@ def lambda_handler(event, context):
                     "fares_token_moved": fares_token != stored_fares_token,
                     "stored_from": stored_from,
                     "today": today.isoformat(),
-                    "will_rebuild_horizon": mode != "today-refresh"
-                    and (force or schedule_token_moved or stored_from is None),
+                    "last_full_utc": last_full_utc,
+                    "rebuild_due": rebuild_due,
+                    "will_rebuild_horizon": will_rebuild,
                 }
             }
         )
@@ -201,12 +269,18 @@ def lambda_handler(event, context):
         counts["PairDatesPublished"], counts["PairDatesUnchanged"] = _refresh_today(
             client, table, s3, today, hashes
         )
+        _write_horizon(table, today, last_today_utc=datetime.now(UTC).isoformat())
     else:
-        if force or schedule_token_moved or stored_from is None:
+        if will_rebuild:
             counts["PairDatesPublished"], counts["PairDatesUnchanged"] = _rebuild_horizon(
                 client, table, s3, today, hashes, force=force
             )
+            # Both stamps move together: the token records WHAT we last saw,
+            # last_full_utc records WHEN we last looked. Storing the token on
+            # a skipped rebuild would tell the next run the content had been
+            # examined when it had not.
             _put_token(table, "schedule", schedule_token)
+            _write_horizon(table, today, last_full_utc=datetime.now(UTC).isoformat())
         elif stored_from != today.isoformat():
             # Window rolled: publish just the newest date at the edge.
             new_date = today + timedelta(days=_horizon_days() - 1)
@@ -232,15 +306,101 @@ def lambda_handler(event, context):
     return counts
 
 
-def _write_horizon(table, today: date) -> None:
-    table.put_item(
-        Item={
-            "PK": META_PK,
-            "SK": "HORIZON#pairs",
-            "horizon_from": today.isoformat(),
-            "updated_at_utc": datetime.now(UTC).isoformat(),
-        }
+def _write_horizon(
+    table,
+    today: date,
+    last_full_utc: str | None = None,
+    last_today_utc: str | None = None,
+) -> None:
+    """Update in place, never put_item.
+
+    Four call sites write this item, one of them nested inside
+    _publish_dates, and each knows at most one of the two cadence stamps. A
+    put_item from any of them would silently erase the others - which reads
+    as "we have never done that", sending the next run straight back to the
+    ~52,000-requests/day behaviour these gates exist to stop.
+    """
+    names = {"#hf": "horizon_from", "#ua": "updated_at_utc"}
+    values = {
+        ":hf": today.isoformat(),
+        ":ua": datetime.now(UTC).isoformat(),
+    }
+    expr = "SET #hf = :hf, #ua = :ua"
+    if last_full_utc:
+        names["#lf"] = "last_full_utc"
+        values[":lf"] = last_full_utc
+        expr += ", #lf = :lf"
+    if last_today_utc:
+        names["#lt"] = "last_today_utc"
+        values[":lt"] = last_today_utc
+        expr += ", #lt = :lt"
+    table.update_item(
+        Key={"PK": META_PK, "SK": "HORIZON#pairs"},
+        UpdateExpression=expr,
+        ExpressionAttributeNames=names,
+        ExpressionAttributeValues=values,
     )
+
+
+def _full_rebuild_interval_h() -> float:
+    return float(os.environ.get("FULL_REBUILD_MIN_INTERVAL_H", "3"))
+
+
+def _today_refresh_interval_min() -> float:
+    return float(os.environ.get("TODAY_REFRESH_MIN_INTERVAL_MIN", "60"))
+
+
+def _today_refresh_due(last_today_utc: str | None, now: datetime) -> bool:
+    """Rate-limit the alerts-driven same-day refresh.
+
+    The alerts poller invokes today-refresh on ANY change to the bulletin
+    feed, and WSF rewrites live delay bulletins every few minutes as boats
+    fall behind - measured 2026-08-24, ~10 invocations/hour, each re-fetching
+    all 38 of today's pair schedules for ~9,100 upstream calls/day. A delay
+    is not a timetable change, and the numbers agree: over six hours those
+    runs published zero files, and the ScheduleDivergence instrument they
+    carry - the standing test for whether /schedule/{date} drops same-day
+    cancelled sailings - found nothing in three days of ~720 runs.
+
+    Hourly keeps that instrument alive at ~24 samples/day (so a change in
+    WSDOT's behaviour would still surface) for a tenth of the traffic. The
+    rider is not waiting on this path: a cancellation reaches them through
+    the alerts feature inside its 2-minute SLO, and a late boat shows in the
+    live signal engine - neither of which this gates. The exposure is that a
+    sailing WSF removes from the published timetable can take up to an hour
+    to leave /data/pairs/, by which time the alert has already told them.
+    """
+    if not last_today_utc:
+        return True
+    try:
+        last = datetime.fromisoformat(last_today_utc)
+    except ValueError:
+        return True
+    return (now - last) >= timedelta(minutes=_today_refresh_interval_min())
+
+
+def _full_rebuild_due(last_full_utc: str | None, now: datetime) -> bool:
+    """Has enough time passed to justify re-fetching the whole horizon?
+
+    WSDOT moves the schedule cacheflushdate on essentially EVERY check, so
+    the token is not a change signal - measured 2026-08-23, it moved on
+    96/96 runs while the content produced 80 published files and 53,386
+    unchanged ones. Rebuilding on the token therefore meant 538 upstream
+    calls every 15 minutes to learn nothing: ~52,000 requests/day, and the
+    single largest Lambda consumer in the account.
+
+    A published 14-day timetable is not a minute-fresh product. Same-day
+    truth still arrives promptly through the alerts-driven today-refresh,
+    and the horizon roll still publishes the new edge date daily; this
+    cadence governs only the speculative re-fetch of dates 2-14.
+    """
+    if not last_full_utc:
+        return True
+    try:
+        last = datetime.fromisoformat(last_full_utc)
+    except ValueError:
+        return True
+    return (now - last) >= timedelta(hours=_full_rebuild_interval_h())
 
 
 def _fetch_system(client: WsfClient, today: date):
@@ -353,10 +513,25 @@ def _publish_dates(
                 published += 1
             else:
                 skipped += 1
-            # Not gated: the alert-citation join reads these items, and their
-            # freshness must not depend on whether the S3 file changed.
+            # Gated on the item content, NOT on whether the S3 file moved.
+            #
+            # The two cannot share a gate: a date's S3 file is published the
+            # moment it enters the 14-day horizon, so by the time that date
+            # reaches date_i <= 1 - the only window where items are written -
+            # its S3 hash is usually already recorded. Gating on that would
+            # mean the items were never written at all, and the
+            # alert-citation join reads them. Hence a separate namespace,
+            # pruned below so it cannot grow without bound.
+            #
+            # Before this gate the refresher rewrote today+tomorrow for all
+            # 38 pairs on every one of ~188 daily runs: ~134,000 write units
+            # a day, 99.85% of them byte-identical (audit 2026-08-23).
             if write_pair_items and date_i <= 1:
-                _write_pair_items(day)
+                items_key = f"{_ITEMS_PREFIX}{dep}-{arr}/{service_date.isoformat()}"
+                items_digest = _content_hash(day)
+                if force or hashes.get(items_key) != items_digest:
+                    _write_pair_items(day)
+                    hashes[items_key] = items_digest
 
     if full:
         schedule_meta = envelopes[(pairs[0], first_date)] if pairs else {}

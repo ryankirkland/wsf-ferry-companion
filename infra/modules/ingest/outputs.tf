@@ -14,7 +14,7 @@ output "poller_function_name" {
 }
 
 output "dims_function_name" {
-  description = "Dims refresher Lambda (also hosts gate2-bench)."
+  description = "Dims refresher Lambda."
   value       = aws_lambda_function.dims.function_name
 }
 

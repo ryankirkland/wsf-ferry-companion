@@ -1,6 +1,29 @@
 # ADR-0005: Snapshot-on-S3 serving for the realtime map
 
 - **Status:** Accepted (2026-07-29)
+- **Amended (2026-08-24):** The per-vessel `FLEET#/VESSEL#` rows are retired.
+  This ADR kept DynamoDB as "the hot-state system of record (M2 trip queries
+  and M3 alert evaluation read it server-side)" and called the snapshot "a
+  read-optimized projection of it". The projection half held; the system-of-
+  record half never did. M2 shipped as a static export with no server-side
+  trip query at all, and M3's alert evaluation reads `ALERTS#`, `PAIR#`,
+  `USER#` and `EMAIL#` - never `FLEET#`. An audit on 2026-08-23 found the
+  partition costing ~93,000 write units/day (~$3.30/mo, ~99% of the table's
+  writes) to maintain 21 items, each overwritten ~4,400x/day, against 207
+  read units per three hours account-wide - with no production reader in any
+  service. The poller keeps writing the snapshot and the raw NDJSON archive;
+  only the DynamoDB write is removed. Nothing rider-facing changes, because
+  the map never read these rows.
+
+  Two consequences worth stating plainly. **This is not a loss of position
+  history** - the rows were current-state only, overwritten in place, and the
+  raw archive (`raw/vessellocations/dt=.../`) is and always was the history,
+  at full fidelity per poll. It is the substrate for any future wait-time or
+  delay modelling. **The Gate-2 benchmark is retired with it** (it measured
+  read latency against these rows to validate a serving path that was never
+  built). If a server-side reader is ever wanted, reinstating a projection is
+  a small change; paying for one speculatively is not.
+
 - **Amended (2026-07-29):** Extended by M2 to the trip planner - the same
   pattern serves `/data/pairs/*`, `/data/fares/*`, and `/data/alerts.json`;
   the make-it-or-miss-it join stays client-side. Contracts and rationale in

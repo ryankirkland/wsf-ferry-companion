@@ -64,18 +64,69 @@ def test_missing_geo_headers_degrade_to_unknown_not_an_exception(aws):
     assert (doc["country"], doc["region"], doc["city"]) == ("unknown", "unknown", "unknown")
 
 
-def test_ip_comes_from_x_forwarded_for_not_source_ip(aws):
-    xff_ip = "198.51.100.7"
+def test_a_spoofed_leading_forwarded_hop_cannot_mint_visitors(aws):
+    """ADR-0007 assumed CloudFront SETS X-Forwarded-For. It APPENDS to it,
+    so the leftmost hop is whatever the client sent - and this route is
+    reachable directly at the API domain with CloudFront out of the path.
+    Trusting the first hop let anyone mint unlimited distinct visitors."""
+    real = "70.41.3.18"
     event = _event(
         {"type": "pageview", "path": "/"},
-        headers={"x-forwarded-for": f"{xff_ip}, 70.41.3.18"},
-        source_ip="10.0.0.1",  # CloudFront's edge IP, never the real visitor
+        headers={"x-forwarded-for": f"1.2.3.4, {real}"},
+        source_ip="10.0.0.1",
     )
     events.lambda_handler(event, Ctx())
     doc = _written_doc(aws)
     month = datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m")
-    expected = hashlib.sha256(f"{month}:{xff_ip}:pytest-agent".encode()).hexdigest()[:16]
-    assert doc["visitor_hash"] == expected
+    spoofed = hashlib.sha256(f"{month}:1.2.3.4:pytest-agent".encode()).hexdigest()[:16]
+    honest = hashlib.sha256(f"{month}:{real}:pytest-agent".encode()).hexdigest()[:16]
+    assert doc["visitor_hash"] != spoofed, "the client-supplied hop must not decide identity"
+    assert doc["visitor_hash"] == honest
+
+
+def test_cloudfront_viewer_address_wins_over_forwarded_for(aws):
+    event = _event(
+        {"type": "pageview", "path": "/"},
+        headers={
+            "cloudfront-viewer-address": "198.51.100.7:51234",
+            "x-forwarded-for": "1.2.3.4, 5.6.7.8",
+        },
+        source_ip="10.0.0.1",
+    )
+    events.lambda_handler(event, Ctx())
+    doc = _written_doc(aws)
+    month = datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m")
+    expected = hashlib.sha256(f"{month}:198.51.100.7:pytest-agent".encode()).hexdigest()[:16]
+    assert doc["visitor_hash"] == expected, "the edge-set header is the trustworthy one"
+
+
+def test_forged_geo_headers_are_rejected_not_stored(aws):
+    """These land in S3, Athena and the admin dashboard's geo breakdown."""
+    event = _event(
+        {"type": "pageview", "path": "/"},
+        headers={
+            "cloudfront-viewer-country": "NOT-A-COUNTRY-CODE",
+            "cloudfront-viewer-country-region": "<script>alert(1)</script>",
+            "cloudfront-viewer-city": "x" * 500,
+        },
+    )
+    events.lambda_handler(event, Ctx())
+    doc = _written_doc(aws)
+    assert (doc["country"], doc["region"], doc["city"]) == ("unknown", "unknown", "unknown")
+
+
+def test_ordinary_geo_headers_still_pass_through(aws):
+    event = _event(
+        {"type": "pageview", "path": "/"},
+        headers={
+            "cloudfront-viewer-country": "US",
+            "cloudfront-viewer-country-region": "WA",
+            "cloudfront-viewer-city": "Port Orchard",
+        },
+    )
+    events.lambda_handler(event, Ctx())
+    doc = _written_doc(aws)
+    assert (doc["country"], doc["region"], doc["city"]) == ("US", "WA", "Port Orchard")
 
 
 def test_source_ip_is_used_only_when_x_forwarded_for_is_absent(aws):

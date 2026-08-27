@@ -129,3 +129,51 @@ test("the opened panel wins over first-visit notice cards", async ({ page }) => 
   await page.getByRole("checkbox", { name: "Out-of-service boats" }).uncheck({ timeout: 5000 });
   await expect(page.locator('[data-vessel="28"]')).not.toBeVisible();
 });
+
+test("the closed circle sits on the FAB's plane; the open card beats the notices", async ({
+  page,
+}) => {
+  /* Two regressions in one guard. The circle sat at z 60 for two days and
+     floated over an open vessel card - the card is at 31 precisely so an
+     open bottom sheet covers the chrome beneath it. But the OPEN checklist
+     genuinely must beat the first-visit notice stack (50), or its lower
+     rows are untappable on a phone. */
+  await openMap(page);
+
+  const z = (sel: string) =>
+    page.locator(sel).first().evaluate((el) => getComputedStyle(el).zIndex);
+
+  const closed = await z('[data-testid="route-panel"]');
+  const fab = await z('[class*="fab"]');
+  expect(closed, "the closed circle must share the boat FAB's plane").toBe(fab);
+
+  await page.getByRole("button", { name: "Routes", exact: true }).click();
+  const opened = Number(await z('[data-testid="route-panel"]'));
+  expect(opened, "the open checklist must clear the notice stack").toBeGreaterThan(50);
+
+  // ...and an open vessel card must cover the closed circle. This is the
+  // bug as reported: the green circle drawn over the card's class artwork.
+  await page.mouse.click(5, 5); // dismiss the checklist
+  const target = await page.evaluate(() => {
+    // DOM-order .first() may be off-viewport, and a moored companion sits
+    // under another hull - take one that receives its own centre point.
+    for (const el of document.querySelectorAll<HTMLElement>("[data-vessel]")) {
+      const r = el.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      if (cx < 40 || cy < 130 || cx > innerWidth - 40 || cy > innerHeight - 170) continue;
+      const hit = document.elementFromPoint(cx, cy);
+      if (hit && el.contains(hit)) return { cx, cy };
+    }
+    return null;
+  });
+  expect(target, "no clickable vessel on screen").not.toBeNull();
+  await page.mouse.click(target!.cx, target!.cy);
+
+  const card = page.locator('[data-testid="vessel-card"]');
+  await expect(card).toBeVisible();
+  expect(
+    Number(await z('[data-testid="vessel-card"]')),
+    "an open card must cover the route circle, not sit under it",
+  ).toBeGreaterThan(Number(closed));
+});

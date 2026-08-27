@@ -99,7 +99,11 @@ export function RoutePanel({
   const filtering = hidden.size > 0 || hideOos;
 
   return (
-    <div className={styles.root} ref={rootRef} data-testid="route-panel">
+    <div
+      className={open ? `${styles.root} ${styles.rootOpen}` : styles.root}
+      ref={rootRef}
+      data-testid="route-panel"
+    >
       <button
         type="button"
         className={filtering ? `${styles.circle} ${styles.circleActive}` : styles.circle}
