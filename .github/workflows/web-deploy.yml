@@ -1,14 +1,4 @@
 # Deploys the static export to the web bucket on merge to main.
-#
-# TWO JOBS ON PURPOSE. `pnpm install` runs thousands of transitive packages'
-# postinstall hooks, and `pnpm build` runs plugin code - none of it audited by
-# us. That work happens in `build`, which has NO AWS credentials and no
-# id-token permission, and hands off a tarball. `deploy` takes the artifact,
-# assumes a role scoped to exactly this bucket and distribution, and runs
-# nothing but the AWS CLI. A compromised dependency therefore never shares a
-# job with a credential it could wait for. (Before 2026-08-23 this was one job
-# that built first and assumed AdministratorAccess three steps later.)
-#
 # Two-pass sync: hashed assets first with immutable caching (HTML must never
 # reference missing chunks), then everything else with --delete sweeping
 # stale files. One wildcard invalidation = one of 1,000 free monthly paths.
@@ -34,10 +24,11 @@ env:
   DISTRIBUTION_ID: E1ZEOCBXLOJE3Z
 
 jobs:
-  build:
-    name: build (no credentials)
+  deploy:
+    name: build + sync + invalidate
     runs-on: ubuntu-latest
     permissions:
+      id-token: write
       contents: read
     defaults:
       run:
@@ -58,36 +49,9 @@ jobs:
         env:
           NEXT_PUBLIC_DATA_MODE: live
 
-      # Tar preserves the tree exactly; upload-artifact alone would not keep
-      # empty directories or permissions the sync relies on.
-      - name: package the export
-        run: tar -czf ../export.tgz -C out .
-
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: web-export
-          path: export.tgz
-          retention-days: 1
-          if-no-files-found: error
-
-  deploy:
-    name: sync + invalidate
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: web-export
-
-      - name: unpack the export
-        run: mkdir -p out && tar -xzf export.tgz -C out
-
       - uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
         with:
-          role-to-assume: arn:aws:iam::654654574183:role/wsf-github-web-deploy
+          role-to-assume: arn:aws:iam::654654574183:role/wsf-github-apply
           aws-region: us-west-2
 
       - name: sync hashed assets (immutable)
