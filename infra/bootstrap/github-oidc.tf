@@ -100,3 +100,77 @@ resource "aws_iam_role_policy_attachment" "github_apply_admin" {
   role       = aws_iam_role.github_apply.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
+
+# ---------------------------------------------------------------------------
+# Web deploy lane: three permissions, not admin.
+#
+# The apply lane's AdministratorAccess is argued for above and stands. The
+# WEB DEPLOY lane inherited that role without the same argument, and it is a
+# materially different shape of job: it runs `pnpm install` and `pnpm build`
+# - thousands of transitive packages, arbitrary postinstall hooks - and THEN
+# assumes a role. A compromised dependency cannot read credentials at install
+# time (none exist yet), but it owns the filesystem and $GITHUB_ENV for the
+# rest of the job, so it can wait for the session that arrives three steps
+# later. Admin in that window means the subscriber table, mail sent as
+# alerts@ferrysound.com, and IAM itself.
+#
+# The workflow now also splits build (no credentials) from deploy (credentials,
+# no third-party code), so the untrusted step and the session never share a
+# job. This role is the second half of that: even if they did, it can only
+# write the web bucket and invalidate the distribution.
+data "aws_iam_policy_document" "github_web_deploy_trust" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity", "sts:TagSession"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = [for p in local.gh_sub_prefixes : "${p}:ref:refs/heads/main"]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "github_web_deploy" {
+  statement {
+    sid       = "SyncTheStaticExport"
+    actions   = ["s3:PutObject", "s3:DeleteObject", "s3:GetObject"]
+    resources = ["arn:aws:s3:::wsf-prod-web-${data.aws_caller_identity.current.account_id}/*"]
+  }
+
+  statement {
+    # s3 sync diffs the destination before copying: it needs to list.
+    sid       = "DiffTheDestination"
+    actions   = ["s3:ListBucket"]
+    resources = ["arn:aws:s3:::wsf-prod-web-${data.aws_caller_identity.current.account_id}"]
+  }
+
+  statement {
+    sid       = "PublishTheNewBytes"
+    actions   = ["cloudfront:CreateInvalidation"]
+    resources = ["arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/*"]
+  }
+}
+
+resource "aws_iam_role" "github_web_deploy" {
+  name                 = "wsf-github-web-deploy"
+  description          = "Static-site sync + invalidation for pushes to main. Deliberately not admin."
+  assume_role_policy   = data.aws_iam_policy_document.github_web_deploy_trust.json
+  max_session_duration = 3600
+}
+
+resource "aws_iam_role_policy" "github_web_deploy" {
+  name   = "web-deploy"
+  role   = aws_iam_role.github_web_deploy.name
+  policy = data.aws_iam_policy_document.github_web_deploy.json
+}
