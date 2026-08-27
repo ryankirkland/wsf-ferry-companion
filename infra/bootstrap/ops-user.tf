@@ -156,10 +156,21 @@ data "aws_iam_policy_document" "ops" {
   }
 }
 
-resource "aws_iam_user_policy" "ops" {
-  name   = "wsf-ops-diagnostics"
-  user   = aws_iam_user.ops.name
-  policy = data.aws_iam_policy_document.ops.json
+# A MANAGED policy, not inline. An inline policy on a USER caps at 2,048
+# bytes - roles get 10,240, which is why the deploy role's inline policy
+# applied cleanly and this one failed at 409 LimitExceeded on the first
+# attempt. Managed policies allow 6,144, comfortably above this document's
+# eight statements, and they are the idiomatic shape anyway: attachable,
+# versioned, and visible on their own in the console.
+resource "aws_iam_policy" "ops" {
+  name        = "wsf-ops-diagnostics"
+  description = "Read production and verify a fix; change nothing. See ops-user.tf."
+  policy      = data.aws_iam_policy_document.ops.json
+}
+
+resource "aws_iam_user_policy_attachment" "ops" {
+  user       = aws_iam_user.ops.name
+  policy_arn = aws_iam_policy.ops.arn
 }
 
 # Access keys are created OUT OF BAND, not here: a key in Terraform state is
