@@ -53,10 +53,28 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: lint
+        run: pnpm lint
+
+      - name: typecheck
+        run: pnpm typecheck
+
+      - name: unit tests
+        run: pnpm test:unit
+
       - name: build (live data)
         run: pnpm build
         env:
           NEXT_PUBLIC_DATA_MODE: live
+
+      - name: install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # MapLibre's browser tests contend for CPU and animation frames under
+      # Playwright's default parallelism. One worker removes that contention;
+      # retries stay off so a flaky test blocks deployment.
+      - name: browser tests
+        run: pnpm exec playwright test --workers=1 --retries=0
 
       # Tar preserves the tree exactly; upload-artifact alone would not keep
       # empty directories or permissions the sync relies on.

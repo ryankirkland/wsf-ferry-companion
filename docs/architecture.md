@@ -19,8 +19,10 @@ flowchart LR
         EB2[EventBridge rate 30 min] --> WX[Lambda weather poller<br/>NWS 19 cells + AirNow 6 areas] -- weather.json --> DATA
         EB --> AL[Lambda alerts poller<br/>watermark-gated, 1 min]
         AL -- "on change: today-refresh" --> SCHED
-        AL -- "on change: full slim feed" --> NOTIF[Lambda notifier<br/>diff + match + capped SES fan-out]
-        NOTIF --> SES2[SES ferrysound.com] --> SUBS([Alert subscribers])
+        AL -- "on change: full slim feed" --> NOTIF[Lambda notifier<br/>diff + match]
+        NOTIF --> NQ[SQS delivery queue<br/>retry + DLQ]
+        NQ --> NDEL[Lambda delivery<br/>caps + post-SES SENT record]
+        NDEL --> SES2[SES ferrysound.com] --> SUBS([Alert subscribers])
         SES2 -- bounce/complaint --> SUP[Lambda suppress]
     end
 
@@ -105,17 +107,17 @@ path). Deploys via `web-deploy.yml` two-pass sync + invalidation. Tiles
 come from the OpenFreeMap public instance; the PMTiles fallback behind
 `/tiles/*` is the tested escape hatch (ADR-0003 as amended).
 
-Alarms (17, all to the `wsf-prod-alarms` SNS topic). Ingest (8):
+Alarms (23, all to the `wsf-prod-alarms` SNS topic). Ingest (8):
 poller-gap (the SLO alarm), auth-failure (400+Message canary),
-empty-fleet, three Lambda-error alarms, schedule-refresh-errors,
-pairs-stale. Notify (1): notifier-errors. Analytics (8):
-stats-not-fresh (the F4 freshness SLO - missing data breaches),
-stats-data-lag, unmapped-slip, history-failures, empty-night,
-Lambda-error alarms for transform and stats, and events-stats-errors
-(site analytics' nightly rollup - same "silence means broken" pattern).
-Seven sit past the 10-alarm free tier (~$0.70/mo) - accepted
-deliberately, because each detects a failure whose signature is
-silence. Account-level
+empty-fleet, four Lambda-error alarms, and pairs-stale. Notify (4):
+notifier-errors, delivery-errors, delivery-stale, and delivery-DLQ.
+Analytics (9): stats-not-fresh (the F4 freshness SLO - missing data
+breaches), stats-data-lag, unmapped-slip, history-failures, empty-night,
+Lambda-error alarms for transform and stats, events-stats-errors, and
+events-collection-silent. Weather (2): publish-stale and degraded.
+Thirteen sit past the 10-alarm free tier (~$1.30/mo) - accepted
+deliberately, because each detects a failure whose signature is silence.
+Account-level
 (bootstrap stack): Terraform state bucket with native lockfile, GitHub
 OIDC provider, plan/apply CI roles, $15 budget with three email
 notifications.
@@ -134,7 +136,7 @@ notifications.
 | Departures, today+tomorrow (M2) | `PAIR#0007#0003` | `DEP#<iso>` | vessel, depart_ms; TTL `expires_at` = depart + 6 h; M3's alert-evaluator Query substrate |
 | Bulletin state (M3) | `ALERTS` | `BULLETIN#<id>` | first_seen_ms, text_hash, gone_at; notifier-owned diff state |
 | Subscriptions (M3) | `USER#<sub>` + `ROUTE#<rid>` mirror | `SUB#...` | pair, window, email; TransactWrite pairs |
-| Send claims / caps (M3) | `USER#<sub>` | `SENT#<bulletin>` / `NOTIF#<date>` | effectively-once + daily caps |
+| Send records / caps (M3) | `USER#<sub>` | `SENT#<bulletin>` / `NOTIF#<date>` | recorded after SES accepts; per-version dedup + daily caps |
 | Suppression (M3) | `EMAIL#<email>` | `SUPPRESS` / `USER` | complaint/bounce hygiene + email->user pointer |
 
 **Public snapshot contract** (`/data/fleet.json`, versioned `"v": 1`, ADR-0005):

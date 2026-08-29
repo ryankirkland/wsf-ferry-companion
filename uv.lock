@@ -933,7 +933,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "moto", extras = ["s3", "dynamodb", "ssm", "ses", "sns"], specifier = ">=5" },
+    { name = "moto", extras = ["s3", "dynamodb", "ssm", "ses", "sns", "sqs"], specifier = ">=5" },
     { name = "pytest", specifier = ">=8" },
 ]
 

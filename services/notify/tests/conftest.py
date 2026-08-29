@@ -8,6 +8,7 @@ TABLE = "wsf-test-hot"
 DATA_BUCKET = "wsf-test-data"
 SECRETS_PARAM = "/wsf/test/alert-link-secrets"
 LINK_SECRETS = {"k1": "test-secret"}
+QUEUE_NAME = "wsf-test-deliveries"
 
 INDEX = {
     "v": 1,
@@ -49,6 +50,9 @@ def aws(monkeypatch):
     monkeypatch.setenv("DATA_BUCKET", DATA_BUCKET)
     monkeypatch.setenv("LINK_SECRETS_PARAM", SECRETS_PARAM)
     monkeypatch.setenv("SITE_ORIGIN", "https://ferrysound.com")
+    monkeypatch.setenv("API_ORIGIN", "https://api.ferrysound.com")
+    monkeypatch.setenv("FROM_ADDRESS", "Ferry Sound <alerts@ferrysound.com>")
+    monkeypatch.setenv("SES_CONFIGURATION_SET", "wsf-test")
 
     with mock_aws():
         ddb = boto3.resource("dynamodb", region_name="us-west-2")
@@ -74,14 +78,20 @@ def aws(monkeypatch):
         )
         ssm = boto3.client("ssm", region_name="us-west-2")
         ssm.put_parameter(Name=SECRETS_PARAM, Type="SecureString", Value=json.dumps(LINK_SECRETS))
+        sqs = boto3.client("sqs", region_name="us-west-2")
+        queue_url = sqs.create_queue(QueueName=QUEUE_NAME)["QueueUrl"]
+        monkeypatch.setenv("DELIVERY_QUEUE_URL", queue_url)
 
         # Module-level caches must not leak across tests.
         from wsf_notify import api as api_mod
+        from wsf_notify import delivery, notifier
 
         api_mod._index_cache = None
         api_mod._secrets_cache = None
+        delivery._secrets_cache = None
+        notifier._index_cache = None
 
-        yield {"table": table, "s3": s3}
+        yield {"table": table, "s3": s3, "sqs": sqs, "queue_url": queue_url}
 
 
 def jwt_event(

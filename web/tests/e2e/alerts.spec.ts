@@ -164,10 +164,17 @@ test("boat FAB survives client-side navigation back to the map", async ({ page }
   await expect
     .poll(() => fab.evaluate((el) => getComputedStyle(el).position))
     .toBe("fixed");
-  const box = (await fab.boundingBox())!;
   const viewport = page.viewportSize()!;
-  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
-  expect(box.x).toBeLessThan(100); // bottom-left corner, on screen
+  await expect
+    .poll(async () => {
+      const box = await fab.boundingBox();
+      return (
+        box !== null &&
+        box.y + box.height <= viewport.height &&
+        box.x < 100
+      );
+    })
+    .toBe(true);
 });
 
 // From the 2026-08-18 sign-up walk: a signup error rode into the
