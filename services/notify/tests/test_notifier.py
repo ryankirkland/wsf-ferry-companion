@@ -2,7 +2,7 @@ import json
 
 import pytest
 from conftest import jwt_event
-from wsf_notify import api, notifier
+from wsf_notify import api, delivery, notifier
 
 PUBLISHED = "2026-01-15T22:05:00+00:00"  # 2:05 PM PST
 CANCEL_TEXT = "The 1630 SEA/BBI sailing is cancelled due to crewing."
@@ -62,6 +62,21 @@ def test_window_matching_queues_only_the_matching_user(aws):
             "arr_id": 3,
         }
     ]
+
+
+def test_queued_subscription_id_remains_deliverable(aws, monkeypatch):
+    subscribe("u-hit", "hit@example.com", 7, 3, "16:00", "19:00")
+    run([alert()])
+    queued = queued_payloads(aws)[0]
+    sends = []
+    monkeypatch.setattr(delivery, "_ses_send", lambda to, mime: sends.append(to))
+
+    result = delivery.lambda_handler(
+        {"Records": [{"messageId": "message-1", "body": json.dumps(queued)}]}, None
+    )
+
+    assert result == {"processed": 1, "sent": 1}
+    assert sends == ["hit@example.com"]
 
 
 def test_later_subscription_window_is_not_discarded_for_same_user(aws):

@@ -108,7 +108,6 @@ def test_ses_failure_leaves_delivery_retryable(aws, sends, monkeypatch):
     assert len(sends) == 1
 
 
-
 def test_transient_claim_failure_retries_instead_of_losing_state(aws, sends, monkeypatch):
     class FailingDynamoDB:
         def transact_write_items(self, **kwargs):
@@ -128,15 +127,11 @@ def test_transient_claim_failure_retries_instead_of_losing_state(aws, sends, mon
         delivery.lambda_handler(event(payload()), None)
 
     assert len(sends) == 1
-    assert "Item" not in aws["table"].get_item(
-        Key={"PK": "USER#u-hit", "SK": "SENT#1001"}
-    )
+    assert "Item" not in aws["table"].get_item(Key={"PK": "USER#u-hit", "SK": "SENT#1001"})
 
 
 def test_unsubscribed_user_is_skipped_before_ses(aws, sends):
-    aws["table"].delete_item(
-        Key={"PK": "USER#u-hit", "SK": "SUB#0007-0003-1600-1900"}
-    )
+    aws["table"].delete_item(Key={"PK": "USER#u-hit", "SK": "SUB#0007-0003-1600-1900"})
 
     result = delivery.lambda_handler(event(payload()), None)
 

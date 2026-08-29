@@ -226,7 +226,7 @@ def _enqueue_matches(table, alert, text_hash, observed_at_ms, counts) -> None:
             "parsed_clean": parsed_clean,
             "sailings": [asdict(sailing) for sailing in matched_sailings.values()],
             "subscription_ids": [
-                sub["SK"].removeprefix("SUB#") for sub in matched_subs
+                sub["SK"].removeprefix(f"SUB#{user_sub}#") for sub in matched_subs
             ],
             "subscription": matches[0],
             "matches": matches,

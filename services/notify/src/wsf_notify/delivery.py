@@ -102,9 +102,7 @@ def _deliver(payload: dict) -> bool:
 
 def _has_active_subscription(table, user_sub: str, subscription_ids: list[str]) -> bool:
     return any(
-        table.get_item(
-            Key={"PK": f"USER#{user_sub}", "SK": f"SUB#{subscription_id}"}
-        ).get("Item")
+        table.get_item(Key={"PK": f"USER#{user_sub}", "SK": f"SUB#{subscription_id}"}).get("Item")
         for subscription_id in subscription_ids
     )
 
@@ -112,17 +110,15 @@ def _has_active_subscription(table, user_sub: str, subscription_ids: list[str]) 
 def _ineligible_reason(
     table, user_sub: str, bulletin_id: str, text_hash: str, la_date: str
 ) -> str | None:
-    prior = table.get_item(
-        Key={"PK": f"USER#{user_sub}", "SK": f"SENT#{bulletin_id}"}
-    ).get("Item", {})
+    prior = table.get_item(Key={"PK": f"USER#{user_sub}", "SK": f"SENT#{bulletin_id}"}).get(
+        "Item", {}
+    )
     if prior.get("last_hash") == text_hash:
         return "DeliveryDuplicates"
     if int(prior.get("send_count", 0)) >= MAX_SENDS_PER_BULLETIN:
         return "BulletinCapped"
 
-    daily = table.get_item(
-        Key={"PK": f"USER#{user_sub}", "SK": f"NOTIF#{la_date}"}
-    ).get("Item", {})
+    daily = table.get_item(Key={"PK": f"USER#{user_sub}", "SK": f"NOTIF#{la_date}"}).get("Item", {})
     if int(daily.get("sends", 0)) >= DAILY_CAP:
         return "DailyCapped"
     return None
@@ -140,9 +136,7 @@ def _record_sent(table, user_sub: str, bulletin_id: str, text_hash: str, la_date
                 {
                     "Update": {
                         "TableName": os.environ["TABLE_NAME"],
-                        "Key": values(
-                            {"PK": f"USER#{user_sub}", "SK": f"SENT#{bulletin_id}"}
-                        ),
+                        "Key": values({"PK": f"USER#{user_sub}", "SK": f"SENT#{bulletin_id}"}),
                         "UpdateExpression": (
                             "SET last_hash = :h, "
                             "send_count = if_not_exists(send_count, :z) + :one, "
@@ -167,15 +161,11 @@ def _record_sent(table, user_sub: str, bulletin_id: str, text_hash: str, la_date
                 {
                     "Update": {
                         "TableName": os.environ["TABLE_NAME"],
-                        "Key": values(
-                            {"PK": f"USER#{user_sub}", "SK": f"NOTIF#{la_date}"}
-                        ),
+                        "Key": values({"PK": f"USER#{user_sub}", "SK": f"NOTIF#{la_date}"}),
                         "UpdateExpression": (
                             "SET sends = if_not_exists(sends, :z) + :one, expires_at = :ttl"
                         ),
-                        "ConditionExpression": (
-                            "attribute_not_exists(sends) OR sends < :cap"
-                        ),
+                        "ConditionExpression": ("attribute_not_exists(sends) OR sends < :cap"),
                         "ExpressionAttributeValues": values(
                             {
                                 ":z": 0,
