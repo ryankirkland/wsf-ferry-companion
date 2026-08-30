@@ -102,6 +102,43 @@ data "aws_iam_policy_document" "ops" {
     resources = ["*"]
   }
 
+  # --- One production alert canary, scoped to the owner's known subscriber
+  # partition. This exposes no other subscriber records. ---
+  statement {
+    sid = "ReadOwnerAlertCanary"
+    actions = [
+      "dynamodb:GetItem",
+      "dynamodb:Query",
+    ]
+    resources = ["arn:aws:dynamodb:${var.region}:${data.aws_caller_identity.current.account_id}:table/wsf-prod-hot"]
+
+    condition {
+      test     = "ForAllValues:StringEquals"
+      variable = "dynamodb:LeadingKeys"
+      values   = ["USER#b8e193d0-f041-70e2-b9ca-19e97e35bb90"]
+    }
+  }
+
+  statement {
+    sid = "ReadAlertDeliveryQueues"
+    actions = [
+      "sqs:GetQueueAttributes",
+      "sqs:GetQueueUrl",
+    ]
+    resources = [
+      "arn:aws:sqs:${var.region}:${data.aws_caller_identity.current.account_id}:wsf-prod-notify-delivery",
+      "arn:aws:sqs:${var.region}:${data.aws_caller_identity.current.account_id}:wsf-prod-notify-delivery-dlq",
+    ]
+  }
+
+  # TEMPORARY: IAM cannot constrain SendMessage by recipient or message body.
+  # Remove immediately after the requested owner-only delivery canary succeeds.
+  statement {
+    sid       = "InjectOwnerAlertDeliveryCanary"
+    actions   = ["sqs:SendMessage"]
+    resources = ["arn:aws:sqs:${var.region}:${data.aws_caller_identity.current.account_id}:wsf-prod-notify-delivery"]
+  }
+
   # --- Read the archives and the published contracts. The raw archive is
   # how an upstream payload gets diffed against what we served; the data
   # bucket is public through CloudFront anyway. tfstate is NOT here: it
@@ -160,7 +197,7 @@ data "aws_iam_policy_document" "ops" {
 # bytes - roles get 10,240, which is why the deploy role's inline policy
 # applied cleanly and this one failed at 409 LimitExceeded on the first
 # attempt. Managed policies allow 6,144, comfortably above this document's
-# eight statements, and they are the idiomatic shape anyway: attachable,
+# eleven statements, and they are the idiomatic shape anyway: attachable,
 # versioned, and visible on their own in the console.
 resource "aws_iam_policy" "ops" {
   name        = "wsf-ops-diagnostics"
