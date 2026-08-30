@@ -266,8 +266,10 @@ card. An image that fails to load removes itself rather than leaving a
 broken frame.
 
 The route line reads spatially: the actual left-at time and any completed
-minutes of lateness sit above the origin terminal, while WSF's estimated
-arrival sits above the destination. The scheduled departure remains a
+minutes of lateness share one line above the origin terminal, while WSF's
+estimated arrival sits above the destination. The 400px desktop card keeps
+the inline departure timing and "Next sailings" control on one line; phones
+retain the full-width bottom sheet. The scheduled departure remains a
 separate comparison below rather than repeating either live time.
 
 Shipping it needs two credentialed steps - upload the mirror, then

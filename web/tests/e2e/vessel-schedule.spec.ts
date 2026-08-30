@@ -94,22 +94,36 @@ test("Next sailings expands the current route's schedule inline and collapses ba
   await expect(scheduleComparison).toContainText("Scheduled 12:50 AM");
   await expect(scheduleComparison).not.toContainText("late");
 
-  const [leftTime, originTerminal, eta, destinationTerminal] = await Promise.all([
-    origin.locator("span").nth(0).boundingBox(),
-    origin.locator("span").last().boundingBox(),
-    destination.locator("span").nth(0).boundingBox(),
-    destination.locator("span").nth(1).boundingBox(),
-  ]);
+  const [cardBox, leftTime, lateness, originTerminal, eta, destinationTerminal] =
+    await Promise.all([
+      card.boundingBox(),
+      origin.locator("span").nth(0).boundingBox(),
+      origin.getByText("1 min late", { exact: true }).boundingBox(),
+      origin.locator("span").last().boundingBox(),
+      destination.locator("span").nth(0).boundingBox(),
+      destination.locator("span").nth(1).boundingBox(),
+    ]);
+  expect(cardBox).not.toBeNull();
+  expect(cardBox!.width).toBe(400);
   expect(leftTime).not.toBeNull();
+  expect(lateness).not.toBeNull();
   expect(originTerminal).not.toBeNull();
   expect(eta).not.toBeNull();
   expect(destinationTerminal).not.toBeNull();
   expect(leftTime!.y).toBeLessThan(originTerminal!.y);
+  expect(Math.abs(leftTime!.y - lateness!.y)).toBeLessThanOrEqual(2);
   expect(eta!.y).toBeLessThan(destinationTerminal!.y);
 
   const toggle = card.getByRole("button", { name: /Next sailings/ });
   await expect(toggle).toBeVisible();
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  const toggleLayout = await toggle.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+    whiteSpace: getComputedStyle(element).whiteSpace,
+  }));
+  expect(toggleLayout.whiteSpace).toBe("nowrap");
+  expect(toggleLayout.scrollWidth).toBeLessThanOrEqual(toggleLayout.clientWidth);
 
   await toggle.click();
   const schedule = page.getByTestId("vessel-schedule");
