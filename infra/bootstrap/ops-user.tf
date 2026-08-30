@@ -131,14 +131,6 @@ data "aws_iam_policy_document" "ops" {
     ]
   }
 
-  # TEMPORARY: IAM cannot constrain SendMessage by recipient or message body.
-  # Remove immediately after the requested owner-only delivery canary succeeds.
-  statement {
-    sid       = "InjectOwnerAlertDeliveryCanary"
-    actions   = ["sqs:SendMessage"]
-    resources = ["arn:aws:sqs:${var.region}:${data.aws_caller_identity.current.account_id}:wsf-prod-notify-delivery"]
-  }
-
   # --- Read the archives and the published contracts. The raw archive is
   # how an upstream payload gets diffed against what we served; the data
   # bucket is public through CloudFront anyway. tfstate is NOT here: it
@@ -197,7 +189,7 @@ data "aws_iam_policy_document" "ops" {
 # bytes - roles get 10,240, which is why the deploy role's inline policy
 # applied cleanly and this one failed at 409 LimitExceeded on the first
 # attempt. Managed policies allow 6,144, comfortably above this document's
-# eleven statements, and they are the idiomatic shape anyway: attachable,
+# ten statements, and they are the idiomatic shape anyway: attachable,
 # versioned, and visible on their own in the console.
 resource "aws_iam_policy" "ops" {
   name        = "wsf-ops-diagnostics"
