@@ -1,6 +1,13 @@
-# F2: Trip planner
+# F2: Sailing schedule
 
 Living reference for PRD F2. Updated whenever the feature changes.
+
+Named "Trip planner" until 2026-08-30, when the owner renamed the surface
+to **Sailing schedule** - it lists the day's sailings rather than planning
+anything. The rename is display-only: the route (`/trip/{slug}`), the
+component directory, the `nav-trip` analytics label and the PRD's M2
+milestone name all keep the old identity, so links, saved runs and the
+analytics series stay continuous.
 
 ## Goal
 
@@ -111,7 +118,7 @@ out-of-range clamps with an honest note) -> collapsible fares panel
 (basic 13 default, honest effective label).
 
 Navigation (reworked at the owner's 2026-08-19 walk): the boat-button
-drawer (live map, trip planner, "your run", on-time record, Ferry
+drawer (live map, sailing schedule, "your run", on-time record, Ferry
 Alerts, ambient, account) now renders on every page except /ambient;
 wide screens additionally get a persistent SideNav rail, and non-map
 mastheads lead with "Back to map" instead of the wordmark. Coaching

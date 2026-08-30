@@ -11,7 +11,7 @@ import { usePathname } from "next/navigation";
 import styles from "./nav.module.css";
 
 const LINKS = [
-  { href: "/trip", label: "Trip planner" },
+  { href: "/trip", label: "Sailing schedule" },
   { href: "/stats", label: "On-time record" },
   { href: "/alerts", label: "Ferry Alerts" },
   { href: "/ambient", label: "Ambient mode" },

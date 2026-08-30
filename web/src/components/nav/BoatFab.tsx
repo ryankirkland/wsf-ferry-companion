@@ -60,7 +60,7 @@ export function BoatFab() {
     <>
       <button
         className={styles.fab}
-        aria-label="Trips and more"
+        aria-label="Sailings and more"
         aria-expanded={open}
         data-testid="boat-fab"
         onClick={() => setOpen(true)}
@@ -85,7 +85,7 @@ export function BoatFab() {
             <span>The Sound, right now</span>
           </Link>
           <Link href="/trip" data-analytics-label="nav-trip" onClick={() => setOpen(false)}>
-            Trip planner
+            Sailing schedule
             <span>Next sailings, live status, fares</span>
           </Link>
           {yourRun && yourRunSlug && (

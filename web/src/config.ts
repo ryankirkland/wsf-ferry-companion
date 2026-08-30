@@ -40,7 +40,7 @@ export const DECLUTTER_ZOOM = 10.2;
 export const STALE_S = 300;
 export const SOUND_TZ = "America/Los_Angeles";
 
-// Trip planner (M2). Signal thresholds in minutes: green > 25, amber
+// Sailing schedule (M2). Signal thresholds in minutes: green > 25, amber
 // 10-25, red <= 10 or running late. Delta display capped so a stale or
 // nonsense LeftDock never renders "sailed +7319 min".
 export const SIGNAL = {

@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-// Trip planner E2E against the static export, all four /data documents
+// Sailing schedule E2E against the static export, all four /data documents
 // route-intercepted. The pair-day template re-times around "now" so a
 // single page load shows departed, boarding, tight, comfortable, and a
 // struck tidal cancellation at once - every promise of F2 in one screen.
