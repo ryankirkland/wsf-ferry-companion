@@ -1,44 +1,32 @@
-/* F6 weather chips - trip-page strip + AQI tones. EPA category colors,
- * softened onto the Paper Sound grounds; the category NAME always rides
- * along, so color is never the only signal. */
+/* F6 weather chips - worn by the trip h1's terminal names - + AQI tones.
+ * EPA category colors, softened onto the Paper Sound grounds; the
+ * category NAME always rides along, so color is never the only signal. */
 
-.strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.6rem;
-  align-items: center;
-  margin: 0.35rem 0 0.15rem;
-  font-size: 1.68rem;
-  color: var(--ink-soft);
-}
-
-.place {
+.wxChip {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.5rem;
+  font-size: 1.55rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ink-soft);
   white-space: nowrap;
 }
 
-.place strong {
+.wxChip strong {
   color: var(--ink);
-  font-weight: 600;
+  font-weight: 650;
 }
 
-.placeName {
-  font-family: var(--font-gabarito), sans-serif;
-  font-weight: 700;
-  font-size: 1.43rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.detail {
+.wxDetail {
   color: var(--ink-soft);
 }
 
 .stale {
+  margin: 0.1rem 0 0.15rem;
   font-size: 1.28rem;
   font-style: italic;
+  color: var(--ink-soft);
 }
 
 .aqi {

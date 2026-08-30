@@ -23,7 +23,7 @@ import { computeSignal } from "@/lib/trip/signal";
 import type { Sailing } from "@/lib/trip/types";
 import { writeStorage, YOUR_RUN_KEY } from "@/lib/storage";
 import { shiftDate, soundDate, soundTimeShort } from "@/lib/time/sound-time";
-import { WeatherStrip } from "@/components/weather/WeatherStrip";
+import { TerminalWeather } from "@/components/weather/TerminalWeather";
 import { Reliability } from "@/components/stats/Reliability";
 import { capacityFor, indexCapacity, slotKeyFor } from "@/lib/stats/reliability";
 import { AlertBanner } from "./AlertBanner";
@@ -167,10 +167,11 @@ export function TripView({ slug }: { slug: string }) {
 
         <AlertBanner alerts={matchedAlerts} />
         <AnswerLine next={next} />
-        {/* Both ends of the crossing at the viewed sailing's hour; today
-            with nothing left still shows now. Outside the forecast
-            horizon the strip renders nothing (honest absence). */}
-        <WeatherStrip
+        {/* Portals conditions chips onto the h1's terminal names - both
+            ends at the viewed sailing's hour; today with nothing left
+            still shows now. Outside the forecast horizon the slots stay
+            empty (honest absence); only a stale note renders here. */}
+        <TerminalWeather
           dep={entry.dep}
           arr={entry.arr}
           atMs={focusMs ?? (isToday ? now : null)}

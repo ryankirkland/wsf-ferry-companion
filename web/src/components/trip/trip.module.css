@@ -42,6 +42,21 @@
   margin: 0.2rem 0 0.15rem;
 }
 
+/* Each end of "Dep → Arr" pairs a name with its portaled weather chip;
+ * the chip wraps beneath its own name on narrow screens rather than
+ * orphaning to the far side of the arrow. */
+.pairEnd {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 0.7rem;
+}
+
+.wxSlot {
+  display: inline-flex;
+  align-items: center;
+}
+
 .pairMeta {
   display: flex;
   align-items: center;
