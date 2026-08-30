@@ -43,7 +43,7 @@ function buildDay(baseMs: number) {
   return day;
 }
 
-async function interceptData(page: Page, day: unknown) {
+async function interceptData(page: Page, day: unknown, lateBySeconds?: number) {
   const json = (body: unknown) => ({
     body: JSON.stringify(body),
     contentType: "application/json",
@@ -51,6 +51,11 @@ async function interceptData(page: Page, day: unknown) {
   });
   const fleet = JSON.parse(fixture("fleet-frame-0.json"));
   fleet.generated_at = new Date().toISOString();
+  if (lateBySeconds !== undefined) {
+    const target = (fleet.vessels as Array<Record<string, unknown>>).find((v) => v.id === 74);
+    if (!target || typeof target.sched !== "string") throw new Error("missing Chimacum schedule");
+    target.left = new Date(Date.parse(target.sched) + lateBySeconds * 1000).toISOString();
+  }
   await page.route("**/data/fleet.json", (r) => r.fulfill(json(fleet)));
   await page.route("**/data/vessels.json", (r) =>
     r.fulfill({ body: fixture("vessels.json"), contentType: "application/json" }),
@@ -82,12 +87,16 @@ test("Next sailings expands the current route's schedule inline and collapses ba
   const destination = card.getByTestId("route-destination");
   await expect(origin).toContainText("Left at");
   await expect(origin).toContainText("Seattle");
+  await expect(origin).toContainText("1 min late");
   await expect(destination).toContainText("Est. arrival");
   await expect(destination).toContainText("Bremerton");
+  const scheduleComparison = card.getByTestId("schedule-comparison");
+  await expect(scheduleComparison).toContainText("Scheduled 12:50 AM");
+  await expect(scheduleComparison).not.toContainText("late");
 
   const [leftTime, originTerminal, eta, destinationTerminal] = await Promise.all([
     origin.locator("span").nth(0).boundingBox(),
-    origin.locator("span").nth(1).boundingBox(),
+    origin.locator("span").last().boundingBox(),
     destination.locator("span").nth(0).boundingBox(),
     destination.locator("span").nth(1).boundingBox(),
   ]);
@@ -127,6 +136,18 @@ test("Next sailings expands the current route's schedule inline and collapses ba
   await toggle.click();
   await expect(schedule).toBeHidden();
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
+});
+
+test("matching displayed minutes do not claim a one-minute delay", async ({ page }) => {
+  const baseMs = Date.now();
+  await interceptData(page, buildDay(baseMs), 45);
+
+  await page.goto("/?vessel=74");
+  const card = page.getByTestId("vessel-card");
+  await expect(card).toBeVisible({ timeout: 20_000 });
+  await expect(card.getByTestId("route-origin")).toContainText("Left at 12:50 AM");
+  await expect(card.getByTestId("route-origin")).not.toContainText("late");
+  await expect(card.getByTestId("schedule-comparison")).toHaveText("Scheduled 12:50 AM");
 });
 
 test("switching days inside the expanded schedule shows that day's sailings", async ({ page }) => {

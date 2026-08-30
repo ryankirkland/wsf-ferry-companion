@@ -100,17 +100,23 @@ function ClassDrawing({ src, className }: { src: string; className: string }) {
   );
 }
 
+function departureLateMinutes(fix: VesselFix): number | null {
+  if (!fix.left || !fix.sched) return null;
+  const lateMs = Date.parse(fix.left) - Date.parse(fix.sched);
+  // The card clocks omit seconds. Count only completed minutes so two
+  // identical displayed times never claim the boat left one minute late.
+  if (lateMs < 60_000 || lateMs > 120 * 60_000) return null;
+  return Math.floor(lateMs / 60_000);
+}
+
 function delayLine(fix: VesselFix): { text: string; lateMin: number } | null {
   const sched = fix.sched ? Date.parse(fix.sched) : null;
   if (!sched) return null;
-  const left = fix.left ? Date.parse(fix.left) : null;
-  if (left) {
-    const lateMin = Math.round((left - sched) / 60_000);
-    const comparison =
-      lateMin >= 1 && lateMin <= 120 ? ` · left ${lateMin} min late` : "";
+  if (fix.left) {
+    const lateMin = departureLateMinutes(fix) ?? 0;
     return {
-      text: `Scheduled ${soundClock(new Date(sched))}${comparison}`,
-      lateMin: Math.min(lateMin, 120),
+      text: `Scheduled ${soundClock(new Date(sched))}`,
+      lateMin,
     };
   }
   if (fix.state === "docked" && Date.now() > sched) {
@@ -163,6 +169,7 @@ export function VesselCard({
 
   const delay = delayLine(fix);
   const leftAt = fix.left ? soundClock(new Date(fix.left)) : null;
+  const departureLateMin = departureLateMinutes(fix);
   const eta = fix.eta && fix.state === "underway" ? soundClock(new Date(fix.eta)) : null;
   const depName = terms?.get(fix.dep)?.name ?? `terminal ${fix.dep}`;
   const arrName =
@@ -181,6 +188,9 @@ export function VesselCard({
             <span className={styles.endpointTime} aria-hidden={!leftAt}>
               {leftAt ? `Left at ${leftAt}` : "\u00a0"}
             </span>
+            {departureLateMin !== null && (
+              <span className={styles.endpointLate}>{departureLateMin} min late</span>
+            )}
             <span className={styles.terminal}>{depName}</span>
           </div>
           <span className={styles.arrow} aria-hidden>
@@ -201,7 +211,12 @@ export function VesselCard({
       )}
       <p className={styles.status}>{statusLine(fix)}</p>
       {delay && (
-        <p className={`${styles.delay} ${delay.lateMin >= 5 ? styles.late : ""}`}>{delay.text}</p>
+        <p
+          className={`${styles.delay} ${delay.lateMin >= 5 ? styles.late : ""}`}
+          data-testid="schedule-comparison"
+        >
+          {delay.text}
+        </p>
       )}
       {dim?.drawing && <ClassDrawing src={dim.drawing} className={dim.class} />}
       {dim && (

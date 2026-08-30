@@ -85,6 +85,14 @@
   white-space: nowrap;
 }
 
+.endpointLate {
+  margin-bottom: 0.15rem;
+  color: var(--st-delay-fg);
+  font-size: 0.72rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
 .terminal {
   font-weight: 650;
   line-height: 1.15;
