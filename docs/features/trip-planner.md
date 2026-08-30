@@ -104,9 +104,11 @@ adding/dropping a pair fails CI and the regeneration script is the fix.
 Page anatomy: pair header (swap link, crossing badge) -> route-matched
 alert banner (the same-day-truth surface) -> answer line ("Next boat:
 5:30 PM - leaves in 42 min · Wenatchee is at the dock") -> departures with
-signal pills (earlier sailings collapsed) -> 14-chip date strip (`?date=`
-bounded today..+13, out-of-range clamps with an honest note) -> collapsible
-fares panel (basic 13 default, honest effective label).
+signal pills and today's live drive-up space on the card itself (earlier
+sailings collapsed; the F5 join and its honesty rules live in
+docs/features/stats.md) -> 14-chip date strip (`?date=` bounded today..+13,
+out-of-range clamps with an honest note) -> collapsible fares panel
+(basic 13 default, honest effective label).
 
 Navigation (reworked at the owner's 2026-08-19 walk): the boat-button
 drawer (live map, trip planner, "your run", on-time record, Ferry

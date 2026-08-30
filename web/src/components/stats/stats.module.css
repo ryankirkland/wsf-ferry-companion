@@ -1,4 +1,4 @@
-/* Reliability + capacity surfaces. Paper Sound on the reading column: the
+/* Reliability surfaces. Paper Sound on the reading column: the
  * same card/ink/accent tokens the trip page uses, with an on-time trio
  * tuned to sit on --card in day, dusk and night. */
 
@@ -63,10 +63,6 @@
 
 .poor {
   color: color-mix(in srgb, var(--stack) 80%, var(--ink));
-}
-
-.unknown {
-  color: var(--ink-soft);
 }
 
 .headlineMeta {
@@ -219,69 +215,7 @@
   font-size: 1.05rem;
 }
 
-/* ---- capacity ---- */
-
-.capacityList {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  margin-top: 0.5rem;
-}
-
-.capacityRow {
-  display: grid;
-  /* The label column is capped: "24 spaces - filling up" must wrap inside
-     the card rather than push the meter off the edge on a narrow phone. */
-  grid-template-columns: 5.4rem 1fr minmax(4.5rem, 7.5rem);
-  align-items: center;
-  gap: 0.6rem;
-  background: var(--card);
-  border: 1px solid var(--card-line);
-  border-radius: 0.7rem;
-  padding: 0.5rem 0.85rem;
-  font-size: 0.86rem;
-}
-
-.capacityMeter {
-  height: 0.42rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--ink-soft) 18%, transparent);
-  overflow: hidden;
-}
-
-/* Tone classes carry COLOR only; the meter paints itself with
- * currentColor. Setting a background here too gave the space count a
- * pill-shaped fill that overflowed the card. */
-.capacityFill {
-  height: 100%;
-  border-radius: 999px;
-  background: currentColor;
-}
-
-.levelPlenty {
-  color: var(--accent);
-}
-
-.levelFilling {
-  color: #96691f;
-}
-
-.levelFull {
-  color: color-mix(in srgb, var(--stack) 80%, var(--ink));
-}
-
-.spaces {
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  text-align: right;
-  line-height: 1.25;
-}
-
-.spacesLabel {
-  font-weight: 500;
-  color: var(--ink-soft);
-  font-size: 0.78rem;
-}
+/* ---- labeled absence (a statistic we will not fake) ---- */
 
 .absent {
   background: var(--card);
@@ -291,18 +225,6 @@
   color: var(--ink-soft);
   font-size: 0.84rem;
   line-height: 1.5;
-}
-
-.staleTag {
-  color: #96691f;
-  font-size: 0.78rem;
-  font-weight: 650;
-}
-
-.cancelledTag {
-  color: color-mix(in srgb, var(--stack) 80%, var(--ink));
-  font-weight: 700;
-  font-size: 0.8rem;
 }
 
 /* ---- footnotes ---- */
@@ -319,8 +241,7 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .slotRow,
-  .capacityRow {
+  .slotRow {
     grid-template-columns: 4.6rem 1fr auto;
   }
 }

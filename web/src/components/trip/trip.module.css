@@ -269,6 +269,57 @@
   font-weight: 600;
 }
 
+/* ---- drive-up space, on the departure it describes ----
+ * Reads as a status, not a footnote: WSF's own fullness colour, the count
+ * in the row's own weight. No meter bar - see DriveUp.tsx. */
+
+.driveUp {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.driveUp strong {
+  font-weight: 750;
+}
+
+.driveUpPlenty {
+  color: var(--accent);
+}
+
+.driveUpFilling {
+  color: #96691f;
+}
+
+.driveUpFull {
+  color: color-mix(in srgb, var(--stack) 80%, var(--ink));
+}
+
+.driveUpUnknown {
+  color: var(--ink-soft);
+}
+
+.driveUpNote {
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  margin: 0.5rem 0 0;
+}
+
+.driveUpStale {
+  color: #96691f;
+}
+
+.driveUpAbsent {
+  background: var(--card);
+  border: 1px dashed var(--card-line);
+  border-radius: 0.8rem;
+  padding: 0.7rem 0.9rem;
+  margin: 0.6rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
 /* ---- signal pill ---- */
 
 .pill {

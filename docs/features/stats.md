@@ -187,12 +187,31 @@ Bainbridge reports all day):
 |---|---|
 | `reporting_terminals` is empty | "WSF is not publishing drive-up space for any terminal right now" - the feed goes quiet overnight, and that is a fact about the feed |
 | Terminals reporting, but not this one | "{Terminal} does not report drive-up space to WSF… not a sign the lot is full" |
-| This terminal reports, no upcoming sailings listed | "No upcoming departures… are reporting space right now" |
+| This terminal reports, no upcoming sailings listed | "No upcoming departures… are reporting drive-up space right now" |
 
 ## The pages
 
-**Pair page** (`/trip/{slug}`) gains two sections. Drive-up space sits above Reliability, since
-a full lot changes the decision more urgently than a historical average.
+**Pair page** (`/trip/{slug}`). Drive-up space renders ON the departure card it describes
+(owner's call, 2026-08-30) - it was a separate "Drive-up space" section below the schedule,
+which asked the rider to match clock times across two lists to answer one question: "will I get
+on THAT boat?" The reading is joined to the sailing by `depart_ms`, the same scheduled-departure
+instant WSF puts on both feeds (`Departure` in terminalsailingspace, `DepartingTime` in the
+schedule), so a reading with no matching card simply does not render - the join is exact by
+construction, and `tests/e2e/stats.spec.ts` fails if it ever stops landing.
+
+What the move preserved, changed, and dropped:
+
+- The three absence states above still print, in `DriveUpNote` under the list, along with the
+  as-of stamp, the staleness label, and what the number counts.
+- A card already struck as cancelled carries no space count; the capacity feed's own
+  `IsCancelled` still shows as "Cancelled" on cards the schedule has not struck.
+- Space renders for **today only**. The feed is current-state, so a future date shows no
+  numbers at all rather than today's lot under tomorrow's sailings - the old section rendered
+  regardless of the date being browsed.
+- The **meter bar did not survive**. It drew `drive_up / max_space`, which is precisely the
+  ratio this contract refuses to publish (see above: `max_space` includes reservable inventory
+  we cannot see). The count and WSF's own colour carry the same judgment without implying we
+  know how full the boat is.
 
 Reliability picks the rider's own departure out of the slot table by Sound-local `HH:MM` - the
 same key the contract uses - and leads with it. A degraded slot shows the hour bucket, marks

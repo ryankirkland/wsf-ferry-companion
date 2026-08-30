@@ -3,12 +3,14 @@
 // The trip page orchestrator: four documents (index/day/fares/alerts) +
 // the live fleet snapshot -> answer line, departures with signals, fares,
 // date strip. All joins are client-side per ADR-0005; the fleet join is
-// the verified (VesselID, depart_ms) key inside computeSignal.
+// the verified (VesselID, depart_ms) key inside computeSignal, and live
+// drive-up space joins onto the same departures by depart_ms (both sides
+// carry WSF's own scheduled departure instant).
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { TRIP_HORIZON_DAYS } from "@/config";
+import { CAPACITY_STALE_MS, TRIP_HORIZON_DAYS } from "@/config";
 import { useFleet } from "@/hooks/use-fleet";
 import { useNow } from "@/hooks/use-now";
 import { usePairStats } from "@/hooks/use-pair-stats";
@@ -21,14 +23,14 @@ import { computeSignal } from "@/lib/trip/signal";
 import type { Sailing } from "@/lib/trip/types";
 import { writeStorage, YOUR_RUN_KEY } from "@/lib/storage";
 import { shiftDate, soundDate, soundTimeShort } from "@/lib/time/sound-time";
-import { CapacityGauge } from "@/components/stats/CapacityGauge";
 import { WeatherStrip } from "@/components/weather/WeatherStrip";
 import { Reliability } from "@/components/stats/Reliability";
-import { slotKeyFor } from "@/lib/stats/reliability";
+import { capacityFor, slotKeyFor } from "@/lib/stats/reliability";
 import { AlertBanner } from "./AlertBanner";
 import { AnswerLine } from "./AnswerLine";
 import { DateStrip } from "./DateStrip";
 import { DepartureList, type DepartureItem } from "./DepartureList";
+import { DriveUpNote } from "./DriveUp";
 import { FaresPanel } from "./FaresPanel";
 import styles from "./trip.module.css";
 
@@ -86,6 +88,19 @@ export function TripView({ slug }: { slug: string }) {
       return { sailing, signal, cancelledReason };
     });
   }, [dayView, fleet.snapshot, entry.dep, now]);
+
+  // Drive-up space for THIS run, keyed by departure. The feed is
+  // current-state only, so it speaks about today and only today - a future
+  // date shows no space at all rather than today's lot under tomorrow's
+  // sailings (the list and the note are both gated on isToday below).
+  const capacityView = useMemo(
+    () => capacityFor(stats.capacity, entry.dep, entry.arr, now, CAPACITY_STALE_MS),
+    [stats.capacity, entry.dep, entry.arr, now],
+  );
+  const capacityBySailing = useMemo(
+    () => new Map((capacityView.sailings ?? []).map((s) => [s.depart_ms, s])),
+    [capacityView],
+  );
 
   const nextIndex = items.findIndex(
     (i) => i.cancelledReason === null && i.signal.state !== "departed" && i.signal.state !== "gone",
@@ -174,19 +189,19 @@ export function TripView({ slug }: { slug: string }) {
               items={items}
               nextIndex={isToday ? Math.max(nextIndex, 0) : 0}
               crossingMin={crossingMin}
+              capacity={isToday ? capacityBySailing : undefined}
             />
           )
         )}
 
-        <DateStrip today={today} selected={date} onSelect={setDate} />
+        {/* What the drive-up numbers on those cards mean, and - when there
+            are none - which absence is the true one. Only today: the feed
+            has nothing to say about a future date. */}
+        {isToday && !exhausted && items.length > 0 && (
+          <DriveUpNote view={capacityView} depName={entry.depName} nowMs={now} />
+        )}
 
-        <CapacityGauge
-          capacity={stats.capacity}
-          dep={entry.dep}
-          arr={entry.arr}
-          depName={entry.depName}
-          nowMs={now}
-        />
+        <DateStrip today={today} selected={date} onSelect={setDate} />
 
         <Reliability stats={stats.stats} yourSlot={yourSlot} settled={stats.settled} />
 

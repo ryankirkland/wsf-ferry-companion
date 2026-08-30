@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { CapacitySailing } from "@/lib/stats/types";
 import type { Signal } from "@/lib/trip/signal";
 import type { Sailing } from "@/lib/trip/types";
 import { DepartureRow } from "./DepartureRow";
@@ -18,10 +19,14 @@ export function DepartureList({
   items,
   nextIndex,
   crossingMin,
+  capacity,
 }: {
   items: DepartureItem[];
   nextIndex: number;
   crossingMin: number | null;
+  /** Live drive-up readings keyed by depart_ms - the same instant WSF puts
+   *  on both the schedule and the space feed. */
+  capacity?: Map<number, CapacitySailing>;
 }) {
   const [showEarlier, setShowEarlier] = useState(false);
   const cut = showEarlier ? 0 : Math.max(0, nextIndex);
@@ -48,6 +53,7 @@ export function DepartureList({
             signal={item.signal}
             cancelledReason={item.cancelledReason}
             crossingMin={crossingMin}
+            capacity={capacity?.get(item.sailing.depart_ms) ?? null}
           />
         ))}
       </ul>

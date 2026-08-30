@@ -83,6 +83,9 @@ function buildPairStats(baseMs: number) {
   };
 }
 
+/** Offsets match the pair-day template's own sailings (+6, +18, +130), because
+ *  drive-up space now renders ON the departure card and the join is depart_ms:
+ *  a fixture that drifts from the schedule would silently show nothing. */
 function buildCapacity(baseMs: number) {
   const sailing = (offsetMin: number, drive_up: number, level: string) => ({
     depart_ms: baseMs + offsetMin * MIN,
@@ -100,9 +103,12 @@ function buildCapacity(baseMs: number) {
     reporting_terminals: [3, 7],
     pairs: {
       [`${DEP}-${ARR}`]: [
-        sailing(20, 90, "plenty"),
-        sailing(60, 24, "filling"),
-        sailing(100, 3, "full"),
+        sailing(6, 90, "plenty"),
+        sailing(18, 24, "filling"),
+        // The +55 sailing is struck as a tidal cancellation by the schedule:
+        // its card must not carry a space count as well.
+        sailing(55, 40, "plenty"),
+        sailing(130, 3, "full"),
       ],
     },
   };
@@ -199,7 +205,19 @@ async function interceptSchedule(page: Page, baseMs: number) {
       }).format(new Date(baseMs)),
     )
     .replace(/%%NOW%%/g, new Date(baseMs).toISOString());
-  const day = JSON.parse(raw);
+  const day = JSON.parse(raw) as { sailings: { depart_ms: number }[]; adjustments: unknown[] };
+  // Strike the +55 min sailing, exactly as trip.spec does: a cancelled card
+  // must not also carry a drive-up count.
+  const struck = day.sailings.find((s) => s.depart_ms === baseMs + 55 * MIN)!;
+  day.adjustments = [
+    {
+      type: "cancel",
+      time_local: HHMM.format(new Date(struck.depart_ms)),
+      terminal_id: DEP,
+      tidal: true,
+      matched: true,
+    },
+  ];
   await page.route("**/data/pairs/index.json", (r) =>
     r.fulfill({ body: fixture("pairs-index.json"), contentType: "application/json" }),
   );
@@ -271,18 +289,43 @@ test.describe("pair reliability", () => {
 });
 
 test.describe("drive-up capacity", () => {
-  test("a reporting terminal shows spaces with WSF's own fullness wording", async ({ page }) => {
+  test("space rides on the departure card it describes, in WSF's own wording", async ({ page }) => {
     const baseMs = Date.now();
     await interceptSchedule(page, baseMs);
     await interceptStats(page, baseMs);
     await page.goto(`/trip/${SLUG}/`);
 
-    await expect(page.getByTestId("capacity")).toBeVisible();
-    await expect(page.getByTestId("capacity-row").first()).toContainText(/\d+ spaces/);
-    await expect(page.locator('[data-testid="capacity-row"][data-level="filling"]')).toContainText(
-      "filling up",
+    // No separate section: the reading sits inside the sailing's own row,
+    // joined on depart_ms (owner's call, 2026-08-30). Visible rows run from
+    // the next boat on: +6, +18, +55 (cancelled), +130, +210.
+    const rows = page.getByTestId("departures").locator("li");
+    await expect(rows.nth(0).getByTestId("drive-up")).toContainText("90 drive-up spaces");
+    await expect(rows.nth(1).getByTestId("drive-up")).toContainText(
+      "24 drive-up spaces · filling up",
     );
-    await expect(page.getByTestId("capacity")).toContainText("Reserved spaces are a separate pool");
+    await expect(rows.nth(3).getByTestId("drive-up")).toContainText("3 drive-up spaces");
+    await expect(rows.nth(3).getByTestId("drive-up")).toHaveAttribute("data-level", "full");
+    await expect(rows.nth(3).getByTestId("drive-up")).toContainText("nearly full");
+    // The struck sailing says "Cancelled" and nothing about space.
+    await expect(rows.nth(2)).toHaveAttribute("data-state", "cancelled");
+    await expect(rows.nth(2).getByTestId("drive-up")).toHaveCount(0);
+
+    // The meaning and the reading's age stay on the page, once.
+    const note = page.getByTestId("capacity-note");
+    await expect(note).toContainText("Reserved spaces are a separate pool");
+    await expect(note).toContainText(/Drive-up space as of \d{1,2}:\d{2} (AM|PM)/);
+  });
+
+  test("a future date shows no space at all - the feed only knows now", async ({ page }) => {
+    const baseMs = Date.now();
+    await interceptSchedule(page, baseMs);
+    await interceptStats(page, baseMs);
+    await page.goto(`/trip/${SLUG}/`);
+    await expect(page.getByTestId("drive-up").first()).toBeVisible();
+
+    await page.getByRole("tab", { name: "Tomorrow" }).click();
+    await expect(page.getByTestId("drive-up")).toHaveCount(0);
+    await expect(page.getByTestId("capacity-note")).toHaveCount(0);
   });
 
   test("a terminal that publishes nothing says so instead of showing an empty gauge", async ({
