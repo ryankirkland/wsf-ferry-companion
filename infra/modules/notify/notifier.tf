@@ -144,6 +144,7 @@ data "aws_iam_policy_document" "delivery" {
     sid = "DeliveryState"
     actions = [
       "dynamodb:GetItem",
+      "dynamodb:UpdateItem",
       "dynamodb:TransactWriteItems",
     ]
     resources = [var.table_arn]
