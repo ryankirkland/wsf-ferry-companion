@@ -106,10 +106,10 @@ function delayLine(fix: VesselFix): { text: string; lateMin: number } | null {
   const left = fix.left ? Date.parse(fix.left) : null;
   if (left) {
     const lateMin = Math.round((left - sched) / 60_000);
-    // The delta only when it is plausible; the departure time is always factual.
-    const delta = lateMin >= 1 && lateMin <= 120 ? ` (+${lateMin} min)` : "";
+    const comparison =
+      lateMin >= 1 && lateMin <= 120 ? ` · left ${lateMin} min late` : "";
     return {
-      text: `Left ${soundClock(new Date(left))} · scheduled ${soundClock(new Date(sched))}${delta}`,
+      text: `Scheduled ${soundClock(new Date(sched))}${comparison}`,
       lateMin: Math.min(lateMin, 120),
     };
   }
@@ -162,16 +162,11 @@ export function VesselCard({
   }, [fix.id]);
 
   const delay = delayLine(fix);
+  const leftAt = fix.left ? soundClock(new Date(fix.left)) : null;
   const eta = fix.eta && fix.state === "underway" ? soundClock(new Date(fix.eta)) : null;
-  // Name the destination (owner's walk): "arrives about 5:15" left the
-  // rider asking WHERE. "about", not "scheduled" - this is WSF's live
-  // estimate; the scheduled time has its own line below.
-  const arrName = fix.arr != null ? terms?.get(fix.arr)?.name : null;
-  const etaLine = eta
-    ? arrName
-      ? ` · arrives in ${arrName} about ${eta}`
-      : ` · arrives about ${eta}`
-    : "";
+  const depName = terms?.get(fix.dep)?.name ?? `terminal ${fix.dep}`;
+  const arrName =
+    fix.arr != null ? (terms?.get(fix.arr)?.name ?? `terminal ${fix.arr}`) : null;
 
   return (
     <aside className={styles.card} data-testid="vessel-card">
@@ -180,11 +175,31 @@ export function VesselCard({
       </button>
       <h2 className={`display ${styles.name}`}>{fix.name}</h2>
       {dim && <p className={styles.klass}>{dim.class} class</p>}
-      <p className={styles.run}>{runLine(fix, terms)}</p>
-      <p className={styles.status}>
-        {statusLine(fix)}
-        {etaLine}
-      </p>
+      {arrName ? (
+        <div className={styles.route} data-testid="route-timing">
+          <div className={styles.endpoint} data-testid="route-origin">
+            <span className={styles.endpointTime} aria-hidden={!leftAt}>
+              {leftAt ? `Left at ${leftAt}` : "\u00a0"}
+            </span>
+            <span className={styles.terminal}>{depName}</span>
+          </div>
+          <span className={styles.arrow} aria-hidden>
+            →
+          </span>
+          <div
+            className={`${styles.endpoint} ${styles.destination}`}
+            data-testid="route-destination"
+          >
+            <span className={styles.endpointTime} aria-hidden={!eta}>
+              {eta ? `Est. arrival ${eta}` : "\u00a0"}
+            </span>
+            <span className={styles.terminal}>{arrName}</span>
+          </div>
+        </div>
+      ) : (
+        <p className={styles.run}>{runLine(fix, terms)}</p>
+      )}
+      <p className={styles.status}>{statusLine(fix)}</p>
       {delay && (
         <p className={`${styles.delay} ${delay.lateMin >= 5 ? styles.late : ""}`}>{delay.text}</p>
       )}

@@ -55,6 +55,9 @@ async function interceptData(page: Page, day: unknown) {
   await page.route("**/data/vessels.json", (r) =>
     r.fulfill({ body: fixture("vessels.json"), contentType: "application/json" }),
   );
+  await page.route("**/data/terminals.json", (r) =>
+    r.fulfill({ body: fixture("terminals.json"), contentType: "application/json" }),
+  );
   const today = soundToday();
   await page.route(`**/data/pairs/${DEP}-${ARR}/*.json`, (r) => {
     const wanted = r.request().url().endsWith(`/${today}.json`);
@@ -74,6 +77,26 @@ test("Next sailings expands the current route's schedule inline and collapses ba
   const card = page.getByTestId("vessel-card");
   await expect(card).toBeVisible({ timeout: 20_000 });
   await expect(card).toContainText("Chimacum");
+
+  const origin = card.getByTestId("route-origin");
+  const destination = card.getByTestId("route-destination");
+  await expect(origin).toContainText("Left at");
+  await expect(origin).toContainText("Seattle");
+  await expect(destination).toContainText("Est. arrival");
+  await expect(destination).toContainText("Bremerton");
+
+  const [leftTime, originTerminal, eta, destinationTerminal] = await Promise.all([
+    origin.locator("span").nth(0).boundingBox(),
+    origin.locator("span").nth(1).boundingBox(),
+    destination.locator("span").nth(0).boundingBox(),
+    destination.locator("span").nth(1).boundingBox(),
+  ]);
+  expect(leftTime).not.toBeNull();
+  expect(originTerminal).not.toBeNull();
+  expect(eta).not.toBeNull();
+  expect(destinationTerminal).not.toBeNull();
+  expect(leftTime!.y).toBeLessThan(originTerminal!.y);
+  expect(eta!.y).toBeLessThan(destinationTerminal!.y);
 
   const toggle = card.getByRole("button", { name: /Next sailings/ });
   await expect(toggle).toBeVisible();

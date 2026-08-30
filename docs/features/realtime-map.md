@@ -265,6 +265,11 @@ know where it is going, and an image above that answer pushes it down the
 card. An image that fails to load removes itself rather than leaving a
 broken frame.
 
+The route line reads spatially: the actual left-at time sits above the
+origin terminal, and WSF's estimated arrival sits above the destination.
+The scheduled departure and any lateness remain a separate comparison
+below, rather than repeating either live time.
+
 Shipping it needs two credentialed steps - upload the mirror, then
 `{"mode": "force-rebuild"}` on the dims refresher, because a new CONTRACT
 field cannot wait for a WSDOT cacheflush that may be weeks away.
