@@ -3,11 +3,13 @@
 // Everything WSF is saying right now, across every route (owner's walk,
 // 2026-08-19). Public data - no sign-in needed. Route names resolve from
 // the pairs index; a bulletin whose text merely repeats its title shows
-// the title once, not twice (WSF does this constantly).
+// the title once, not twice (WSF does this constantly - the rule lives
+// in alertBody, shared with the trip page's banner).
 
 import { useEffect, useMemo, useState } from "react";
 import { makeTripFetchers } from "@/lib/data/trip-data";
 import { soundStamp } from "@/lib/time/sound-time";
+import { alertBody } from "@/lib/trip/alert-text";
 import type { AlertsDoc, PairsIndex } from "@/lib/trip/types";
 import tripStyles from "@/components/trip/trip.module.css";
 import styles from "./account.module.css";
@@ -58,22 +60,25 @@ export function AllActiveAlerts() {
 
   return (
     <div className={styles.allAlerts} data-testid="all-alerts">
-      {items.map((a) => (
-        <article key={a.id} className={styles.alertCard}>
-          <h3>
-            {a.title}
-            {a.published && (
-              <time dateTime={a.published}>{soundStamp(a.published)}</time>
-            )}
-          </h3>
-          {a.text && a.text.trim() !== a.title.trim() && <p>{a.text}</p>}
-          <p className={styles.alertRoutes}>
-            {a.all_routes || a.route_ids.length === 0
-              ? "All routes"
-              : a.route_ids.map((id) => routeNames.get(id) ?? `route ${id}`).join(" · ")}
-          </p>
-        </article>
-      ))}
+      {items.map((a) => {
+        const body = alertBody(a);
+        return (
+          <article key={a.id} className={styles.alertCard}>
+            <h3>
+              {a.title}
+              {a.published && (
+                <time dateTime={a.published}>{soundStamp(a.published)}</time>
+              )}
+            </h3>
+            {body && <p>{body}</p>}
+            <p className={styles.alertRoutes}>
+              {a.all_routes || a.route_ids.length === 0
+                ? "All routes"
+                : a.route_ids.map((id) => routeNames.get(id) ?? `route ${id}`).join(" · ")}
+            </p>
+          </article>
+        );
+      })}
     </div>
   );
 }
