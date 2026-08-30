@@ -121,7 +121,7 @@
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
 }
 
-/* The under-construction notice: quiet, permanent, everywhere - bottom
+/* The beta / data-attribution notice: quiet, permanent, everywhere - bottom
  * center where nothing interactive lives. pointer-events: none so it can
  * never intercept a tap (the consent banner sits above it on first
  * visit, which is fine - consent dismisses once). */
