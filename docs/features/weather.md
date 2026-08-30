@@ -73,8 +73,10 @@ the day - including the air, in smoke season.
   rain), not line drawings - the owner's 2026-08-20 call after the
   stroked set proved "very hard to decipher" at chip sizes, and flat
   color is the map's native language. Sized for glanceability after two
-  owner passes (+30% then +50%, 2026-08-20): strip icons 36 px at
-  1.68rem text, AQI chips 1.47rem, map chips 26 px icons + 21 px temps.
+  owner passes (+30% then +50%, 2026-08-20): trip-page icons 36 px at
+  1.68rem text, AQI chips 1.47rem, map chips 26 px icons + 21 px temps
+  (2026-08-30: trip icons 26 px / chips ~1.55rem - the h1 placement
+  below wants subordination to the names, not parity).
   The staggered Fauntleroy/Vashon/Southworth markers carry name AND chip
   at every zoom - a first cut hid their chips below the declutter zoom,
   which on a phone's default framing meant no weather at all (owner
@@ -89,7 +91,22 @@ the day - including the air, in smoke season.
   (controller.syncWeather, 10-min refresh), following the labels' own
   declutter rules; missing weather removes chips, never fakes them.
 
+- `components/weather/TerminalWeather.tsx` (was WeatherStrip): the trip
+  page's weather is worn by the h1 itself - the server-rendered shell
+  leaves an empty slot span beside each terminal name and this client
+  component portals a compact chip (icon, temp, rain >=15%, AQI pill)
+  into it, condition/wind detail in the title. Owner's 2026-08-30 call:
+  the standalone strip repeated the names the h1 already said, and the
+  page reads cleaner with weather on the names. Honesty survives the
+  move: outside the horizon a slot stays empty, per-end unavailability
+  is silent absence (the old "no forecast" text died with the section),
+  and a stale as_of still prints out loud as a note where the strip sat.
+
 ## Status
+
+- 2026-08-30: trip-page weather moved out of its own section and onto
+  the h1's terminal names (portaled chips; stale note stays inline).
+  Owner call for a cleaner page.
 
 - 2026-08-20: glyphs redrawn flat + colorful, everything ~30% bigger
   (PR #102) - owner acceptance feedback; verified live on the deployed

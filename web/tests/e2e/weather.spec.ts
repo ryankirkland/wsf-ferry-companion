@@ -2,8 +2,9 @@ import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-// F6 weather surfaces: the trip-page strip (both terminals at the viewed
-// sailing's hour, AQI chips) and the map terminals' icon+temp chips.
+// F6 weather surfaces: the trip h1's per-terminal chips (both ends at
+// the viewed sailing's hour, AQI included) and the map terminals'
+// icon+temp chips.
 // The weather doc is route-fulfilled from the committed fixture template,
 // re-timed to "now" the same way the pair-day fixture is.
 
@@ -31,9 +32,9 @@ async function interceptWeather(page: Page) {
   );
 }
 
-test("trip page shows both terminals' weather with the EPA-colored AQI", async ({ page }) => {
+test("the h1's terminal names wear their weather, with the EPA-colored AQI", async ({ page }) => {
   await interceptWeather(page);
-  // Trip data 404s: the strip must still render on today's "now" hour.
+  // Trip data 404s: the chips must still render on today's "now" hour.
   await page.route("**/data/pairs/**", (r) => r.fulfill({ status: 404, body: "" }));
   await page.route("**/data/fares/**", (r) => r.fulfill({ status: 404, body: "" }));
   await page.route("**/data/stats/**", (r) => r.fulfill({ status: 404, body: "" }));
@@ -42,21 +43,27 @@ test("trip page shows both terminals' weather with the EPA-colored AQI", async (
   await page.route("**/data/fleet.json", (r) => r.fulfill({ status: 404, body: "" }));
   await page.goto("/trip/seattle-bainbridge-island/");
 
-  const strip = page.getByTestId("weather-strip");
-  await expect(strip).toBeVisible();
-  await expect(strip).toContainText("Seattle");
-  await expect(strip).toContainText("Bainbridge");
-  await expect(strip).toContainText("°");
+  // The weather is worn by the h1 itself - a chip beside each terminal
+  // name, no separate section.
+  const h1 = page.getByRole("heading", { level: 1 });
+  await expect(page.getByTestId("wx-Seattle")).toBeVisible();
+  await expect(h1).toContainText("°");
   // The fixture pins Seattle at AQI 54 Moderate - category name always
   // rides with the color.
-  await expect(strip).toContainText("AQI 54 Moderate");
+  await expect(h1).toContainText("AQI 54 Moderate");
+  // The fixture deliberately starts Bainbridge's hours 60 min out, so
+  // "now" sits outside its horizon: the honest answer is a bare name
+  // (the old strip printed a "no forecast" row here; the h1 placement
+  // renders nothing instead).
+  await expect(page.getByTestId("wx-Bainbridge Island")).toHaveCount(0);
 });
 
-test("weather absent means an absent strip, not a broken one", async ({ page }) => {
+test("weather absent means bare terminal names, not a broken h1", async ({ page }) => {
   await page.route("**/data/**", (r) => r.fulfill({ status: 404, body: "" }));
   await page.goto("/trip/seattle-bainbridge-island/");
   await expect(page.getByRole("heading", { name: /Seattle/ })).toBeVisible();
-  await expect(page.getByTestId("weather-strip")).toHaveCount(0);
+  await expect(page.getByTestId("wx-Seattle")).toHaveCount(0);
+  await expect(page.getByTestId("wx-Bainbridge Island")).toHaveCount(0);
 });
 
 test("map terminals carry icon + temperature chips", async ({ page }) => {

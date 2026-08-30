@@ -44,8 +44,21 @@ export default async function TripPairPage({ params }: { params: Promise<{ pair:
           </Link>
         </div>
 
+        {/* Each name carries an empty weather slot; TerminalWeather (inside
+            TripView, which owns the viewed-sailing hour) portals a compact
+            conditions chip into it once the forecast doc loads. Keeping the
+            h1 server-rendered preserves the static export's real body. */}
         <h1 className={`display ${styles.pairTitle}`}>
-          {entry.depName} → {entry.arrName}
+          <span className={styles.pairEnd}>
+            {entry.depName}
+            <span id="wx-slot-dep" className={styles.wxSlot} />
+          </span>{" "}
+          <span className={styles.pairEnd}>
+            {/* The arrow travels with the arrival name so a narrow wrap
+                can never orphan it onto its own line. */}
+            <span>→ {entry.arrName}</span>
+            <span id="wx-slot-arr" className={styles.wxSlot} />
+          </span>
         </h1>
 
         {/* TripView reads useSearchParams (?date=), which in a static export
