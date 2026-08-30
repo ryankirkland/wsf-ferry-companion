@@ -58,7 +58,7 @@ describe("alertBody - drop the body that only repeats the title", () => {
     ).toBe(text);
   });
 
-  it("returns the text untouched when it is kept - no reformatting", () => {
+  it("returns a kept body trimmed, but otherwise untouched - no reformatting", () => {
     const text = "  Ana/SJs - the 1:30 sailing is cancelled.  ";
     expect(alertBody({ title: "Ana/SJs - vessel out of service", text })).toBe(text.trim());
   });

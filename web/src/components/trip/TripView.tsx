@@ -25,12 +25,12 @@ import { writeStorage, YOUR_RUN_KEY } from "@/lib/storage";
 import { shiftDate, soundDate, soundTimeShort } from "@/lib/time/sound-time";
 import { WeatherStrip } from "@/components/weather/WeatherStrip";
 import { Reliability } from "@/components/stats/Reliability";
-import { capacityFor, slotKeyFor } from "@/lib/stats/reliability";
+import { capacityFor, indexCapacity, slotKeyFor } from "@/lib/stats/reliability";
 import { AlertBanner } from "./AlertBanner";
 import { AnswerLine } from "./AnswerLine";
 import { DateStrip } from "./DateStrip";
 import { DepartureList, type DepartureItem } from "./DepartureList";
-import { DriveUpNote } from "./DriveUp";
+import { DriveUpNote, hasDriveUpCount } from "./DriveUp";
 import { FaresPanel } from "./FaresPanel";
 import styles from "./trip.module.css";
 
@@ -98,8 +98,23 @@ export function TripView({ slug }: { slug: string }) {
     [stats.capacity, entry.dep, entry.arr, now],
   );
   const capacityBySailing = useMemo(
-    () => new Map((capacityView.sailings ?? []).map((s) => [s.depart_ms, s])),
+    () => indexCapacity(capacityView.sailings ?? []),
     [capacityView],
+  );
+
+  // How many cards will actually print a number. The note says "none of the
+  // sailings above are showing space" instead of stamping a reading time over
+  // a page with no numbers on it - see DriveUp.tsx.
+  const driveUpShown = useMemo(
+    () =>
+      items.filter(
+        (i) =>
+          i.cancelledReason === null &&
+          i.signal.state !== "departed" &&
+          i.signal.state !== "gone" &&
+          hasDriveUpCount(capacityBySailing.get(i.sailing.depart_ms)),
+      ).length,
+    [items, capacityBySailing],
   );
 
   const nextIndex = items.findIndex(
@@ -198,7 +213,12 @@ export function TripView({ slug }: { slug: string }) {
             are none - which absence is the true one. Only today: the feed
             has nothing to say about a future date. */}
         {isToday && !exhausted && items.length > 0 && (
-          <DriveUpNote view={capacityView} depName={entry.depName} nowMs={now} />
+          <DriveUpNote
+            view={capacityView}
+            depName={entry.depName}
+            nowMs={now}
+            shown={driveUpShown}
+          />
         )}
 
         <DateStrip today={today} selected={date} onSelect={setDate} />

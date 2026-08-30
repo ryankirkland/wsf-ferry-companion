@@ -28,6 +28,8 @@ html[data-mode="day"] {
   --stack: #e5674b;
   --keel: #1e4d40;
   --wake: #26737b;
+  --warn: #96691f;
+  --alarm: #bb5742;
 }
 
 html[data-mode="dusk"] {
@@ -54,6 +56,8 @@ html[data-mode="dusk"] {
   --stack: #d05a40;
   --keel: #163b32;
   --wake: #4c6f84;
+  --warn: #90651e;
+  --alarm: #ad523b;
 }
 
 html[data-mode="night"] {
@@ -79,6 +83,8 @@ html[data-mode="night"] {
   --stack: #8f4433;
   --keel: #0c261f;
   --wake: #7fd8b8;
+  --warn: #bc8327;
+  --alarm: #b48276;
 }
 
 :root {

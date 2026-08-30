@@ -194,17 +194,36 @@ Bainbridge reports all day):
 **Pair page** (`/trip/{slug}`). Drive-up space renders ON the departure card it describes
 (owner's call, 2026-08-30) - it was a separate "Drive-up space" section below the schedule,
 which asked the rider to match clock times across two lists to answer one question: "will I get
-on THAT boat?" The reading is joined to the sailing by `depart_ms`, the same scheduled-departure
-instant WSF puts on both feeds (`Departure` in terminalsailingspace, `DepartingTime` in the
-schedule), so a reading with no matching card simply does not render - the join is exact by
-construction, and `tests/e2e/stats.spec.ts` fails if it ever stops landing.
+on THAT boat?"
+
+The reading is joined to the sailing by `depart_ms`. Both sides derive that key the same way -
+`parse_dotnet_date` on WSF's own scheduled-departure string, `Departure` in terminalsailingspace
+and `DepartingTime` in the schedule feed - so the key matches by construction, with no timezone
+or rounding step between them. What is NOT proven is that WSF always publishes the same instant
+in both feeds for the same sailing: the e2e test builds both sides from one clock, so it pins
+the wiring, not the upstream agreement. The 319 archived capacity snapshots could settle it
+against archived schedules; until someone does, a reading whose instant matches no card renders
+nothing and `DriveUpNote` says so (below).
 
 What the move preserved, changed, and dropped:
 
 - The three absence states above still print, in `DriveUpNote` under the list, along with the
   as-of stamp, the staleness label, and what the number counts.
-- A card already struck as cancelled carries no space count; the capacity feed's own
-  `IsCancelled` still shows as "Cancelled" on cards the schedule has not struck.
+- It added a **fourth**: the terminal is reporting, and yet no visible card carries a count -
+  every matching sailing struck, or nothing in the feed lining up with the day's departures.
+  `DriveUpNote` takes the count of cards that actually printed a number and says "none of the
+  sailings above are showing drive-up space" rather than stamping a reading time over a list
+  with no numbers on it. The section could not reach this state; the cards can.
+- A card already struck as cancelled carries no space count. The capacity feed's own
+  `IsCancelled` can move before the schedule's adjustments do, so when it disagrees the card
+  says **"Cancelled at the terminal"** - attributed, because it is a claim from a different
+  source than the row's signal pill sitting inches away.
+- A **departed** sailing carries no count either. `capacityFor` keeps readings back to
+  `now - 5 min` so a boarding number does not outlive the boarding.
+- Two readings at one instant that **disagree** are dropped rather than resolved by array order
+  (`indexCapacity`): `build_contract` appends one entry per arrival-terminal row without
+  deduping, and showing an arbitrary one of two contradictory counts is the confident wrong
+  number this project does not print. Unverified in the wild - a guard, not a fix.
 - Space renders for **today only**. The feed is current-state, so a future date shows no
   numbers at all rather than today's lot under tomorrow's sailings - the old section rendered
   regardless of the date being browsed.
@@ -212,6 +231,14 @@ What the move preserved, changed, and dropped:
   ratio this contract refuses to publish (see above: `max_space` includes reservable inventory
   we cannot see). The count and WSF's own colour carry the same judgment without implying we
   know how full the boat is.
+- The colours are `--warn` / `--alarm`, added to the mode tokens for this: the count is small
+  text painted straight on `--card` with no tinted pill behind it, and the stats-page hexes it
+  inherited measured 3.1:1 in night mode. Each mode's pair now clears 4.6:1. The wording
+  ("filling up", "nearly full") keeps colour from being the only channel.
+
+The vessel card's inline schedule (`VesselSchedule`) reuses `DepartureList` without capacity, so
+it shows no drive-up numbers - deliberate: it answers "where is this boat going", not "can I get
+my car on".
 
 Reliability picks the rider's own departure out of the slot table by Sound-local `HH:MM` - the
 same key the contract uses - and leads with it. A degraded slot shows the hour bucket, marks

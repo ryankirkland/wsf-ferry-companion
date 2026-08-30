@@ -54,9 +54,11 @@ export function DepartureRow({
       meta.push(<span key="arr">~ arrives {soundTimeShort(arriveMs)}</span>);
     }
   }
-  // Drive-up space rides with the sailing it describes. A row already
-  // struck as cancelled says that once, in the pill.
-  if (capacity && !cancelled) {
+  // Drive-up space rides with the sailing it describes. A row already struck
+  // as cancelled says that once, in the pill; a boat that has left cannot be
+  // boarded, and the feed keeps publishing its count for a few minutes after
+  // departure (capacityFor's now-5min window).
+  if (capacity && !cancelled && !past) {
     meta.push(<DriveUpChip key="driveup" sailing={capacity} />);
   }
   if (sailing.added) meta.push(<span key="added">Added sailing</span>);

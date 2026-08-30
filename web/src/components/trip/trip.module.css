@@ -287,11 +287,11 @@
 }
 
 .driveUpFilling {
-  color: #96691f;
+  color: var(--warn);
 }
 
 .driveUpFull {
-  color: color-mix(in srgb, var(--stack) 80%, var(--ink));
+  color: var(--alarm);
 }
 
 .driveUpUnknown {
@@ -306,7 +306,7 @@
 }
 
 .driveUpStale {
-  color: #96691f;
+  color: var(--warn);
 }
 
 .driveUpAbsent {

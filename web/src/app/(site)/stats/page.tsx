@@ -19,7 +19,7 @@ export default function StatsPage() {
             ← Back to map
           </Link>
           <Link href="/trip" className={styles.swap}>
-            Plan a trip
+            Sailing schedule
           </Link>
         </div>
 

@@ -5,11 +5,17 @@
 // "will I get on THAT boat?" (owner's call, 2026-08-30). The reading now
 // rides in the departure card and the section is gone.
 //
-// What did NOT move: the three absence states (docs/features/stats.md). A
-// terminal that publishes nothing must say so in words, and the overnight
-// feed-quiet case must not be reported as "this terminal does not report" -
-// that false claim reached production once already. DriveUpNote carries them,
-// plus the as-of stamp, the staleness label, and what the number means.
+// What did NOT move: the absence states (docs/features/stats.md). A terminal
+// that publishes nothing must say so in words, and the overnight feed-quiet
+// case must not be reported as "this terminal does not report" - that false
+// claim reached production once already. DriveUpNote carries them, plus the
+// as-of stamp, the staleness label, and what the number means.
+//
+// The move added a FOURTH absence the section could not have: the feed is
+// publishing for this run, and yet not one visible card carries a count -
+// every matching sailing struck, or nothing in the feed lining up with the
+// day's departures. `shown` exists so the note reports that instead of
+// stamping an as-of time over a page with no numbers on it.
 //
 // The meter bar did not survive the move, deliberately: it drew
 // drive_up / max_space, the ratio the contract refuses to publish because
@@ -32,16 +38,29 @@ const LEVEL_CLASS = {
 // needs no adjective, and adding one ("90 spaces, plenty") just pads it.
 const LEVEL_WORD = { plenty: null, filling: "filling up", full: "nearly full" } as const;
 
+/** Does this reading put a NUMBER on a card? The note's honesty turns on
+ * this: a cancelled sailing and a reading WSF never published both render
+ * no count, and the page must not then claim it is showing space. */
+export function hasDriveUpCount(sailing: CapacitySailing | null | undefined): boolean {
+  return sailing != null && !sailing.cancelled && sailing.drive_up !== null;
+}
+
 /** The drive-up reading for one departure, or null when WSF has published
  * none for it - silence is better than "not published" on every card, and
  * the note under the list explains the absence once. */
 export function DriveUpChip({ sailing }: { sailing: CapacitySailing }) {
-  const levelClass = sailing.level ? LEVEL_CLASS[sailing.level] : styles.driveUpUnknown;
-
+  // The terminal feed carries its own IsCancelled, which can move before the
+  // schedule's adjustments do. It is a claim from a different source than the
+  // row's signal pill, so it says where it comes from rather than sitting
+  // bare next to a countdown and contradicting it.
   if (sailing.cancelled) {
     return (
-      <span className={`${styles.driveUp} ${styles.driveUpFull}`} data-testid="drive-up">
-        Cancelled
+      <span
+        className={`${styles.driveUp} ${styles.driveUpFull}`}
+        data-testid="drive-up"
+        data-level="cancelled"
+      >
+        Cancelled at the terminal
       </span>
     );
   }
@@ -49,6 +68,7 @@ export function DriveUpChip({ sailing }: { sailing: CapacitySailing }) {
   if (sailing.drive_up === null) return null;
 
   const spaces = formatDriveUp(sailing.drive_up);
+  const levelClass = sailing.level ? LEVEL_CLASS[sailing.level] : styles.driveUpUnknown;
   const word = sailing.level ? LEVEL_WORD[sailing.level] : null;
 
   return (
@@ -70,16 +90,20 @@ export function DriveUpChip({ sailing }: { sailing: CapacitySailing }) {
   );
 }
 
-/** What the numbers on the cards mean, when they were read, and - when
- * there are none - which of the three absences is the true one. */
+/** What the numbers on the cards mean, when they were read, and - when there
+ * are none - which absence is the true one.
+ *
+ * `shown` is how many cards above actually carry a count. */
 export function DriveUpNote({
   view,
   depName,
   nowMs,
+  shown,
 }: {
   view: CapacityView;
   depName: string;
   nowMs: number;
+  shown: number;
 }) {
   // No document yet: say nothing rather than guess which absence applies.
   if (view.asOfMs === null && !view.reporting) return null;
@@ -102,11 +126,13 @@ export function DriveUpNote({
     );
   }
 
-  if ((view.sailings ?? []).length === 0) {
+  // Reporting, but nothing landed on a card. Says exactly that - never an
+  // as-of stamp over a page with no numbers on it.
+  if (shown === 0) {
     return (
       <p className={styles.driveUpAbsent} data-testid="capacity-empty">
-        No upcoming departures from {depName} are reporting drive-up space right now. Space is
-        usually published a few hours ahead of each sailing.
+        None of the sailings above are showing drive-up space right now. Space is usually published
+        a few hours ahead of each sailing.
       </p>
     );
   }
@@ -118,7 +144,9 @@ export function DriveUpNote({
     <p className={styles.driveUpNote} data-testid="capacity-note">
       {stamp && (
         <span className={view.stale ? styles.driveUpStale : undefined}>
-          {view.stale ? `Drive-up space last updated ${stamp} - more than a few minutes old, so it may have changed. ` : `Drive-up space as of ${stamp}. `}
+          {view.stale
+            ? `Drive-up space last updated ${stamp} - more than a few minutes old, so it may have changed. `
+            : `Drive-up space as of ${stamp}. `}
         </span>
       )}
       Spaces left for vehicles without a reservation. Reserved spaces are a separate pool that WSF

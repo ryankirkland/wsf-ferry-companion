@@ -6,6 +6,7 @@
 
 import { CAPACITY_PATH, DATA_BASE, DATA_MODE, pairStatsPath, STATS_SUMMARY_PATH } from "@/config";
 import { slotKeyFor } from "@/lib/stats/reliability";
+import { fixtureBaseMs } from "@/lib/trip/fixture-template";
 import {
   isCapacityDoc,
   isPairStats,
@@ -70,7 +71,7 @@ const fixture: StatsFetchers = {
     const slots = ordered
       .map((slot, i) => {
         const offset = TEMPLATE_OFFSETS_MIN[i];
-        return offset === undefined ? null : { ...slot, hhmm: slotKeyFor(Date.now() + offset * 60_000) };
+        return offset === undefined ? null : { ...slot, hhmm: slotKeyFor(fixtureBaseMs() + offset * 60_000) };
       })
       .filter((s): s is NonNullable<typeof s> => s !== null)
       .sort((a, b) => a.hhmm.localeCompare(b.hhmm));
@@ -79,11 +80,18 @@ const fixture: StatsFetchers = {
   capacity: async () => {
     const doc = guarded(await getJson("/dev-fixtures/capacity.json"), isCapacityDoc);
     if (!doc) return null;
-    const base = Date.now() + 20 * 60_000;
+    // Readings land ON the template's own upcoming departures, off the one
+    // fixture clock: the page joins them by depart_ms, so an independent
+    // Date.now() or an offset the schedule does not have renders no chips at
+    // all - the exact state the honesty note is meant to be rare.
+    const base = fixtureBaseMs();
+    const upcoming = TEMPLATE_OFFSETS_MIN.filter((m) => m > 0).sort((a, b) => a - b);
     const pairs = Object.fromEntries(
       Object.entries(doc.pairs).map(([key, sailings]) => [
         key,
-        sailings.map((s, i) => ({ ...s, depart_ms: base + i * 40 * 60_000 })),
+        sailings
+          .slice(0, upcoming.length)
+          .map((s, i) => ({ ...s, depart_ms: base + upcoming[i]! * 60_000 })),
       ]),
     );
     return { ...doc, generated_at: new Date().toISOString(), pairs };

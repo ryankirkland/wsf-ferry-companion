@@ -328,6 +328,48 @@ test.describe("drive-up capacity", () => {
     await expect(page.getByTestId("capacity-note")).toHaveCount(0);
   });
 
+  test("the terminal feed's own cancellation says where it comes from", async ({ page }) => {
+    const baseMs = Date.now();
+    await interceptSchedule(page, baseMs);
+    await interceptStats(page, baseMs);
+    // WSF's space feed marks the next boat cancelled while the schedule has
+    // not struck it: the row still carries its countdown, so the contrary
+    // claim must be attributed rather than sit bare beside it.
+    await page.route("**/data/capacity.json", (r) => {
+      const doc = buildCapacity(baseMs);
+      doc.pairs[`${DEP}-${ARR}`]![0]!.cancelled = true;
+      return r.fulfill(json(doc));
+    });
+    await page.goto(`/trip/${SLUG}/`);
+
+    const rows = page.getByTestId("departures").locator("li");
+    const chip = rows.nth(0).getByTestId("drive-up");
+    await expect(chip).toHaveText("Cancelled at the terminal");
+    await expect(chip).toHaveAttribute("data-level", "cancelled");
+  });
+
+  test("nothing on a card means the note says so, not an as-of stamp", async ({ page }) => {
+    const baseMs = Date.now();
+    await interceptSchedule(page, baseMs);
+    await interceptStats(page, baseMs);
+    // The feed is publishing for this run, but on instants no card carries -
+    // the fourth absence the move created. The page must not stamp a reading
+    // time over a list with no numbers on it.
+    await page.route("**/data/capacity.json", (r) => {
+      const doc = buildCapacity(baseMs);
+      for (const s of doc.pairs[`${DEP}-${ARR}`]!) s.depart_ms += 37_000;
+      return r.fulfill(json(doc));
+    });
+    await page.goto(`/trip/${SLUG}/`);
+
+    await expect(page.getByTestId("departures").locator("li").first()).toBeVisible();
+    await expect(page.getByTestId("drive-up")).toHaveCount(0);
+    await expect(page.getByTestId("capacity-note")).toHaveCount(0);
+    await expect(page.getByTestId("capacity-empty")).toContainText(
+      "None of the sailings above are showing drive-up space",
+    );
+  });
+
   test("a terminal that publishes nothing says so instead of showing an empty gauge", async ({
     page,
   }) => {
