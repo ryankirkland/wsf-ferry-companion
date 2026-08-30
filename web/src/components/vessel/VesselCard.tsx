@@ -187,10 +187,10 @@ export function VesselCard({
           <div className={styles.endpoint} data-testid="route-origin">
             <span className={styles.endpointTime} aria-hidden={!leftAt}>
               {leftAt ? `Left at ${leftAt}` : "\u00a0"}
+              {departureLateMin !== null && (
+                <span className={styles.endpointLate}> {departureLateMin} min late</span>
+              )}
             </span>
-            {departureLateMin !== null && (
-              <span className={styles.endpointLate}>{departureLateMin} min late</span>
-            )}
             <span className={styles.terminal}>{depName}</span>
           </div>
           <span className={styles.arrow} aria-hidden>
