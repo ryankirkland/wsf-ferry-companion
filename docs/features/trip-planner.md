@@ -1,6 +1,13 @@
-# F2: Trip planner
+# F2: Sailing schedule
 
 Living reference for PRD F2. Updated whenever the feature changes.
+
+Named "Trip planner" until 2026-08-30, when the owner renamed the surface
+to **Sailing schedule** - it lists the day's sailings rather than planning
+anything. The rename is display-only: the route (`/trip/{slug}`), the
+component directory, the `nav-trip` analytics label and the PRD's M2
+milestone name all keep the old identity, so links, saved runs and the
+analytics series stay continuous.
 
 ## Goal
 
@@ -47,7 +54,17 @@ across 5 routes.**
   cancellation surface; free-text sailing extraction is M3 scope. The UI
   stamps every alert with its publish time (Sound-time clock if today,
   short date otherwise) - a 9 AM delay notice means something different
-  at 5 PM.
+  at 5 PM. WSF publishes two strings per bulletin (AlertFullTitle and
+  RouteAlertText) and for most bulletins they are the same sentence typed
+  twice, drifting only in spacing and punctuation ("Edm/King- Boarding"
+  vs "Edm/King - Boarding"), so the UI prints the body only when it says
+  something the title did not: `alertBody()`
+  (`web/src/lib/trip/alert-text.ts`, shared with the account page's
+  all-alerts list) folds case/punctuation/whitespace and drops a body the
+  title already covers. It never drops a body that EXTENDS the title -
+  that is where the cancellations live ("The 0405 VASH>FAU ... are
+  cancelled"), and hiding those would cost a rider a sailing. Owner's
+  call, 2026-08-30: "why do these alerts have unnecessary sub text?"
 - `/data/adjustments.json` (added 2026-07-29) - every timeadj row
   expanded to per-date entries (date, route_id/name, dep terminal,
   add|cancel, tidal, HH:MM local), past dates dropped. Published on
@@ -94,12 +111,14 @@ adding/dropping a pair fails CI and the regeneration script is the fix.
 Page anatomy: pair header (swap link, crossing badge) -> route-matched
 alert banner (the same-day-truth surface) -> answer line ("Next boat:
 5:30 PM - leaves in 42 min · Wenatchee is at the dock") -> departures with
-signal pills (earlier sailings collapsed) -> 14-chip date strip (`?date=`
-bounded today..+13, out-of-range clamps with an honest note) -> collapsible
-fares panel (basic 13 default, honest effective label).
+signal pills and today's live drive-up space on the card itself (earlier
+sailings collapsed; the F5 join and its honesty rules live in
+docs/features/stats.md) -> 14-chip date strip (`?date=` bounded today..+13,
+out-of-range clamps with an honest note) -> collapsible fares panel
+(basic 13 default, honest effective label).
 
 Navigation (reworked at the owner's 2026-08-19 walk): the boat-button
-drawer (live map, trip planner, "your run", on-time record, Ferry
+drawer (live map, sailing schedule, "your run", on-time record, Ferry
 Alerts, ambient, account) now renders on every page except /ambient;
 wide screens additionally get a persistent SideNav rail, and non-map
 mastheads lead with "Back to map" instead of the wordmark. Coaching

@@ -12,7 +12,7 @@ import {
   pairDayPath,
   pairFaresPath,
 } from "@/config";
-import { resolveTripTemplate } from "@/lib/trip/fixture-template";
+import { fixtureBaseMs, resolveTripTemplate } from "@/lib/trip/fixture-template";
 import {
   isAdjustmentsDoc,
   isAlertsDoc,
@@ -65,7 +65,7 @@ const fixture: TripFetchers = {
   index: async () => guarded(await getJson("/dev-fixtures/pairs-index.json"), isPairsIndex),
   day: async (dep, arr, date) => {
     const raw = await getText("/dev-fixtures/pair-day.template.json");
-    const doc = guarded(JSON.parse(resolveTripTemplate(raw, Date.now())), isPairDay);
+    const doc = guarded(JSON.parse(resolveTripTemplate(raw, fixtureBaseMs())), isPairDay);
     if (!doc) return null;
     return { ...doc, pair: { dep, arr }, service_date: date };
   },
@@ -75,7 +75,7 @@ const fixture: TripFetchers = {
   },
   alerts: async () => {
     const raw = await getText("/dev-fixtures/alerts.json");
-    return guarded(JSON.parse(resolveTripTemplate(raw, Date.now())), isAlertsDoc);
+    return guarded(JSON.parse(resolveTripTemplate(raw, fixtureBaseMs())), isAlertsDoc);
   },
   adjustments: async () =>
     guarded(await getJson("/dev-fixtures/adjustments.json"), isAdjustmentsDoc),

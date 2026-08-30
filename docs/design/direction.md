@@ -44,6 +44,12 @@ amber the moment dusk begins - the lantern moment is the brand) · stack
 
 Status colors (reserved, never decorative): ontime `#dff0e6`/`#106648` ·
 delay `#fce8cf`/`#8a5310` · boarding `#e3eaf9`/`#33508f` · alert edge `#e8a13c`.
+The pill-less warning pair rides the modes, because it is small text painted
+straight onto `--card` with no tinted background to lean on: warn `#96691f` /
+`#90651e` / `#bc8327` · alarm `#bb5742` / `#ad523b` / `#b48276`, each tuned to
+at least 4.6:1 on that mode's card (added 2026-08-30 for the drive-up counts;
+the fixed status pair above is measured against its own `-bg`, which is why it
+can be mode-independent).
 Grain: canvas-baked speckle, dark `rgba(38,51,58,.06)` on day/dusk, light
 `rgba(255,255,255,.05)` at night, ~55% coverage, tiled 96px.
 

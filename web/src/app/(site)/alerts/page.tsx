@@ -21,7 +21,7 @@ export default function AlertsPage() {
             ← Back to map
           </Link>
           <Link href="/trip" className={tripStyles.swap}>
-            Trip planner
+            Sailing schedule
           </Link>
         </div>
         <h1 className={`display ${tripStyles.pairTitle}`}>Ferry Alerts</h1>

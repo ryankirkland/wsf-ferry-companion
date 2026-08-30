@@ -119,6 +119,37 @@ export function capacityFor(
   return { sailings, reporting: true, feedQuiet, stale, asOfMs };
 }
 
+/** Index a pair's capacity readings by departure instant - the join key the
+ * trip page uses, because WSF stamps the same scheduled-departure time on
+ * the space feed and the schedule feed.
+ *
+ * `build_contract` appends one entry per (departure x arrival-terminal row)
+ * with no dedupe, so a pair CAN in principle carry two entries at the same
+ * instant. Identical twins collapse harmlessly; two entries that disagree are
+ * DROPPED rather than resolved by array order - showing an arbitrary one of
+ * two contradictory counts is the kind of confident wrong number this project
+ * does not print. (Unverified in the wild: the archived overnight samples are
+ * empty, so this is a guard, not a fix for something observed.)
+ */
+export function indexCapacity(sailings: CapacitySailing[]): Map<number, CapacitySailing> {
+  const byDeparture = new Map<number, CapacitySailing>();
+  const contested = new Set<number>();
+  for (const sailing of sailings) {
+    const seen = byDeparture.get(sailing.depart_ms);
+    if (
+      seen &&
+      (seen.drive_up !== sailing.drive_up ||
+        seen.level !== sailing.level ||
+        seen.cancelled !== sailing.cancelled)
+    ) {
+      contested.add(sailing.depart_ms);
+    }
+    byDeparture.set(sailing.depart_ms, sailing);
+  }
+  for (const ms of contested) byDeparture.delete(ms);
+  return byDeparture;
+}
+
 /** How many drive-up spaces to show for a sailing.
  *
  * WSF's DriveUpSpaceCount goes NEGATIVE when more vehicles are queued than

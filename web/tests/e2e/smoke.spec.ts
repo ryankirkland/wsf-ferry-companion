@@ -173,7 +173,7 @@ test("the consent banner never blocks the boat FAB", async ({ page }) => {
   // runners.
   await expect(page.getByTestId("consent-banner")).toBeVisible();
   await page.locator('[class*="fab"]').first().click();
-  await expect(page.getByRole("link", { name: /Trip planner/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Sailing schedule/ })).toBeVisible();
 });
 
 test("the data-source notice shows once, names the sources, and stays dismissed", async ({

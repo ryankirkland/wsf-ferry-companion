@@ -5,7 +5,7 @@ import path from "node:path";
 // Inline route schedule on the vessel card (docs/features/realtime-map.md):
 // tapping "Next sailings" expands the current pair's day schedule in place
 // (no navigation), with a persistent collapse chevron and an in-card day
-// picker bounded to the same today..+13 horizon as the trip planner.
+// picker bounded to the same today..+13 horizon as the sailing schedule.
 
 const DEP = 7;
 const ARR = 4; // seattle-bremerton, matches the "Chimacum" fixture vessel below
@@ -116,7 +116,7 @@ test("Next sailings expands the current route's schedule inline and collapses ba
   await expect(schedule).toBeVisible();
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
 
-  // Same day data and row rendering as the trip planner: 8 sailings, with
+  // Same day data and row rendering as the sailing schedule: 8 sailings, with
   // everything before the next boat collapsed behind the earlier-sailings
   // toggle (DepartureList's existing behavior, reused as-is).
   const rows = schedule.getByTestId("departures").locator("li");

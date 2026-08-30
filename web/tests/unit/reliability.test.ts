@@ -8,12 +8,13 @@ import {
   formatPct,
   formatSlotTime,
   hasAnyStats,
+  indexCapacity,
   onTimeBand,
   rotateToSlot,
   slotCaveat,
   slotKeyFor,
 } from "@/lib/stats/reliability";
-import type { CapacityDoc, PairStats, SlotStat } from "@/lib/stats/types";
+import type { CapacityDoc, CapacitySailing, PairStats, SlotStat } from "@/lib/stats/types";
 
 const block = (n: number, pct: number | null, p50 = 2, p90 = 12) => ({
   n,
@@ -169,6 +170,45 @@ describe("capacity", () => {
   it("flags a reading the poller has not refreshed", () => {
     const old = doc({ generated_at: new Date(now - 600_000).toISOString() });
     expect(capacityFor(old, 3, 7, now, 240_000).stale).toBe(true);
+  });
+});
+
+describe("indexCapacity - the depart_ms join key", () => {
+  const now = Date.UTC(2026, 6, 31, 20, 0);
+  const sailing = (over: Partial<CapacitySailing> = {}): CapacitySailing => ({
+    depart_ms: now + 600_000,
+    vessel: "Tacoma",
+    cancelled: false,
+    drive_up: 40,
+    level: "plenty",
+    max_space: 120,
+    reservable: null,
+    ...over,
+  });
+
+  it("keys each reading by its departure instant", () => {
+    const map = indexCapacity([sailing(), sailing({ depart_ms: now + 1_200_000, drive_up: 12 })]);
+    expect(map.size).toBe(2);
+    expect(map.get(now + 600_000)?.drive_up).toBe(40);
+    expect(map.get(now + 1_200_000)?.drive_up).toBe(12);
+  });
+
+  it("collapses identical twins - the contract does not dedupe its rows", () => {
+    const map = indexCapacity([sailing(), sailing()]);
+    expect(map.size).toBe(1);
+    expect(map.get(now + 600_000)?.drive_up).toBe(40);
+  });
+
+  it("DROPS a contested instant rather than printing an arbitrary count", () => {
+    // Two readings for one departure that disagree: showing either one is a
+    // confident wrong number, so the card shows none.
+    const map = indexCapacity([sailing({ drive_up: 40 }), sailing({ drive_up: 3, level: "full" })]);
+    expect(map.has(now + 600_000)).toBe(false);
+  });
+
+  it("treats a cancellation disagreement as contested too", () => {
+    const map = indexCapacity([sailing(), sailing({ cancelled: true })]);
+    expect(map.size).toBe(0);
   });
 });
 

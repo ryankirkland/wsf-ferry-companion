@@ -11,6 +11,17 @@ import { soundDate } from "@/lib/time/sound-time";
 
 const MIN = 60_000;
 
+let captured: number | null = null;
+
+/** The clock every fixture document is re-timed against, captured once per
+ * page load. The trip day, the alerts and the capacity readings all join on
+ * depart_ms; calling Date.now() separately in each fetcher put them
+ * milliseconds apart and no reading ever matched a sailing. */
+export function fixtureBaseMs(): number {
+  captured ??= Date.now();
+  return captured;
+}
+
 export function resolveTripTemplate(rawJson: string, baseMs: number): string {
   return rawJson
     .replace(/"%%MS(-?\d+)%%"/g, (_, n) => String(baseMs + Number(n) * MIN))

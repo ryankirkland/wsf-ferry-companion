@@ -4,7 +4,7 @@ import { PairPicker } from "@/components/trip/PairPicker";
 import styles from "@/components/trip/trip.module.css";
 
 export const metadata: Metadata = {
-  title: "Trips · Ferry Sound",
+  title: "Sailing schedule · Ferry Sound",
   description: "Next sailings, live make-it-or-miss-it status, and fares for every WSF crossing.",
 };
 

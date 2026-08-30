@@ -14,7 +14,7 @@ import type { VesselFix } from "@/lib/data/types";
 import { asOf, soundClock } from "@/lib/time/sound-time";
 import styles from "./vessel-card.module.css";
 
-// The inline schedule pulls the trip planner's whole data + signal engine;
+// The inline schedule pulls the sailing schedule's whole data + signal engine;
 // loaded only when the disclosure opens, warmed on card mount so the tap
 // feels instant (bundle-conditional).
 const VesselSchedule = dynamic(

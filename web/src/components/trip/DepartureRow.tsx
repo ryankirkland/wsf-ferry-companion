@@ -1,8 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import type { CapacitySailing } from "@/lib/stats/types";
 import type { Signal } from "@/lib/trip/signal";
 import type { Sailing } from "@/lib/trip/types";
 import { soundTimeShort } from "@/lib/time/sound-time";
+import { DriveUpChip } from "./DriveUp";
 import { SignalPill } from "./SignalPill";
 import styles from "./trip.module.css";
 
@@ -13,9 +15,18 @@ export interface DepartureRowProps {
   signal: Signal;
   cancelledReason: string | null;
   crossingMin: number | null;
+  /** WSF's live drive-up reading for THIS departure, joined on depart_ms;
+   *  null whenever the terminal, the sailing, or the hour has none. */
+  capacity?: CapacitySailing | null;
 }
 
-export function DepartureRow({ sailing, signal, cancelledReason, crossingMin }: DepartureRowProps) {
+export function DepartureRow({
+  sailing,
+  signal,
+  cancelledReason,
+  crossingMin,
+  capacity = null,
+}: DepartureRowProps) {
   const cancelled = cancelledReason !== null;
   const past = signal.state === "departed" || signal.state === "gone";
   const arriveMs = crossingMin !== null ? sailing.depart_ms + crossingMin * MIN : null;
@@ -42,6 +53,13 @@ export function DepartureRow({ sailing, signal, cancelledReason, crossingMin }: 
     if (arriveMs !== null && !past) {
       meta.push(<span key="arr">~ arrives {soundTimeShort(arriveMs)}</span>);
     }
+  }
+  // Drive-up space rides with the sailing it describes. A row already struck
+  // as cancelled says that once, in the pill; a boat that has left cannot be
+  // boarded, and the feed keeps publishing its count for a few minutes after
+  // departure (capacityFor's now-5min window).
+  if (capacity && !cancelled && !past) {
+    meta.push(<DriveUpChip key="driveup" sailing={capacity} />);
   }
   if (sailing.added) meta.push(<span key="added">Added sailing</span>);
   if (sailing.after_midnight) meta.push(<span key="am">Late night</span>);

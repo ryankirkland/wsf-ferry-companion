@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-// Trip planner E2E against the static export, all four /data documents
+// Sailing schedule E2E against the static export, all four /data documents
 // route-intercepted. The pair-day template re-times around "now" so a
 // single page load shows departed, boarding, tight, comfortable, and a
 // struck tidal cancellation at once - every promise of F2 in one screen.
@@ -148,6 +148,16 @@ async function interceptTripData(page: Page, baseMs: number) {
             route_ids: routeId === null ? [] : [routeId],
             all_routes: routeId === null,
           },
+          {
+            // WSF's most common shape: RouteAlertText is the title typed
+            // again, drifting only in spacing. It must render once.
+            id: 998,
+            title: "Sea/BI - ADA Alert - Tillikum #2 elevator out of service",
+            text: "Sea/BI- ADA Alert - Tillikum #2 elevator out of service.",
+            published: new Date(baseMs - 90 * MIN).toISOString(),
+            route_ids: routeId === null ? [] : [routeId],
+            all_routes: routeId === null,
+          },
         ],
       }),
     ),
@@ -174,6 +184,12 @@ test("trip page answers run-or-relax with live signals", async ({ page }) => {
   await expect(banner.locator("summary time")).toHaveText(/\d{1,2}:\d{2} (AM|PM)/);
   await banner.locator("summary").click();
   await expect(banner).toContainText("Fixture alert body for E2E.");
+
+  // A bulletin whose text merely repeats its title prints the sentence
+  // once - no grey echo under the heading (owner's call, 2026-08-30).
+  const echoed = "Sea/BI - ADA Alert - Tillikum #2 elevator out of service";
+  await expect(banner.getByText(echoed, { exact: false })).toHaveCount(1);
+  await expect(banner.locator("p")).toHaveCount(1);
 
   // Earlier sailings are collapsed behind an explicit toggle.
   await page.getByRole("button", { name: /Show 3 earlier sailings/ }).click();
