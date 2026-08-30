@@ -102,6 +102,7 @@ jobs:
         with:
           name: lambda-artifacts
           path: infra/envs/prod/.build/*.zip
+          include-hidden-files: true
           retention-days: 1
           if-no-files-found: error
 
