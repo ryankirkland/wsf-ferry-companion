@@ -15,13 +15,16 @@ source bulletin.
 The commuter: subscribed to Seattle-Bainbridge 16:00-19:00, wants the
 4 PM cancellation email and does not want the 4 AM one.
 
-## The pipeline (all live as of 2026-07-30)
+## The pipeline
 
 1. **Sensor**: 1-min alerts poller; digest watermark (any bulletin
    appearance/edit/withdrawal moves it); invokes the notifier with the
    full slim feed, watermark written last (crash = harmless repeat).
 2. **Notifier** (`wsf-prod-notify-fanout`, reserved concurrency 1):
-   diffs ALERTS/BULLETIN# state, classifies NEW/UPDATED/GONE, fans out.
+   diffs ALERTS/BULLETIN# state, classifies NEW/UPDATED/GONE, evaluates
+   every subscription before deduplicating users, and writes one SQS
+   delivery message per matched user. Bulletin state moves only after
+   every message for that text version reaches SQS.
 3. **Parser** (`wsf_core.alert_parse`): cancellation prose ->
    (time, dep, arr) triples; fails closed (unknown code poisons the
    text). Hit -> precise window match. Miss -> route-level fallback in
@@ -29,14 +32,22 @@ The commuter: subscribed to Seattle-Bainbridge 16:00-19:00, wants the
    "we couldn't determine the specific sailings". Corpus at ship time:
    52 distinct real texts, 51 non-cancellation, 1 cancellation (parses
    clean) - n=1; ParseCoverage tells the real story over time.
-4. **Delivery**: raw-MIME SES sends with List-Unsubscribe +
-   List-Unsubscribe-Post (RFC 8058) + References threading headers;
-   per-recipient claims (3/bulletin, 10/day LA-time); one bad recipient
-   never aborts a fan-out; send-audit JSON line per send (bulletin id,
-   user, latency, precision vs fallback) - the PRD's measurability.
-5. **Hygiene**: SES events -> suppression Lambda: complaint/permanent
-   bounce deletes all subscriptions + writes EMAIL#/SUPPRESS (checked at
-   subscribe time, not in fan-out).
+4. **Delivery queue** (`wsf-prod-notify-delivery`): SQS isolates each
+   recipient, retries transient failures five times, and retains
+   exhausted messages in a 14-day DLQ. Queue age, Lambda errors, and DLQ
+   depth alarm independently.
+5. **Delivery worker** (`wsf-prod-notify-delivery`, reserved concurrency
+   1): checks that a matched subscription remains active, checks
+   suppression and caps, sends raw-MIME SES with RFC 8058 unsubscribe +
+   References headers, then records SENT state and daily count
+   transactionally only after SES accepts. A crash after SES but
+   before the record can rarely duplicate an email; this explicit
+   at-least-once tradeoff prefers a duplicate over a silently missed
+   cancellation.
+6. **Hygiene**: SES events -> suppression Lambda: complaint/permanent
+   bounce deletes all subscriptions + writes EMAIL#/SUPPRESS. Delivery
+   rechecks both suppression and matched subscription existence so a
+   message queued before a bounce or unsubscribe cannot send afterward.
 
 ## Subscriptions
 
@@ -97,4 +108,10 @@ documented option if ParseCoverage proves the regex weak.
   sandbox-era SandboxRecipientIdentities IAM statement is removed -
   recipients are no longer identities, so SendAlertEmail's domain scope
   is again the whole story. Alerts are now deliverable to ANY subscriber.
+- 2026-08-28: fan-out split into match -> SQS -> delivery after a code
+  review found two silent-loss windows: subscriptions were deduplicated
+  before their time windows were evaluated, and claim-before-send made
+  transient SES failures permanently ineligible for retry. Delivery is
+  now at-least-once, per-recipient, DLQ-backed, and SENT state is written
+  only after SES accepts.
 - M3 exit remaining: PRD acceptance walk + ADR-0003 tile revisit.

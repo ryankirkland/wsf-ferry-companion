@@ -3,6 +3,9 @@
 # plan attributable to the merged commit; it is shown in the step summary
 # immediately before apply. The concurrency group serializes applies - the
 # S3 state lockfile is the backstop, not the mechanism.
+# Python validation and Lambda packaging run in credential-free jobs. The
+# apply job downloads inert zip artifacts before it receives the
+# AdministratorAccess session, matching the web deploy's trust boundary.
 # Bootstrap (infra/bootstrap) is deliberately never applied by CI: it owns
 # the state bucket and these CI roles, and is applied locally by a human.
 name: infra apply
@@ -33,18 +36,32 @@ env:
   TF_IN_AUTOMATION: "1"
 
 jobs:
-  apply:
-    name: apply (envs/prod)
+  checks:
+    name: python checks
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
 
-      # Same deterministic artifact the plan lane built - see infra-plan.yml.
+      - name: install locked workspace
+        run: uv sync --all-packages --all-groups --frozen
+
+      - name: lint
+        run: uv run --frozen ruff check .
+
+      - name: test
+        run: uv run --frozen pytest
+
+  build:
+    name: build Lambda artifacts (no credentials)
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+
       - name: build ingest lambda artifact
         run: |
           uv build --wheel --package wsf-core --out-dir .build/wheels
@@ -63,7 +80,6 @@ jobs:
             --only-binary :all: --no-cache
           python3 tools/build_lambda_zip.py .build/notify-src infra/envs/prod/.build/notify.zip
 
-
       - name: build weather lambda artifact
         run: |
           uv build --wheel --package wsf-weather --out-dir .build/wheels
@@ -81,6 +97,28 @@ jobs:
             --python-platform aarch64-manylinux2014 --python-version 3.12 \
             --only-binary :all: --no-cache
           python3 tools/build_lambda_zip.py .build/analytics-src infra/envs/prod/.build/analytics.zip
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lambda-artifacts
+          path: infra/envs/prod/.build/*.zip
+          retention-days: 1
+          if-no-files-found: error
+
+  apply:
+    name: apply (envs/prod)
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: lambda-artifacts
+          path: infra/envs/prod/.build
 
       - uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
         with:

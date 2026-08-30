@@ -1,6 +1,6 @@
 # ADR-0006: Alert subscriptions and delivery
 
-- **Status:** Accepted (2026-07-30)
+- **Status:** Accepted (2026-07-30), amended (2026-08-28)
 - **Context:** M3 delivers PRD F3: subscribe to crossings + time windows,
   email within p95 <= 2 min of the WSF bulletin becoming visible to our
   poller, no duplicate spam, per-user caps, self-service management,
@@ -28,14 +28,16 @@ kids so rotation never breaks a link already sitting in an inbox.
 Email-borne human links land on button pages - GET never mutates,
 because mail scanners click everything.
 
-**No DynamoDB Streams - the notifier owns all diff state.** The 1-min
-alerts poller stays a dumb sensor: on digest change it async-invokes
-the notifier with the full slimmed feed (~25 KB), then writes its
-watermark LAST. The notifier diffs against ALERTS/BULLETIN# items with
-regression-guarded conditional writes. Every crash window degrades to a
-duplicate invoke absorbed by per-recipient claims; Streams would add a
-second delivery machine for one producer and one consumer. (Supersedes
-the ADR-0001 fan-out sketch.)
+**No DynamoDB Streams - notifier-owned diff, SQS-owned delivery retry.**
+The 1-min alerts poller stays a dumb sensor: on digest change it
+async-invokes the notifier with the full slim feed (~25 KB), then writes
+its watermark LAST. The notifier diffs against ALERTS/BULLETIN# items,
+evaluates every subscription before deduplicating users, and enqueues
+one delivery per matched user. Bulletin state moves only after queueing,
+so a crash becomes harmless duplicate SQS messages. Streams would still
+add a second change-capture system without improving this boundary.
+(Supersedes the ADR-0001 fan-out sketch and amends ADR-0006's original
+direct-SES implementation.)
 
 **Digest watermark.** The M2 `max_id:max_ms` watermark was blind to
 edits of older bulletins and to withdrawals (a live M2 bug: withdrawn
@@ -58,23 +60,32 @@ improvement loop (misses become rules + regression tests; no LLM in the
 send path - an offline verified-grounding tier is the documented
 fallback if real-world coverage proves weak).
 
-**Effectively-once delivery per (user, bulletin, text-version).**
-Claim-before-send on USER#/SENT# items (conditional writes), max 3
-sends per bulletin per user, 10/day per user counted in
-America/Los_Angeles, both claimed atomically. GONE marks never delete
-bulletin state (TTL 90 d) so an empty-feed flap cannot re-notify.
-Reserved concurrency 1 serializes fan-outs. A dropped async event is
-NOT regenerated next minute (unlike the pollers), so the notifier gets
-an OnFailure destination to the ops topic and a deliberate 1 h maximum
-event age: a stale alert still beats silence.
+**At-least-once delivery per (user, bulletin, text-version).** A
+reserved-concurrency-1 delivery Lambda consumes one SQS message at a
+time, verifies at least one matched subscription remains active, checks
+suppression and the 3/bulletin + 10/day caps, sends through SES, then
+transactionally records the USER#/SENT# and USER#/NOTIF# items.
+Recording after SES makes transient send failures retryable. A
+crash after SES acceptance but before DynamoDB commit can rarely
+duplicate an email; this is the chosen side of the irreducible
+cross-service atomicity gap because a duplicate is safer than a missed
+cancellation. Duplicate queue messages after a committed send are
+absorbed by the SENT record.
+
+The source queue retries five receives, retains messages four days, and
+moves exhaustion to a 14-day DLQ. Delivery Lambda errors, queue age over
+the two-minute SLO, and DLQ depth alarm separately. The poller->notifier
+async invoke keeps its one-hour retry window and OnFailure destination;
+once matching succeeds, SQS is the durable recovery boundary.
 
 **Suppression before reputation.** SES configuration-set events (SNS)
 drive automated handling: complaint or permanent bounce -> suppression
 item + both subscription sides deleted via the EMAIL#/USER pointer.
-Suppression is checked at subscribe time, never in the fan-out hot
-path. Latency is anchored to first_seen_ms (when OUR poller first saw
-the bulletin), per the PRD's poll-to-delivery definition; upstream
-publish lag is instrumented separately.
+Suppression is checked both at subscribe time and immediately before
+delivery. Matched subscription existence is also rechecked immediately
+before delivery, covering messages queued before a bounce or unsubscribe.
+Latency remains anchored to the observation time of the current text
+version, per the PRD's poll-to-delivery definition.
 
 ## Consequences
 
@@ -85,4 +96,5 @@ publish lag is instrumented separately.
 - Web push (PRD "next") reuses this exact fan-out; only the transport
   changes. SMS remains v2 per the PRD non-goal.
 - Cost: SES cents/month at any plausible subscriber count, Cognito free
-  to 10k MAU, PITR cents - ~+$0.30/mo against the $15 ceiling.
+  to 10k MAU, PITR cents, and SQS effectively inside its free tier at
+  this volume. Three delivery alarms add about $0.30/month.

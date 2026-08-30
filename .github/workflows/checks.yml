@@ -1,0 +1,70 @@
+name: checks
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+
+      - name: install locked workspace
+        run: uv sync --all-packages --all-groups --frozen
+
+      - name: lint
+        run: uv run --frozen ruff check .
+
+      - name: test
+        run: uv run --frozen pytest
+
+  web:
+    name: web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - run: corepack enable
+
+      - name: install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: lint
+        run: pnpm lint
+
+      - name: typecheck
+        run: pnpm typecheck
+
+      - name: unit tests
+        run: pnpm test:unit
+
+      - name: build static export
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_DATA_MODE: live
+
+      - name: install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # MapLibre's browser tests contend for CPU and animation frames under
+      # Playwright's default parallelism. One worker removes that contention;
+      # retries stay off so a flaky test still blocks the merge.
+      - name: browser tests
+        run: pnpm exec playwright test --workers=1 --retries=0

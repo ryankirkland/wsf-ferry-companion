@@ -69,8 +69,9 @@ aws logs filter-log-events --log-group-name /aws/lambda/wsf-prod-analytics-sync 
 ```
 
 **Custom metrics** ride the same log lines via EMF (embedded metric
-format), so a metric costs no extra API call. Three namespaces:
-`WSF/Ingest`, `WSF/Notify`, `WSF/Analytics`. The ones worth knowing:
+format), so a metric costs no extra API call. Four namespaces:
+`WSF/Ingest`, `WSF/Notify`, `WSF/Analytics`, `WSF/Weather`. The ones
+worth knowing:
 
 | Metric | Namespace | Means |
 |---|---|---|
@@ -79,7 +80,9 @@ format), so a metric costs no extra API call. Three namespaces:
 | `PairDatesUnchanged` / `FaresUnchanged` | WSF/Ingest | schedule/fares token moved but the rebuilt files were byte-identical (minus volatile fields) - absorbed by the content gate, no S3 PUTs. Expect ~530/run of PairDatesUnchanged on churn runs. `PairDatesPublished` still fires at least daily via the horizon roll, which is what keeps the pairs-stale alarm fed |
 | `AuthFailure` | WSF/Ingest | the 400+Message signature - the API-key canary |
 | `EmptyFleet` | WSF/Ingest | upstream returned `[]` |
-| `AlertEmailLatency` | WSF/Notify | bulletin first-seen -> inbox |
+| `DeliveriesQueued` / `EmailsSent` | WSF/Notify | matched users handed to SQS / messages accepted by SES |
+| `AlertEmailLatency` | WSF/Notify | current bulletin text observation -> SES acceptance |
+| `DeliveryDuplicates` / `DeliverySuppressed` / `DeliveryUnsubscribed` / `BulletinCapped` / `DailyCapped` | WSF/Notify | queue duplicates, hygiene skips, and intentional send limits |
 | `ParseMisses` | WSF/Notify | prose the parser could not decode |
 | `StatsPublished` / `StatsDataLagDays` | WSF/Analytics | the F4 freshness SLO |
 | `UnmappedSlip` | WSF/Analytics | vocabulary drift, sailings in quarantine |
@@ -92,7 +95,7 @@ aws cloudwatch get-metric-statistics --namespace WSF/Ingest --metric-name PollSu
   --period 86400 --statistics Sum --query 'Datapoints[0].Sum' --output text
 ```
 
-**You should not need to watch any of this.** 17 alarms cover the failure
+**You should not need to watch any of this.** 23 alarms cover the failure
 modes and email the `wsf-prod-alarms` SNS topic; the logs are for
 answering *why* after an alarm says *that*. Current state:
 
@@ -277,8 +280,12 @@ aws dynamodb scan --table-name wsf-prod-hot \
 ```
 
 **Delivery health** stands in for engagement on the alerts side:
-`AlertEmailLatency` and the SES bounce/complaint path via
-`wsf-prod-notify-suppress`.
+`DeliveriesQueued`, `EmailsSent`, `AlertEmailLatency`, the delivery
+queue's oldest-message and DLQ alarms, and the SES bounce/complaint path
+via `wsf-prod-notify-suppress`. A DLQ message contains the complete
+matched-delivery contract and remains available for 14 days; inspect the
+delivery Lambda error first, then use SQS DLQ redrive to return it to the
+source queue after fixing the cause.
 
 ### Historical note: the options this runbook used to weigh
 
