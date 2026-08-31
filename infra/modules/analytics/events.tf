@@ -203,7 +203,13 @@ resource "aws_scheduler_schedule" "events_stats_nightly" {
 
 resource "aws_cloudwatch_metric_alarm" "events_stats_errors" {
   alarm_name          = "wsf-prod-analytics-events-stats-errors"
-  alarm_description   = "The events-stats Lambda raised - /admin/analytics is serving stale or partial summaries."
+  alarm_description   = <<-EOT
+    Why: the nightly site-analytics aggregate crashed, so /admin/analytics is serving stale or partial summaries. No rider-facing surface is involved.
+    Source: the wsf-prod-analytics-events-stats Lambda over collected beacon events.
+    Feature: site analytics (owner-facing admin page only).
+    Severity: LOW - fix at leisure; raw events are still being collected and the aggregate can rerun over them.
+    First stop: /aws/lambda/wsf-prod-analytics-events-stats.
+  EOT
   namespace           = "AWS/Lambda"
   metric_name         = "Errors"
   statistic           = "Sum"
@@ -228,7 +234,13 @@ resource "aws_cloudwatch_metric_alarm" "events_stats_errors" {
 # itself worth a look, and the ambient wall display makes it unlikely.
 resource "aws_cloudwatch_metric_alarm" "events_collection_silent" {
   alarm_name          = "wsf-prod-analytics-events-collection-silent"
-  alarm_description   = "No analytics events collected in 24 h - beacon, CloudFront /v1/events hop, or collector is broken."
+  alarm_description   = <<-EOT
+    Why: zero analytics events collected across a full day. The beacon path is fire-and-forget end to end (browser swallows failed sends, a broken CloudFront hop 502s without invoking the collector), so breakage is silent by construction - it hid a 12-day outage in Aug 2026. A genuinely zero-visitor day can fire this; on this site's traffic that is itself worth a look.
+    Source: browser beacon -> CloudFront /v1/events -> collector Lambda.
+    Feature: site analytics (owner-facing).
+    Severity: LOW - no rider impact; data is being lost, not served wrong.
+    First stop: /aws/lambda/wsf-prod-analytics-events, then the CloudFront behavior for /v1/events.
+  EOT
   namespace           = "WSF/Analytics"
   metric_name         = "EventsCollected"
   statistic           = "Sum"

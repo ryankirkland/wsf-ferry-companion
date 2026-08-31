@@ -99,6 +99,26 @@ aws cloudwatch get-metric-statistics --namespace WSF/Ingest --metric-name PollSu
 modes and email the `wsf-prod-alarms` SNS topic; the logs are for
 answering *why* after an alarm says *that*. Current state:
 
+Every alarm description answers four questions in a fixed format (owner's
+call, 2026-08-31 - "function X threw an error" tells the reader nothing):
+**Why** it fires, in data terms ("WSDOT answered 200 with an empty vessel
+list for 3 straight minutes"), the **Source** (which upstream feed or which
+of our Lambdas), the **Feature** it protects (F1 map, F2 sailing schedule,
+F3 Ferry Alerts, F4 stats, F6 weather, or owner-facing analytics), the
+**Severity**, and a **First stop** log group. Severity means:
+
+- **HIGH** - riders are affected right now (stale map, alert emails not
+  flowing, a lost delivery). Act on receipt.
+- **MEDIUM** - the site is serving stale-but-honestly-labeled data, or will
+  degrade if the condition persists. Same day.
+- **LOW** - self-healing or owner-facing only; read the trace when
+  convenient, escalate only if it repeats or a HIGH alarm joins it.
+
+Keep new alarms to this format; the descriptions live next to each alarm
+resource in `infra/modules/*/`. A CloudWatch description is static - it can
+name the failing feed and the log line to read, but never the specific
+route or boat; that lives one "First stop" away in the log group.
+
 ```bash
 aws cloudwatch describe-alarms --state-value ALARM \
   --query 'MetricAlarms[].AlarmName' --output text   # empty is good

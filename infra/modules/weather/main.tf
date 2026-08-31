@@ -132,7 +132,13 @@ resource "aws_scheduler_schedule" "poller_30min" {
 # itself is dead - schedule, Lambda, or a bug.
 resource "aws_cloudwatch_metric_alarm" "weather_stale" {
   alarm_name          = "wsf-prod-weather-not-published"
-  alarm_description   = "No weather publish in 2h - riders are reading old conditions with no fresher ones coming."
+  alarm_description   = <<-EOT
+    Why: nothing was published to /data/weather.json for 2 hours. The poller absorbs upstream trouble into last-good entries, so total silence is never "NWS is flaky" - the pipeline itself is dead: schedule, Lambda, or a bug. Riders' conditions are aging with no fresher ones coming.
+    Source: the wsf-prod-weather-poller publish metric (upstreams: NWS api.weather.gov + AirNow).
+    Feature: F6 terminal weather + air quality on the map and sailing schedule.
+    Severity: MEDIUM - weather ages gracefully behind its as-of stamp, but nothing new arrives until this is fixed.
+    First stop: aws logs tail /aws/lambda/wsf-prod-weather-poller --since 2h.
+  EOT
   namespace           = "WSF/Weather"
   metric_name         = "WeatherPublished"
   statistic           = "Sum"
@@ -166,7 +172,13 @@ resource "aws_cloudwatch_metric_alarm" "weather_stale" {
 # earns the right to be ignored (docs/learnings.md, theme 1).
 resource "aws_cloudwatch_metric_alarm" "weather_degraded" {
   alarm_name          = "wsf-prod-weather-degraded"
-  alarm_description   = "No fresh weather/AQI for ~12h - the upstream integration looks broken, not merely flaky. Check the API key and the FetchFailed reasons in the poller log."
+  alarm_description   = <<-EOT
+    Why: publishing still works but almost nothing FRESH arrived for ~12 h - over 400 last-good fallbacks, where routine flaky days measure ~190 and a total AQI blackout is 480 (thresholds retuned 2026-08-22 after the first version flapped 8 emails in a day). Not "AirNow had a bad afternoon": the integration looks broken - expired API key, moved endpoint, or a parse that quietly stopped matching.
+    Source: NWS api.weather.gov + AirNow (key in SSM).
+    Feature: F6 terminal weather + air quality.
+    Severity: MEDIUM - riders see honestly-stamped old readings; the fix is usually the key or the parser, not waiting.
+    First stop: the FetchFailed reasons in /aws/lambda/wsf-prod-weather-poller.
+  EOT
   namespace           = "WSF/Weather"
   metric_name         = "LastGoodFallbacks"
   statistic           = "Sum"

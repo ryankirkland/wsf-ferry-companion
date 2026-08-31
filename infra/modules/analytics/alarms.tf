@@ -13,7 +13,13 @@
 # nightly chain 100 minutes of slack before this fires.
 resource "aws_cloudwatch_metric_alarm" "stats_stale" {
   alarm_name          = "wsf-prod-stats-not-fresh"
-  alarm_description   = "No successful stats publish in 24h - riders are reading yesterday's numbers or older."
+  alarm_description   = <<-EOT
+    Why: no successful stats publish in 24 h (SLO: fresh daily by 06:00 PT, with the 05:15 catch-up giving 100 minutes of slack before this fires). A dead chain, a broken cron and a silent Athena failure all look identical here on purpose.
+    Source: the nightly sync -> transform -> stats chain over WSDOT vesselhistory.
+    Feature: F4 on-time record (/stats and the reliability section of every pair page).
+    Severity: MEDIUM - riders read yesterday's numbers, honestly labeled with their window; fix before the lag compounds.
+    First stop: /aws/lambda/wsf-prod-analytics-stats, then -sync and -transform.
+  EOT
   namespace           = "WSF/Analytics"
   metric_name         = "StatsPublished"
   statistic           = "Sum"
@@ -30,7 +36,13 @@ resource "aws_cloudwatch_metric_alarm" "stats_stale" {
 # fell behind and the stats are quietly describing an old world.
 resource "aws_cloudwatch_metric_alarm" "stats_data_lag" {
   alarm_name          = "wsf-prod-stats-data-lag"
-  alarm_description   = "Published stats trail the calendar by more than 2 days - collection or transform is behind."
+  alarm_description   = <<-EOT
+    Why: stats published fine but describe a world more than 2 days old - collection or transform fell behind, which the freshness alarm cannot see because publishing still succeeds.
+    Source: the data_through watermark on the published stats contracts.
+    Feature: F4 on-time record.
+    Severity: MEDIUM - the numbers are real but aging; the window label on the page keeps it honest meanwhile.
+    First stop: /aws/lambda/wsf-prod-analytics-sync (did the sweep run?) then -transform.
+  EOT
   namespace           = "WSF/Analytics"
   metric_name         = "StatsDataLagDays"
   statistic           = "Maximum"
@@ -46,7 +58,13 @@ resource "aws_cloudwatch_metric_alarm" "stats_data_lag" {
 # sailings are sitting in quarantine, out of every statistic.
 resource "aws_cloudwatch_metric_alarm" "unmapped_slip" {
   alarm_name          = "wsf-prod-analytics-unmapped-slip"
-  alarm_description   = "Transform quarantined sailings under an unknown slip name - curate wsf_core.slips and re-drain."
+  alarm_description   = <<-EOT
+    Why: the transform met a slip name it has never seen - WSDOT renamed or added a slip - and quarantined those sailings, so they are missing from every statistic until the vocabulary catches up.
+    Source: WSDOT vesselhistory slip names vs the curated wsf_core.slips vocabulary.
+    Feature: F4 on-time record.
+    Severity: MEDIUM - stats are silently incomplete, nothing is wrong-wrong. Action: curate wsf_core.slips, redeploy, re-drain the quarantine.
+    First stop: /aws/lambda/wsf-prod-analytics-transform (the quarantined name is logged).
+  EOT
   namespace           = "WSF/Analytics"
   metric_name         = "UnmappedSlip"
   statistic           = "Sum"
@@ -62,7 +80,13 @@ resource "aws_cloudwatch_metric_alarm" "unmapped_slip" {
 # several fail is an upstream or credential problem.
 resource "aws_cloudwatch_metric_alarm" "history_vessel_failures" {
   alarm_name          = "wsf-prod-analytics-history-failures"
-  alarm_description   = "Three or more vessels failed a nightly history sweep."
+  alarm_description   = <<-EOT
+    Why: three or more vessels failed the nightly history sweep. One boat failing is tolerated and isolated by design; several at once points at the upstream feed or credentials, not at any one boat.
+    Source: WSDOT vesselhistory, pulled per vessel nightly.
+    Feature: F4 on-time record.
+    Severity: MEDIUM - last night's sailings are missing from stats until a rerun; the sweep retries nightly.
+    First stop: /aws/lambda/wsf-prod-analytics-sync (per-vessel failures are logged with reasons).
+  EOT
   namespace           = "WSF/Analytics"
   metric_name         = "HistoryVesselFailures"
   statistic           = "Sum"
@@ -78,7 +102,13 @@ resource "aws_cloudwatch_metric_alarm" "history_vessel_failures" {
 # "no ferries ran last week".
 resource "aws_cloudwatch_metric_alarm" "history_empty_night" {
   alarm_name          = "wsf-prod-analytics-empty-night"
-  alarm_description   = "Every vessel returned zero history rows - upstream outage or vessel-name drift."
+  alarm_description   = <<-EOT
+    Why: every vessel returned zero history rows for the night. "No ferries ran" is never true of this fleet - this is a WSDOT outage or the vessel-name vocabulary drifted out from under our queries.
+    Source: WSDOT vesselhistory.
+    Feature: F4 on-time record.
+    Severity: MEDIUM - one night's evidence missing; recheck names before blaming the outage.
+    First stop: /aws/lambda/wsf-prod-analytics-sync.
+  EOT
   namespace           = "WSF/Analytics"
   metric_name         = "HistoryEmptyNight"
   statistic           = "Sum"
@@ -94,7 +124,13 @@ resource "aws_cloudwatch_metric_alarm" "history_empty_night" {
 # which stage broke.
 resource "aws_cloudwatch_metric_alarm" "transform_errors" {
   alarm_name          = "wsf-prod-analytics-transform-errors"
-  alarm_description   = "The transform Lambda raised - partitions may be stale or partially rewritten."
+  alarm_description   = <<-EOT
+    Why: the raw -> Parquet transform crashed (unhandled exception). Partitions may be stale or partially rewritten until a clean rerun; handled data problems (like unknown slips) have their own metrics and do not land here.
+    Source: the wsf-prod-analytics-transform Lambda (bug or Athena/S3 dependency), not the feed.
+    Feature: F4 on-time record.
+    Severity: MEDIUM - stats will describe an older world until rerun; wsf-prod-stats-not-fresh backstops it.
+    First stop: aws logs tail /aws/lambda/wsf-prod-analytics-transform --since 2h.
+  EOT
   namespace           = "AWS/Lambda"
   metric_name         = "Errors"
   statistic           = "Sum"
@@ -109,7 +145,13 @@ resource "aws_cloudwatch_metric_alarm" "transform_errors" {
 
 resource "aws_cloudwatch_metric_alarm" "stats_errors" {
   alarm_name          = "wsf-prod-analytics-stats-errors"
-  alarm_description   = "The stats Lambda raised - contracts were not republished this run."
+  alarm_description   = <<-EOT
+    Why: the stats publisher crashed (unhandled exception), so the /data/stats contracts were not republished this run - riders keep the previous night's numbers.
+    Source: the wsf-prod-analytics-stats Lambda (bug or Athena dependency), not the feed.
+    Feature: F4 on-time record.
+    Severity: MEDIUM - the 05:15 catch-up retries; wsf-prod-stats-not-fresh fires if it stays broken past the slack.
+    First stop: aws logs tail /aws/lambda/wsf-prod-analytics-stats --since 2h.
+  EOT
   namespace           = "AWS/Lambda"
   metric_name         = "Errors"
   statistic           = "Sum"

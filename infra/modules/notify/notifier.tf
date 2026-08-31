@@ -124,7 +124,13 @@ resource "aws_lambda_function_event_invoke_config" "notifier" {
 
 resource "aws_cloudwatch_metric_alarm" "notifier_errors" {
   alarm_name          = "wsf-prod-notify-fanout-errors"
-  alarm_description   = "Bulletin diff or queue fan-out failed; the async invocation is retrying."
+  alarm_description   = <<-EOT
+    Why: the bulletin diff / subscriber fan-out crashed. The async invocation retries twice within the hour, then dead-ends to this topic; while this is red, new WSF bulletins are not being matched to anyone's saved crossings.
+    Source: the wsf-prod-notify-fanout Lambda over the alerts poller's bulletins.
+    Feature: F3 Ferry Alerts emails.
+    Severity: HIGH if it persists - an unsent cancellation email is this product failing its one promise. A single firing that clears likely rode a retry to success; confirm in the log.
+    First stop: aws logs tail /aws/lambda/wsf-prod-notify-fanout --since 1h.
+  EOT
   namespace           = "AWS/Lambda"
   metric_name         = "Errors"
   dimensions          = { FunctionName = aws_lambda_function.notifier.function_name }
@@ -234,7 +240,13 @@ resource "aws_lambda_event_source_mapping" "delivery" {
 
 resource "aws_cloudwatch_metric_alarm" "delivery_errors" {
   alarm_name          = "wsf-prod-notify-delivery-errors"
-  alarm_description   = "SES delivery failed; SQS is retrying the recipient message."
+  alarm_description   = <<-EOT
+    Why: an SES send failed and SQS is retrying that recipient's message. Delivery failures here are usually SES throttling or a transient; the message only becomes lost if it exhausts retries and hits the DLQ (its own alarm).
+    Source: the wsf-prod-notify-delivery Lambda -> SES.
+    Feature: F3 Ferry Alerts emails.
+    Severity: MEDIUM - retries are in flight; the DLQ alarm is the real bad news.
+    First stop: /aws/lambda/wsf-prod-notify-delivery.
+  EOT
   namespace           = "AWS/Lambda"
   metric_name         = "Errors"
   dimensions          = { FunctionName = aws_lambda_function.delivery.function_name }
@@ -249,7 +261,13 @@ resource "aws_cloudwatch_metric_alarm" "delivery_errors" {
 
 resource "aws_cloudwatch_metric_alarm" "delivery_stale" {
   alarm_name          = "wsf-prod-notify-delivery-stale"
-  alarm_description   = "Oldest queued alert delivery is over two minutes old."
+  alarm_description   = <<-EOT
+    Why: the oldest queued alert email has been waiting over 2 minutes - delivery is not keeping up with fan-out, and the "hear about it within minutes" promise is slipping for everyone in the queue.
+    Source: the notify delivery SQS queue's oldest-message age.
+    Feature: F3 Ferry Alerts emails.
+    Severity: HIGH - riders' alert emails are late right now.
+    First stop: /aws/lambda/wsf-prod-notify-delivery (is it erroring or just slow?), then SES account send status.
+  EOT
   namespace           = "AWS/SQS"
   metric_name         = "ApproximateAgeOfOldestMessage"
   dimensions          = { QueueName = aws_sqs_queue.delivery.name }
@@ -266,7 +284,13 @@ resource "aws_cloudwatch_metric_alarm" "delivery_stale" {
 
 resource "aws_cloudwatch_metric_alarm" "delivery_dlq" {
   alarm_name          = "wsf-prod-notify-delivery-dlq"
-  alarm_description   = "A recipient alert exhausted SQS retries and needs operator replay."
+  alarm_description   = <<-EOT
+    Why: a recipient's alert exhausted all SQS retries and landed in the dead-letter queue. That rider did NOT get their email and never will until an operator replays the message.
+    Source: the notify delivery dead-letter queue.
+    Feature: F3 Ferry Alerts emails.
+    Severity: HIGH - a specific promised email is lost until replayed; the DLQ preserves it.
+    First stop: the DLQ message body names the recipient and bulletin; /aws/lambda/wsf-prod-notify-delivery has the failing sends.
+  EOT
   namespace           = "AWS/SQS"
   metric_name         = "ApproximateNumberOfMessagesVisible"
   dimensions          = { QueueName = aws_sqs_queue.delivery_dlq.name }
