@@ -168,7 +168,7 @@ data "aws_cloudfront_origin_request_policy" "all_viewer_except_host_header" {
 # and query values are reconstructed explicitly. Canonical requests then map
 # clean URLs onto the static export's file layout.
 resource "aws_cloudfront_function" "index_rewrite" {
-  name    = "wsf-prod-request-router"
+  name    = "wsf-prod-index-rewrite"
   runtime = "cloudfront-js-2.0"
   publish = true
   code    = <<-EOT
