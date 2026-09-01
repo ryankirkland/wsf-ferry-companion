@@ -163,16 +163,46 @@ data "aws_cloudfront_origin_request_policy" "all_viewer_except_host_header" {
   name = "Managed-AllViewerExceptHostHeader"
 }
 
-# Maps clean URLs onto the static export's file layout (trailingSlash:
-# / -> /index.html, /ambient -> /ambient/index.html). Real file paths
-# (anything with a dot) pass through untouched.
+# Canonicalizes every public hostname before routing. CloudFront receives no
+# URL fragment, but browsers retain it while following the redirect; paths
+# and query values are reconstructed explicitly. Canonical requests then map
+# clean URLs onto the static export's file layout.
 resource "aws_cloudfront_function" "index_rewrite" {
-  name    = "wsf-prod-index-rewrite"
+  name    = "wsf-prod-request-router"
   runtime = "cloudfront-js-2.0"
   publish = true
   code    = <<-EOT
+    function queryString(query) {
+      var parts = [];
+      for (var key in query) {
+        var values = query[key].multiValue || [query[key]];
+        for (var i = 0; i < values.length; i++) {
+          parts.push(encodeURIComponent(key) + "=" + encodeURIComponent(values[i].value));
+        }
+      }
+      return parts.join("&");
+    }
+
     function handler(event) {
       var request = event.request;
+      var host = request.headers.host.value.toLowerCase();
+      if (
+        host === "${var.legacy_domain_name}" ||
+        host === "www.${var.legacy_domain_name}" ||
+        host === "www.${var.domain_name}"
+      ) {
+        var query = queryString(request.querystring);
+        var location = "https://${var.domain_name}" + request.uri + (query ? "?" + query : "");
+        return {
+          statusCode: 308,
+          statusDescription: "Permanent Redirect",
+          headers: {
+            location: { value: location },
+            "cache-control": { value: "public, max-age=300" }
+          }
+        };
+      }
+
       var uri = request.uri;
       if (uri.endsWith("/")) {
         request.uri = uri + "index.html";
@@ -287,6 +317,11 @@ resource "aws_cloudfront_distribution" "site" {
     compress                   = true
     cache_policy_id            = aws_cloudfront_cache_policy.data_short.id
     response_headers_policy_id = aws_cloudfront_response_headers_policy.data_cors.id
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.index_rewrite.arn
+    }
   }
 
   dynamic "ordered_cache_behavior" {
@@ -301,6 +336,11 @@ resource "aws_cloudfront_distribution" "site" {
       compress                   = true
       cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
       response_headers_policy_id = aws_cloudfront_response_headers_policy.data_cors.id
+
+      function_association {
+        event_type   = "viewer-request"
+        function_arn = aws_cloudfront_function.index_rewrite.arn
+      }
     }
   }
 
@@ -314,6 +354,11 @@ resource "aws_cloudfront_distribution" "site" {
     cache_policy_id            = data.aws_cloudfront_cache_policy.caching_disabled.id
     origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer_except_host_header.id
     response_headers_policy_id = aws_cloudfront_response_headers_policy.site_security.id
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.index_rewrite.arn
+    }
   }
 
 
@@ -326,6 +371,11 @@ resource "aws_cloudfront_distribution" "site" {
     compress                   = true
     cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
     response_headers_policy_id = aws_cloudfront_response_headers_policy.data_cors.id
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.index_rewrite.arn
+    }
   }
 
   restrictions {

@@ -5,7 +5,7 @@ import { AlertsTabs } from "@/components/account/AlertsTabs";
 import tripStyles from "@/components/trip/trip.module.css";
 
 export const metadata: Metadata = {
-  title: "Ferry Alerts · Ferry Sound",
+  title: "Ferry Alerts · Sound Ferries",
   description:
     "One plain-language email when WSF cancels or delays sailings on your crossing, in your window.",
 };

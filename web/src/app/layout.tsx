@@ -23,7 +23,7 @@ const inter = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Ferry Sound",
+  title: "Sound Ferries",
   description:
     "A live map of the Washington State Ferries fleet on Puget Sound - honest, beautiful, always on.",
 };

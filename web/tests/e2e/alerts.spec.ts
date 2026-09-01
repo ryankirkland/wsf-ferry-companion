@@ -110,7 +110,7 @@ test("unsubscribe page: fragment token, button-gated, POSTs once", async ({ page
     return route.fulfill({ json: { unsubscribed: true, removed: 2 } });
   });
   await page.goto("/unsubscribe/#tok123");
-  await expect(page.getByTestId("unsubscribe-card")).toContainText("stops all Ferry Sound alert emails");
+  await expect(page.getByTestId("unsubscribe-card")).toContainText("stops all Sound Ferries alert emails");
   expect(posts).toBe(0); // landing alone must never unsubscribe
   await page.getByRole("button", { name: /Unsubscribe from everything/ }).click();
   await expect(page.getByTestId("unsubscribed")).toContainText("2 subscriptions removed");

@@ -5,7 +5,7 @@ import { AmbientStage } from "@/components/ambient/AmbientStage";
 // cannot): a wall display is not a search result, and it should not
 // inherit the homepage's marketing description.
 export const metadata: Metadata = {
-  title: "Ambient · Ferry Sound",
+  title: "Ambient · Sound Ferries",
   description: "The Sound on a wall: the live ferry map, framed, all day.",
   robots: { index: false },
 };

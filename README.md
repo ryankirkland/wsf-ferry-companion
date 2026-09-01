@@ -1,4 +1,4 @@
-# Ferry Sound
+# Sound Ferries
 
 A joyful, beautiful, reliable companion for Washington State Ferries riders: a realtime fleet map you could hang on a wall, an honest trip planner ("run for the 5:30 or relax for the 6:20?"), delay alerts people actually rely on, and 14 years of on-time truth.
 
@@ -6,7 +6,7 @@ Also a portfolio flagship: pure-play AWS, Terraform-managed, and built through a
 
 ## Status
 
-M0 foundations in flight: Terraform skeleton, OIDC-only CI, and billing guardrails deployed to [ferrysound.com](https://ferrysound.com). Founding phases (PRD, design, architecture) are closed.
+M0 foundations in flight: Terraform skeleton, OIDC-only CI, and billing guardrails deployed to [soundferries.com](https://soundferries.com). Founding phases (PRD, design, architecture) are closed.
 
 - 📘 **[Product Requirements (PRD)](docs/PRD.md)** - vision, five v1 features, SLOs, the $15 cost ceiling, roadmap
 - 🗺️ **[Architecture](docs/architecture.md)** - deployed state + target state, kept current

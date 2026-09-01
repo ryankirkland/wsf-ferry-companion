@@ -7,7 +7,7 @@
 // best-practices audit: bundle-analyzable-paths).
 
 export const STYLE_URL =
-  process.env.NEXT_PUBLIC_STYLE_URL ?? "https://ferrysound.com/assets/style/positron-v1.json";
+  process.env.NEXT_PUBLIC_STYLE_URL ?? "https://soundferries.com/assets/style/positron-v1.json";
 
 export const DATA_BASE = process.env.NEXT_PUBLIC_DATA_BASE ?? "";
 // Fixtures are a DEVELOPMENT affordance. Every consumer tests
@@ -64,7 +64,7 @@ export const pairDayPath = (dep: number, arr: number, date: string) =>
 export const pairFaresPath = (dep: number, arr: number) => `/data/fares/${dep}-${arr}.json`;
 
 // M3 alerts: Cognito identifiers are public client config, not secrets.
-export const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN ?? "https://api.ferrysound.com";
+export const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN ?? "https://api.soundferries.com";
 export const COGNITO_POOL_ID = process.env.NEXT_PUBLIC_COGNITO_POOL_ID ?? "us-west-2_Rvw5RQOP0";
 export const COGNITO_CLIENT_ID =
   process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID ?? "57ckrpr8h75p2hrpf72so0leu7";

@@ -213,9 +213,9 @@ resource "aws_lambda_function" "delivery" {
     variables = {
       TABLE_NAME            = var.table_name
       LINK_SECRETS_PARAM    = aws_ssm_parameter.alert_link_secrets.name
-      SITE_ORIGIN           = "https://${var.legacy_domain_name}"
-      API_ORIGIN            = "https://api.${var.legacy_domain_name}"
-      FROM_ADDRESS          = "Ferry Sound <alerts@${var.legacy_domain_name}>"
+      SITE_ORIGIN           = "https://${var.domain_name}"
+      API_ORIGIN            = "https://api.${var.domain_name}"
+      FROM_ADDRESS          = "Sound Ferries <alerts@${var.domain_name}>"
       SES_CONFIGURATION_SET = aws_sesv2_configuration_set.alerts.configuration_set_name
     }
   }

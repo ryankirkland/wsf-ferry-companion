@@ -33,7 +33,7 @@ export function DataNotice() {
     <div className={styles.card} role="status" data-testid="data-notice">
       <p className={styles.copy}>
         Ferry positions, schedules, and alerts come from Washington State Ferries (WSDOT);
-        weather from the National Weather Service; air quality from AirNow (EPA). Ferry Sound
+        weather from the National Weather Service; air quality from AirNow (EPA). Sound Ferries
         is an independent rider-built project, not affiliated with WSDOT. Spot something
         wrong? <a href={`mailto:${FEEDBACK_EMAIL}`}>{FEEDBACK_EMAIL}</a>
       </p>

@@ -235,7 +235,7 @@ def _build_message(payload: dict) -> bytes:
         "WSF service alerts: https://wsdot.wa.gov/travel/washington-state-ferries/service-alerts",
         f"Source: WSF bulletin {alert['id']}",
         "",
-        f"Unsubscribe from all Ferry Sound alerts: {unsub_url}",
+        f"Unsubscribe from all Sound Ferries alerts: {unsub_url}",
         f"Manage subscriptions: {site}/alerts",
     ]
 
@@ -246,7 +246,7 @@ def _build_message(payload: dict) -> bytes:
         msg["Subject"] = "Ferry alert: multiple saved routes"
     else:
         msg["Subject"] = f"Ferry alert: {sub['dep_name']} → {sub['arr_name']}"
-    msg["References"] = f"<bulletin-{alert['id']}@ferrysound.com>"
+    msg["References"] = f"<bulletin-{alert['id']}@soundferries.com>"
     msg["List-Unsubscribe"] = f"<{unsub_url}>"
     msg["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
     msg.set_content("\n".join(lines))

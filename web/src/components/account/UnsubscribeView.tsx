@@ -56,7 +56,7 @@ export function UnsubscribeView() {
           {state.step === "confirm" && (
             <>
               <p style={{ margin: 0 }}>
-                This stops <strong>all</strong> Ferry Sound alert emails to your address. To trim
+                This stops <strong>all</strong> Sound Ferries alert emails to your address. To trim
                 individual crossings instead, use{" "}
                 <Link href="/alerts">manage subscriptions</Link>.
               </p>

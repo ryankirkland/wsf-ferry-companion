@@ -5,7 +5,7 @@ import overview from "@/components/stats/overview.module.css";
 import styles from "@/components/trip/trip.module.css";
 
 export const metadata: Metadata = {
-  title: "On-time record · Ferry Sound",
+  title: "On-time record · Sound Ferries",
   description:
     "How often Washington State Ferries leave on time: 24 years of departures, by year, by month, by route and by boat.",
 };

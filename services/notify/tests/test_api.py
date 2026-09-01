@@ -119,6 +119,6 @@ def test_get_unsubscribe_never_mutates(aws):
         None,
     )
     assert resp["statusCode"] == 303
-    assert resp["headers"]["location"].startswith("https://ferrysound.com/unsubscribe/#")
+    assert resp["headers"]["location"].startswith("https://soundferries.com/unsubscribe/#")
     subs = [it for it in aws["table"].scan()["Items"] if it["SK"].startswith("SUB#")]
     assert len(subs) == 2  # untouched: scanners GET links all the time
