@@ -99,9 +99,9 @@ locals {
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://${var.domain_name} https://tiles.openfreemap.org https://s3.amazonaws.com",
+    "img-src 'self' data: blob: https://${var.domain_name} https://${var.legacy_domain_name} https://tiles.openfreemap.org https://s3.amazonaws.com",
     "font-src 'self'",
-    "connect-src 'self' https://${var.domain_name} https://api.${var.domain_name} https://cognito-idp.us-west-2.amazonaws.com https://tiles.openfreemap.org https://s3.amazonaws.com",
+    "connect-src 'self' https://${var.domain_name} https://api.${var.domain_name} https://${var.legacy_domain_name} https://api.${var.legacy_domain_name} https://cognito-idp.us-west-2.amazonaws.com https://tiles.openfreemap.org https://s3.amazonaws.com",
     "worker-src blob:",
     "child-src blob:",
     "frame-ancestors 'none'",
@@ -155,10 +155,10 @@ data "aws_cloudfront_cache_policy" "caching_disabled" {
 }
 
 # API Gateway custom-domain origins route by Host header. Forwarding the
-# viewer's Host (ferrysound.com) makes API Gateway unable to resolve the
-# domain and every request 502s at the origin - which silently killed the
-# /v1/events beacon from launch until 2026-08-15 (the beacon is
-# fire-and-forget by design, so nothing surfaced it).
+# viewer's Host makes API Gateway unable to resolve the domain and every
+# request 502s at the origin - which silently killed the /v1/events beacon
+# from launch until 2026-08-15 (the beacon is fire-and-forget by design, so
+# nothing surfaced it).
 data "aws_cloudfront_origin_request_policy" "all_viewer_except_host_header" {
   name = "Managed-AllViewerExceptHostHeader"
 }
@@ -197,7 +197,12 @@ resource "aws_cloudfront_distribution" "site" {
   comment             = "wsf prod site + map assets"
   default_root_object = "index.html"
   price_class         = "PriceClass_100"
-  aliases             = [var.domain_name]
+  aliases = [
+    var.domain_name,
+    "www.${var.domain_name}",
+    var.legacy_domain_name,
+    "www.${var.legacy_domain_name}",
+  ]
 
   origin {
     origin_id                = "web"

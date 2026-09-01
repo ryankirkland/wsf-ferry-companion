@@ -1,10 +1,20 @@
 variable "domain_name" {
-  description = "Apex domain; the API is served on api.<domain_name>."
+  description = "Canonical apex domain; the API is also served on api.<domain_name>."
   type        = string
 }
 
 variable "zone_id" {
   description = "Route53 hosted zone id for the domain."
+  type        = string
+}
+
+variable "legacy_domain_name" {
+  description = "Previous apex domain retained as a compatibility API hostname."
+  type        = string
+}
+
+variable "legacy_zone_id" {
+  description = "Route53 hosted zone id for the previous domain."
   type        = string
 }
 
@@ -19,7 +29,8 @@ variable "cognito_web_client_id" {
 }
 
 locals {
-  api_domain = "api.${var.domain_name}"
+  api_domain         = "api.${var.legacy_domain_name}"
+  primary_api_domain = "api.${var.domain_name}"
 }
 
 variable "notify_api_invoke_arn" {
