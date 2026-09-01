@@ -1,5 +1,13 @@
+data "aws_route53_zone" "primary" {
+  name         = var.domain_name
+  private_zone = false
+}
+
 resource "aws_route53_zone" "main" {
-  name = var.domain_name
+  # This state address intentionally remains `main`: it already owns the
+  # ferrysound.com zone. Renaming it during the cutover adds state risk with
+  # no runtime benefit.
+  name = var.legacy_domain_name
 }
 
 # Adopts the manually registered domain (this resource never registers or
@@ -11,7 +19,7 @@ resource "aws_route53_zone" "main" {
 resource "aws_route53domains_registered_domain" "main" {
   provider = aws.us_east_1
 
-  domain_name   = var.domain_name
+  domain_name   = var.legacy_domain_name
   auto_renew    = true
   transfer_lock = true
 

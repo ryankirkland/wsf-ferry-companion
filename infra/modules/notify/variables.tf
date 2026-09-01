@@ -1,10 +1,20 @@
 variable "domain_name" {
-  description = "Apex domain (ferrysound.com) - the SES sending identity."
+  description = "Canonical apex domain prepared as the SES sending identity."
   type        = string
 }
 
 variable "zone_id" {
   description = "Route53 hosted zone for DKIM/MAIL FROM/DMARC records."
+  type        = string
+}
+
+variable "legacy_domain_name" {
+  description = "Previous apex domain used for sending until the cutover."
+  type        = string
+}
+
+variable "legacy_zone_id" {
+  description = "Route53 hosted zone for the previous domain."
   type        = string
 }
 

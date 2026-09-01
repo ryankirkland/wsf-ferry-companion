@@ -5,7 +5,13 @@ resource "aws_apigatewayv2_api" "api" {
   # M3: the static site calls subscription routes cross-origin. CORS is
   # API-wide on HTTP APIs (harmless for /v1/hello).
   cors_configuration {
-    allow_origins = ["https://${var.domain_name}", "http://localhost:3000"]
+    allow_origins = [
+      "https://${var.domain_name}",
+      "https://www.${var.domain_name}",
+      "https://${var.legacy_domain_name}",
+      "https://www.${var.legacy_domain_name}",
+      "http://localhost:3000",
+    ]
     allow_methods = ["GET", "POST", "DELETE", "OPTIONS"]
     allow_headers = ["content-type", "authorization"]
     max_age       = 3600

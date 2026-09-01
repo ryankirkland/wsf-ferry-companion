@@ -1,10 +1,20 @@
 variable "domain_name" {
-  description = "Apex domain the site is served on."
+  description = "Canonical apex domain the site is served on."
   type        = string
 }
 
 variable "zone_id" {
   description = "Route53 hosted zone id for the domain."
+  type        = string
+}
+
+variable "legacy_domain_name" {
+  description = "Previous apex domain served during migration and redirected after cutover."
+  type        = string
+}
+
+variable "legacy_zone_id" {
+  description = "Route53 hosted zone id for the previous domain."
   type        = string
 }
 

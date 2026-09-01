@@ -36,7 +36,7 @@ resource "aws_cognito_user_pool" "users" {
   email_configuration {
     email_sending_account = "DEVELOPER"
     source_arn            = aws_sesv2_email_identity.domain.arn
-    from_email_address    = "Ferry Sound <alerts@${var.domain_name}>"
+    from_email_address    = "Ferry Sound <alerts@${var.legacy_domain_name}>"
   }
 
   verification_message_template {

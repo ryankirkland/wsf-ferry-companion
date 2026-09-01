@@ -5,7 +5,13 @@ variable "region" {
 }
 
 variable "domain_name" {
-  description = "Apex domain (registered manually in Route53; Terraform owns the zone and DNS)."
+  description = "Canonical apex domain hosted in the existing Route53 public zone."
+  type        = string
+  default     = "soundferries.com"
+}
+
+variable "legacy_domain_name" {
+  description = "Previous apex domain retained for permanent redirects and compatibility."
   type        = string
   default     = "ferrysound.com"
 }
