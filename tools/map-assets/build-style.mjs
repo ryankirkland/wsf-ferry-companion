@@ -1,5 +1,5 @@
 // Fork positron for self-hosting (ADR-0003): rewrite glyphs/sprite to
-// ferrysound.com, drop the unused ne2_shaded raster source, keep everything
+// soundferries.com, drop the unused ne2_shaded raster source, keep everything
 // else BYTE-IDENTICAL in structure - the recolor heuristics in
 // web/src/lib/map/recolor.ts depend on positron's layer ids.
 //
@@ -11,7 +11,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const SELFHOST = process.argv.includes("--selfhost");
-const HOST = "https://ferrysound.com";
+const HOST = "https://soundferries.com";
 
 const res = await fetch("https://tiles.openfreemap.org/styles/positron");
 if (!res.ok) throw new Error(`positron fetch: HTTP ${res.status}`);

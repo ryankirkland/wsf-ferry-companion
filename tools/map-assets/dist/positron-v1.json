@@ -6,8 +6,8 @@
    "url": "https://tiles.openfreemap.org/planet"
   }
  },
- "sprite": "https://ferrysound.com/assets/sprites/ofm_f384/ofm",
- "glyphs": "https://ferrysound.com/assets/fonts/{fontstack}/{range}.pbf",
+ "sprite": "https://soundferries.com/assets/sprites/ofm_f384/ofm",
+ "glyphs": "https://soundferries.com/assets/fonts/{fontstack}/{range}.pbf",
  "layers": [
   {
    "id": "background",

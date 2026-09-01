@@ -4,14 +4,14 @@
   "openmaptiles": {
    "type": "vector",
    "tiles": [
-    "https://ferrysound.com/tiles/wa/{z}/{x}/{y}.mvt"
+    "https://soundferries.com/tiles/wa/{z}/{x}/{y}.mvt"
    ],
    "maxzoom": 14,
    "attribution": "© OpenStreetMap contributors"
   }
  },
- "sprite": "https://ferrysound.com/assets/sprites/ofm_f384/ofm",
- "glyphs": "https://ferrysound.com/assets/fonts/{fontstack}/{range}.pbf",
+ "sprite": "https://soundferries.com/assets/sprites/ofm_f384/ofm",
+ "glyphs": "https://soundferries.com/assets/fonts/{fontstack}/{range}.pbf",
  "layers": [
   {
    "id": "background",

@@ -7,7 +7,7 @@
 // best-practices audit: bundle-analyzable-paths).
 
 export const STYLE_URL =
-  process.env.NEXT_PUBLIC_STYLE_URL ?? "https://soundferries.com/assets/style/positron-v1.json";
+  process.env.NEXT_PUBLIC_STYLE_URL ?? "https://soundferries.com/assets/style/positron-v1.json?v=2";
 
 export const DATA_BASE = process.env.NEXT_PUBLIC_DATA_BASE ?? "";
 // Fixtures are a DEVELOPMENT affordance. Every consumer tests

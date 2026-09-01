@@ -1,0 +1,59 @@
+# Publishes the committed map styles. The job handles inert JSON only and
+# never executes repository code while holding the main-branch apply role.
+name: map assets deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/map-assets/dist/**"
+      - ".github/workflows/map-assets-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: map-assets-prod-deploy
+  cancel-in-progress: false
+
+env:
+  MAP_ASSETS_BUCKET: wsf-prod-map-assets-654654574183
+  DISTRIBUTION_ID: E1ZEOCBXLOJE3Z
+
+jobs:
+  deploy:
+    name: validate + publish
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: validate styles
+        run: |
+          jq empty tools/map-assets/dist/positron-v1.json
+          jq empty tools/map-assets/dist/positron-selfhost-v1.json
+
+      - uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        with:
+          role-to-assume: arn:aws:iam::654654574183:role/wsf-github-apply
+          aws-region: us-west-2
+
+      - name: publish styles
+        run: |
+          aws s3 cp tools/map-assets/dist/positron-v1.json \
+            "s3://$MAP_ASSETS_BUCKET/assets/style/positron-v1.json" \
+            --content-type application/json \
+            --cache-control "public,max-age=0,must-revalidate" --only-show-errors
+          aws s3 cp tools/map-assets/dist/positron-selfhost-v1.json \
+            "s3://$MAP_ASSETS_BUCKET/assets/style/positron-selfhost-v1.json" \
+            --content-type application/json \
+            --cache-control "public,max-age=0,must-revalidate" --only-show-errors
+
+      - name: invalidate styles
+        run: |
+          aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" \
+            --paths "/assets/style/positron-v1.json" "/assets/style/positron-selfhost-v1.json" \
+            --query Invalidation.Status --output text
