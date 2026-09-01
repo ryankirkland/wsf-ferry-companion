@@ -73,7 +73,7 @@ export function BoatFab() {
       <aside className={`${styles.drawer} ${open ? styles.drawerOpen : ""}`} aria-hidden={!open} data-testid="nav-drawer">
         <div className={styles.drawerHead}>
           <span className={`display ${styles.drawerTitle}`}>
-            Ferry <span>Sound</span>
+            Sound <span>Ferries</span>
           </span>
           <button className={styles.close} aria-label="Close" onClick={() => setOpen(false)}>
             ×

@@ -177,7 +177,7 @@ def test_delivery_keeps_unsubscribe_and_source_headers(aws, sends):
     assert "Source: WSF bulletin 1001" in body
     assert "wsdot.wa.gov" in body
     assert "List-Unsubscribe-Post: List-Unsubscribe=One-Click" in body
-    assert "References: <bulletin-1001@ferrysound.com>" in body
+    assert "References: <bulletin-1001@soundferries.com>" in body
 
 
 def test_multiple_matching_routes_are_named_in_one_email(aws, sends):

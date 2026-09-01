@@ -1,8 +1,8 @@
 # Cognito user pool (Ryan's call, per the PRD roadmap): email sign-in,
 # verified email required, SRP from the static site - no hosted UI.
 # Email sends via the SES domain identity (DEVELOPER mode) since the
-# production-access grant of 2026-08-20 - DKIM-signed from
-# ferrysound.com, which is what keeps confirmation codes out of spam.
+# production-access grant of 2026-08-20 - DKIM-signed from the product
+# domain, which is what keeps confirmation codes out of spam.
 # COGNITO_DEFAULT (generic no-reply@verificationemail.com, 50/day) was
 # only ever the sandbox-era stopgap.
 
@@ -35,14 +35,14 @@ resource "aws_cognito_user_pool" "users" {
 
   email_configuration {
     email_sending_account = "DEVELOPER"
-    source_arn            = aws_sesv2_email_identity.domain.arn
-    from_email_address    = "Ferry Sound <alerts@${var.legacy_domain_name}>"
+    source_arn            = aws_sesv2_email_identity.primary_domain.arn
+    from_email_address    = "Sound Ferries <alerts@${var.domain_name}>"
   }
 
   verification_message_template {
     default_email_option = "CONFIRM_WITH_CODE"
-    email_subject        = "Your Ferry Sound confirmation code"
-    email_message        = "Welcome aboard. Your Ferry Sound confirmation code is {####}. It expires in 24 hours. If you didn't create an account at ferrysound.com, ignore this email."
+    email_subject        = "Your Sound Ferries confirmation code"
+    email_message        = "Welcome aboard. Your Sound Ferries confirmation code is {####}. It expires in 24 hours. If you didn't create an account at ${var.domain_name}, ignore this email."
   }
 
   schema {

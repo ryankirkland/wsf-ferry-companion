@@ -49,9 +49,9 @@ def aws(monkeypatch):
     monkeypatch.setenv("TABLE_NAME", TABLE)
     monkeypatch.setenv("DATA_BUCKET", DATA_BUCKET)
     monkeypatch.setenv("LINK_SECRETS_PARAM", SECRETS_PARAM)
-    monkeypatch.setenv("SITE_ORIGIN", "https://ferrysound.com")
-    monkeypatch.setenv("API_ORIGIN", "https://api.ferrysound.com")
-    monkeypatch.setenv("FROM_ADDRESS", "Ferry Sound <alerts@ferrysound.com>")
+    monkeypatch.setenv("SITE_ORIGIN", "https://soundferries.com")
+    monkeypatch.setenv("API_ORIGIN", "https://api.soundferries.com")
+    monkeypatch.setenv("FROM_ADDRESS", "Sound Ferries <alerts@soundferries.com>")
     monkeypatch.setenv("SES_CONFIGURATION_SET", "wsf-test")
 
     with mock_aws():

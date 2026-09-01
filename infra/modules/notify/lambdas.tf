@@ -75,7 +75,7 @@ resource "aws_lambda_function" "api" {
       TABLE_NAME         = var.table_name
       DATA_BUCKET        = var.data_bucket_name
       LINK_SECRETS_PARAM = aws_ssm_parameter.alert_link_secrets.name
-      SITE_ORIGIN        = "https://${var.legacy_domain_name}"
+      SITE_ORIGIN        = "https://${var.domain_name}"
     }
   }
 

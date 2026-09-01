@@ -23,7 +23,7 @@ export async function generateMetadata({
   const entry = PAIRS[pair];
   if (!entry) return {};
   return {
-    title: `${entry.depName} → ${entry.arrName} · Ferry Sound`,
+    title: `${entry.depName} → ${entry.arrName} · Sound Ferries`,
     description: `Next ferry from ${entry.depName} to ${entry.arrName}: live departures, make-it-or-miss-it status, and fares.`,
   };
 }

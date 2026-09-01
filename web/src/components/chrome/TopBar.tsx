@@ -15,7 +15,7 @@ export function TopBar({
   return (
     <header className={styles.topbar}>
       <h1 className={`display ${styles.wordmark}`}>
-        Ferry <span>Sound</span>
+        Sound <span>Ferries</span>
       </h1>
       <div className={styles.controls}>
         <ModeSwitcher pref={pref} onChange={onModeChange} />

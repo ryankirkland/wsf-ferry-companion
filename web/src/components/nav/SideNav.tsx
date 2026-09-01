@@ -23,7 +23,7 @@ export function SideNav() {
   return (
     <nav className={styles.sideNav} aria-label="Site">
       <Link href="/" className={`display ${styles.sideNavBrand}`}>
-        Ferry <span>Sound</span>
+        Sound <span>Ferries</span>
       </Link>
       <Link href="/" className={styles.sideNavBack}>
         ← Back to map

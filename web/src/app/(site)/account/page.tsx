@@ -5,8 +5,8 @@ import { AccountHome } from "@/components/account/AccountHome";
 import tripStyles from "@/components/trip/trip.module.css";
 
 export const metadata: Metadata = {
-  title: "Account · Ferry Sound",
-  description: "Manage your Ferry Sound account: email and password.",
+  title: "Account · Sound Ferries",
+  description: "Manage your Sound Ferries account: email and password.",
 };
 
 // The shell is server-rendered so the static export carries a real body;

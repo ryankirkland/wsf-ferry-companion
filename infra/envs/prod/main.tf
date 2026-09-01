@@ -1,10 +1,8 @@
-# api.<domain_name> - computed here rather than read from module.api's
-# output, so that static_site (which analytics reads the data bucket
-# from) never forms a module dependency on api (which reads analytics'
-# Lambda outputs). module.api derives the identical string internally;
-# see infra/modules/api/apigw.tf's own local.api_domain.
+# The canonical API is prepared alongside the legacy compatibility hostname;
+# CloudFront can now route analytics to the canonical origin without racing
+# API provisioning.
 locals {
-  api_domain = "api.${var.legacy_domain_name}"
+  api_domain = "api.${var.domain_name}"
 }
 
 module "static_site" {
@@ -29,7 +27,7 @@ module "tiles_fallback" {
   source = "../../modules/tiles-fallback"
 
   lambda_zip_path = "${path.root}/../../../tools/pmtiles/dist/lambda.zip"
-  public_hostname = var.legacy_domain_name
+  public_hostname = var.domain_name
 }
 
 module "api" {

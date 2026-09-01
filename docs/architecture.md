@@ -22,7 +22,7 @@ flowchart LR
         AL -- "on change: full slim feed" --> NOTIF[Lambda notifier<br/>diff + match]
         NOTIF --> NQ[SQS delivery queue<br/>retry + DLQ]
         NQ --> NDEL[Lambda delivery<br/>caps + post-SES SENT record]
-        NDEL --> SES2[SES ferrysound.com] --> SUBS([Alert subscribers])
+        NDEL --> SES2[SES soundferries.com] --> SUBS([Alert subscribers])
         SES2 -- bounce/complaint --> SUP[Lambda suppress]
     end
 
@@ -51,12 +51,12 @@ flowchart LR
         ASSETS[(S3 map-assets bucket<br/>style + glyphs + sprites<br/>+ WSDOT class drawings)]
         TILES[(S3 tiles bucket<br/>wa.pmtiles)]
         TLAMBDA[Protomaps Lambda<br/>tiles fallback]
-        AGW[API Gateway HTTP<br/>api.ferrysound.com]
+        AGW[API Gateway HTTP<br/>api.soundferries.com]
         HELLO[Lambda hello]
     end
 
     subgraph edge [Global edge]
-        CF[CloudFront ferrysound.com]
+        LEGACY[ferrysound.com] -->|308| CF[CloudFront soundferries.com]
     end
 
     WSF --> POLL
@@ -97,7 +97,7 @@ flowchart LR
     OFM[OpenFreeMap tiles] -.-> U
 ```
 
-The web app (ferrysound.com): Next.js static export, MapLibre GL on the
+The web app (soundferries.com): Next.js static export, MapLibre GL on the
 forked positron style (self-hosted at `/assets/style/positron-v1.json`),
 fleet polled from `/data/fleet.json` every ~12 s, four vessel states,
 `/ambient` wall mode with wake lock + daily reload, and the M2 trip
