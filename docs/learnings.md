@@ -77,7 +77,7 @@ Rules:
   30), then place the line above every observed benign day and below the
   genuine failure.
 - **Alarm cost is never the reason to delete an alarm.** At $0.10 per
-  alarm-month the entire 20-alarm set is ~$1/mo. The same review
+  alarm-month the entire 23-alarm set is ~$1.30/mo. The same review
   reversed an earlier "trimmable" note on `stats-data-lag` and
   `analytics-empty-night`: re-reading them showed each catches a
   distinct silent failure (publishing succeeds on rotten evidence) that

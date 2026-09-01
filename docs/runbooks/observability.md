@@ -99,8 +99,9 @@ aws cloudwatch get-metric-statistics --namespace WSF/Ingest --metric-name PollSu
 modes and email the `wsf-prod-alarms` SNS topic; the logs are for
 answering *why* after an alarm says *that*. Current state:
 
-Every alarm description answers four questions in a fixed format (owner's
-call, 2026-08-31 - "function X threw an error" tells the reader nothing):
+Every alarm description answers the same questions in a fixed format
+(owner's call, 2026-08-31 - "function X threw an error" tells the reader
+nothing):
 **Why** it fires, in data terms ("WSDOT answered 200 with an empty vessel
 list for 3 straight minutes"), the **Source** (which upstream feed or which
 of our Lambdas), the **Feature** it protects (F1 map, F2 sailing schedule,
@@ -207,7 +208,7 @@ and August proved it wrong - actuals through Aug 14 ran ~$0.47/day, then
    for future wait-time modelling.
 
 The original line items stand: $0.50 hosted zone, ~$0.04 Athena, and
-**~$1.00 of CloudWatch alarms** - 20 alarms, 10 past the free tier at
+**~$1.30 of CloudWatch alarms** - 23 alarms, 13 past the free tier at
 $0.10 each (August is the first month that bills them).
 
 **Alarm cost is not the reason to delete an alarm.** At a dime each,

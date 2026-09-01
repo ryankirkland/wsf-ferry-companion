@@ -241,7 +241,7 @@ resource "aws_lambda_event_source_mapping" "delivery" {
 resource "aws_cloudwatch_metric_alarm" "delivery_errors" {
   alarm_name          = "wsf-prod-notify-delivery-errors"
   alarm_description   = <<-EOT
-    Why: an SES send failed and SQS is retrying that recipient's message. Delivery failures here are usually SES throttling or a transient; the message only becomes lost if it exhausts retries and hits the DLQ (its own alarm).
+    Why: the delivery Lambda failed while sending one rider's email, and SQS is retrying that recipient's message. Usually an SES throttle or transient, but the same handler's DynamoDB sent/cap transaction or SSM read can crash here too - the log says which. The message only becomes lost if it exhausts retries and hits the DLQ (its own alarm).
     Source: the wsf-prod-notify-delivery Lambda -> SES.
     Feature: F3 Ferry Alerts emails.
     Severity: MEDIUM - retries are in flight; the DLQ alarm is the real bad news.

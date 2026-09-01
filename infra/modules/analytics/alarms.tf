@@ -63,7 +63,7 @@ resource "aws_cloudwatch_metric_alarm" "unmapped_slip" {
     Source: WSDOT vesselhistory slip names vs the curated wsf_core.slips vocabulary.
     Feature: F4 on-time record.
     Severity: MEDIUM - stats are silently incomplete, nothing is wrong-wrong. Action: curate wsf_core.slips, redeploy, re-drain the quarantine.
-    First stop: /aws/lambda/wsf-prod-analytics-transform (the quarantined name is logged).
+    First stop: the quarantine object itself - analytics/quarantine/dt=YYYY-MM-DD/ in the raw bucket carries the offending rows with the unknown name; the transform log has only the count.
   EOT
   namespace           = "WSF/Analytics"
   metric_name         = "UnmappedSlip"

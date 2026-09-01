@@ -1,6 +1,6 @@
-# Five alarms, all inside the 10-free tier; every one notifies the shared
-# SNS topic. Handled upstream failures surface through custom EMF metrics;
-# Lambda Errors is reserved for actual bugs.
+# Eight ingest alarms; every one notifies the shared SNS topic. Handled
+# upstream failures surface through custom EMF metrics; Lambda Errors is
+# reserved for actual bugs.
 
 # THE SLO alarm: no successful poll for 5 consecutive minutes. Missing data
 # breaches, so a dead Lambda, a broken schedule, and an upstream outage all
@@ -56,6 +56,7 @@ resource "aws_cloudwatch_metric_alarm" "empty_fleet" {
     Source: WSDOT vessellocations.
     Feature: F1 live vessel map + ambient wall display.
     Severity: MEDIUM - riders see an honest stale banner; nothing on our side to fix, but confirm it recovers.
+    First stop: /aws/lambda/wsf-prod-ingest-vessels (each empty answer is counted there).
   EOT
   namespace           = "WSF/Ingest"
   metric_name         = "EmptyFleet"
