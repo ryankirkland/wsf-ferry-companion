@@ -8,16 +8,6 @@ variable "zone_id" {
   type        = string
 }
 
-variable "legacy_domain_name" {
-  description = "Previous apex domain retained as a compatibility API hostname."
-  type        = string
-}
-
-variable "legacy_zone_id" {
-  description = "Route53 hosted zone id for the previous domain."
-  type        = string
-}
-
 variable "cognito_user_pool_endpoint" {
   description = "JWT issuer URL for the Cognito authorizer (M3)."
   type        = string
@@ -29,7 +19,6 @@ variable "cognito_web_client_id" {
 }
 
 locals {
-  api_domain         = "api.${var.legacy_domain_name}"
   primary_api_domain = "api.${var.domain_name}"
 }
 

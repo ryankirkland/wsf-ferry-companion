@@ -114,4 +114,12 @@ documented option if ParseCoverage proves the regex weak.
   transient SES failures permanently ineligible for retry. Delivery is
   now at-least-once, per-recipient, DLQ-backed, and SENT state is written
   only after SES accepts.
+- 2026-09-02: **ferrysound.com retired.** All senders (delivery Lambda and
+  Cognito) had moved to the soundferries.com identity at the 2026-08-31
+  cutover; the legacy SES identity, its DKIM/MAIL FROM/DMARC records, its
+  cognito-sending policy, and the legacy hostnames (site, www, api) are
+  deleted, and the delivery role is pinned to the single primary identity
+  again. The cutover itself briefly broke delivery (see PR #156) because
+  that pin lagged the sender switch - with one identity there is no pair
+  to drift apart.
 - M3 exit remaining: PRD acceptance walk + ADR-0003 tile revisit.

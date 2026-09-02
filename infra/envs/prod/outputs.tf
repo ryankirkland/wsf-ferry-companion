@@ -18,11 +18,6 @@ output "api_endpoint" {
   value       = module.api.api_endpoint
 }
 
-output "zone_name_servers" {
-  description = "Zone name servers (should match the registration's)."
-  value       = aws_route53_zone.main.name_servers
-}
-
 output "map_assets_bucket" {
   description = "Bucket for glyphs/sprites/style JSON (ADR-0003)."
   value       = module.static_site.map_assets_bucket

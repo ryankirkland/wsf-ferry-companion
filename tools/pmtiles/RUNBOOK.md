@@ -55,7 +55,7 @@ aws s3 cp dist/positron-selfhost-v1.json \
   s3://wsf-prod-map-assets-654654574183/assets/style/positron-selfhost-v1.json \
   --content-type application/json --cache-control "public, max-age=31536000, immutable" --profile ryan
 cd ../../web
-NEXT_PUBLIC_STYLE_URL=https://ferrysound.com/assets/style/positron-selfhost-v1.json pnpm dev
+NEXT_PUBLIC_STYLE_URL=https://soundferries.com/assets/style/positron-selfhost-v1.json pnpm dev
 # 1. Playwright smoke against the dev server
 # 2. Manual visual parity pass: day / dusk / night
 # 3. Record tile p50 latency from the network panel below

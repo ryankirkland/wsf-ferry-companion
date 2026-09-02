@@ -8,16 +8,6 @@ variable "zone_id" {
   type        = string
 }
 
-variable "legacy_domain_name" {
-  description = "Previous apex domain used for sending until the cutover."
-  type        = string
-}
-
-variable "legacy_zone_id" {
-  description = "Route53 hosted zone for the previous domain."
-  type        = string
-}
-
 variable "table_name" {
   description = "Hot table (subscriptions, suppression, bulletin state)."
   type        = string

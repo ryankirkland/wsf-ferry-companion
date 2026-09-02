@@ -8,8 +8,6 @@ resource "aws_apigatewayv2_api" "api" {
     allow_origins = [
       "https://${var.domain_name}",
       "https://www.${var.domain_name}",
-      "https://${var.legacy_domain_name}",
-      "https://www.${var.legacy_domain_name}",
       "http://localhost:3000",
     ]
     allow_methods = ["GET", "POST", "DELETE", "OPTIONS"]

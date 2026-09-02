@@ -20,7 +20,7 @@ class Ctx:
 
 def _event(body, headers=None, source_ip="203.0.113.9"):
     return {
-        "headers": {"user-agent": "pytest-agent", "host": "ferrysound.com", **(headers or {})},
+        "headers": {"user-agent": "pytest-agent", "host": "soundferries.com", **(headers or {})},
         "body": json.dumps(body),
         "requestContext": {"http": {"sourceIp": source_ip}},
     }
@@ -187,8 +187,8 @@ def test_unparseable_referrer_is_direct(aws):
 def test_same_origin_referrer_is_direct(aws):
     events.lambda_handler(
         _event(
-            {"type": "pageview", "path": "/", "referrer": "https://ferrysound.com/trip/1-2"},
-            headers={"host": "ferrysound.com"},
+            {"type": "pageview", "path": "/", "referrer": "https://soundferries.com/trip/1-2"},
+            headers={"host": "soundferries.com"},
         ),
         Ctx(),
     )

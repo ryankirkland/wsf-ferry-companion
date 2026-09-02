@@ -8,16 +8,6 @@ variable "zone_id" {
   type        = string
 }
 
-variable "legacy_domain_name" {
-  description = "Previous apex domain served during migration and redirected after cutover."
-  type        = string
-}
-
-variable "legacy_zone_id" {
-  description = "Route53 hosted zone id for the previous domain."
-  type        = string
-}
-
 variable "tiles_origin_domain" {
   description = "Lambda Function URL domain for the PMTiles fallback (/tiles/*); null until the fallback module is wired."
   type        = string

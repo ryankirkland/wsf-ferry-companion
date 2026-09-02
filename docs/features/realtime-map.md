@@ -45,7 +45,7 @@ ambient "frame on a wall" mode (`/ambient`) that runs unattended for days.
 
 ## Status
 
-- Data path: **live** (2026-07-29). `https://ferrysound.com/data/fleet.json`
+- Data path: **live** (2026-07-29). `https://soundferries.com/data/fleet.json`
   + dims; alarms tested end to end (auth canary fired on the deploy-time
   placeholder and cleared when the real code landed). Gate-2 in-region
   p95 ~20 ms recorded in ADR-0001.

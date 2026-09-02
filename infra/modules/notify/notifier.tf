@@ -175,14 +175,11 @@ data "aws_iam_policy_document" "delivery" {
   statement {
     sid     = "SendAlertEmail"
     actions = ["ses:SendEmail", "ses:SendRawEmail"]
-    # BOTH identities: the 2026-08-31 cutover switched the sender to the
-    # primary (soundferries.com) domain but left this pin on the legacy
-    # identity alone - every delivery failed AccessDenied for ~2 days and
-    # dead-lettered (the cognito grants in ses.tf were duplicated for both
-    # identities; this statement was the one miss). Drop the legacy ARN
-    # only when the legacy identity itself is retired.
+    # Pinned to the ONE sending identity. History: the 2026-08-31 cutover
+    # changed the sender but not this pin and every delivery failed
+    # AccessDenied for ~2 days - if a sender ever changes again, this
+    # resource list changes in the same commit.
     resources = [
-      aws_sesv2_email_identity.domain.arn,
       aws_sesv2_email_identity.primary_domain.arn,
       aws_sesv2_configuration_set.alerts.arn,
     ]

@@ -10,12 +10,6 @@ variable "domain_name" {
   default     = "soundferries.com"
 }
 
-variable "legacy_domain_name" {
-  description = "Previous apex domain retained for permanent redirects and compatibility."
-  type        = string
-  default     = "ferrysound.com"
-}
-
 variable "alarm_email" {
   description = "Email receiving operational alarms (SNS subscription needs one-time confirmation)."
   type        = string
