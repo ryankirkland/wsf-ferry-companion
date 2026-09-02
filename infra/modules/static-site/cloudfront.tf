@@ -204,6 +204,19 @@ resource "aws_cloudfront_function" "index_rewrite" {
       }
 
       var uri = request.uri;
+
+      // The rewrite below maps clean URLs onto the static export's file
+      // layout, but this function also runs on the /v1/events behavior -
+      // the 2026-08-31 cutover attached it to every behavior so every
+      // hostname canonicalizes. API paths must reach their origin
+      // verbatim: rewriting /v1/events to /v1/events/index.html made API
+      // Gateway 404 every beacon for two days, and the custom error page
+      // dressed that up as the site 404, so only the
+      // events-collection-silent alarm said anything.
+      if (uri.startsWith("/v1/")) {
+        return request;
+      }
+
       if (uri.endsWith("/")) {
         request.uri = uri + "index.html";
       } else if (!uri.split("/").pop().includes(".")) {
