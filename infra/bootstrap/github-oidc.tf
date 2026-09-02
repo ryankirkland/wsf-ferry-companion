@@ -112,7 +112,7 @@ resource "aws_iam_role_policy_attachment" "github_apply_admin" {
 # time (none exist yet), but it owns the filesystem and $GITHUB_ENV for the
 # rest of the job, so it can wait for the session that arrives three steps
 # later. Admin in that window means the subscriber table, mail sent as
-# alerts@ferrysound.com, and IAM itself.
+# alerts@soundferries.com, and IAM itself.
 #
 # The workflow now also splits build (no credentials) from deploy (credentials,
 # no third-party code), so the untrusted step and the session never share a

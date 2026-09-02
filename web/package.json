@@ -1,5 +1,5 @@
 {
-  "name": "ferrysound-web",
+  "name": "soundferries-web",
   "private": true,
   "packageManager": "pnpm@10.34.5",
   "scripts": {

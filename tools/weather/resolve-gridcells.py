@@ -32,8 +32,8 @@ from pathlib import Path
 import httpx
 
 OUT = Path(__file__).resolve().parents[2] / "services/weather/src/wsf_weather/gridcells.json"
-UA = {"User-Agent": "ferrysound.com weather (contact: via site)"}
-TERMINALS_URL = "https://ferrysound.com/data/terminals.json"
+UA = {"User-Agent": "soundferries.com weather (contact: via site)"}
+TERMINALS_URL = "https://soundferries.com/data/terminals.json"
 AIRNOW_DISTANCE_MI = 30
 
 

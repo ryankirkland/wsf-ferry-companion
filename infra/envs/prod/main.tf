@@ -1,6 +1,3 @@
-# The canonical API is prepared alongside the legacy compatibility hostname;
-# CloudFront can now route analytics to the canonical origin without racing
-# API provisioning.
 locals {
   api_domain = "api.${var.domain_name}"
 }
@@ -10,8 +7,6 @@ module "static_site" {
 
   domain_name              = var.domain_name
   zone_id                  = data.aws_route53_zone.primary.zone_id
-  legacy_domain_name       = var.legacy_domain_name
-  legacy_zone_id           = aws_route53_zone.main.zone_id
   tiles_origin_domain      = module.tiles_fallback.function_url_domain
   events_api_origin_domain = local.api_domain
 
@@ -33,10 +28,8 @@ module "tiles_fallback" {
 module "api" {
   source = "../../modules/api"
 
-  domain_name        = var.domain_name
-  zone_id            = data.aws_route53_zone.primary.zone_id
-  legacy_domain_name = var.legacy_domain_name
-  legacy_zone_id     = aws_route53_zone.main.zone_id
+  domain_name = var.domain_name
+  zone_id     = data.aws_route53_zone.primary.zone_id
 
   cognito_user_pool_endpoint = module.notify.user_pool_endpoint
   cognito_web_client_id      = module.notify.web_client_id
@@ -86,8 +79,6 @@ module "notify" {
 
   domain_name            = var.domain_name
   zone_id                = data.aws_route53_zone.primary.zone_id
-  legacy_domain_name     = var.legacy_domain_name
-  legacy_zone_id         = aws_route53_zone.main.zone_id
   table_name             = module.ingest.table_name
   table_arn              = module.ingest.table_arn
   data_bucket_name       = module.static_site.data_bucket_name

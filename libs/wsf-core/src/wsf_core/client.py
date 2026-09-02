@@ -19,7 +19,7 @@ import urllib3
 from wsf_core.models import TerminalLocation, VesselDim, VesselLocation
 
 BASE_URL = "https://www.wsdot.wa.gov/ferries/api"
-USER_AGENT = "ferrysound-ingest/1.0 (+https://ferrysound.com; contact: ryankirkland.py@gmail.com)"
+USER_AGENT = "soundferries-ingest/1.0 (+https://soundferries.com; contact: ryankirkland.py@gmail.com)"
 
 SUB_APIS = ("vessels", "terminals", "schedule", "fares")
 

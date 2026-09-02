@@ -99,9 +99,9 @@ locals {
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://${var.domain_name} https://${var.legacy_domain_name} https://tiles.openfreemap.org https://s3.amazonaws.com",
+    "img-src 'self' data: blob: https://${var.domain_name} https://tiles.openfreemap.org https://s3.amazonaws.com",
     "font-src 'self'",
-    "connect-src 'self' https://${var.domain_name} https://api.${var.domain_name} https://${var.legacy_domain_name} https://api.${var.legacy_domain_name} https://cognito-idp.us-west-2.amazonaws.com https://tiles.openfreemap.org https://s3.amazonaws.com",
+    "connect-src 'self' https://${var.domain_name} https://api.${var.domain_name} https://cognito-idp.us-west-2.amazonaws.com https://tiles.openfreemap.org https://s3.amazonaws.com",
     "worker-src blob:",
     "child-src blob:",
     "frame-ancestors 'none'",
@@ -186,11 +186,7 @@ resource "aws_cloudfront_function" "index_rewrite" {
     function handler(event) {
       var request = event.request;
       var host = request.headers.host.value.toLowerCase();
-      if (
-        host === "${var.legacy_domain_name}" ||
-        host === "www.${var.legacy_domain_name}" ||
-        host === "www.${var.domain_name}"
-      ) {
+      if (host === "www.${var.domain_name}") {
         var query = queryString(request.querystring);
         var location = "https://${var.domain_name}" + request.uri + (query ? "?" + query : "");
         return {
@@ -243,8 +239,6 @@ resource "aws_cloudfront_distribution" "site" {
   aliases = [
     var.domain_name,
     "www.${var.domain_name}",
-    var.legacy_domain_name,
-    "www.${var.legacy_domain_name}",
   ]
 
   origin {

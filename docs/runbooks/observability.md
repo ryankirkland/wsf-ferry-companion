@@ -154,7 +154,7 @@ made the $20.08 email look like a project overrun when it was not.
 
 | Line | Amount | Note |
 |---|---|---|
-| Amazon Registrar | **$16.00** | ferrysound.com, **one-time**, recurs July 2027 |
+| Amazon Registrar | **$16.00** | ferrysound.com, **one-time** - will NOT recur: auto-renew disabled at retirement (2026-09-02), registration lapses 2027-07-28. soundferries.com renews ~$16 each August instead |
 | Tax | $1.49 | on the above |
 | S3 | $0.81 | raw archive + Parquet + serving |
 | EC2-Other | $0.60 | legacy EBS, now terminated |

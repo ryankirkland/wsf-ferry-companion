@@ -8,7 +8,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const OUT = path.join(import.meta.dirname, "../../web/public/dev-fixtures");
-const get = async (p) => (await fetch(`https://ferrysound.com${p}`)).json();
+const get = async (p) => (await fetch(`https://soundferries.com${p}`)).json();
 
 await mkdir(OUT, { recursive: true });
 

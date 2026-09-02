@@ -1,6 +1,6 @@
 output "api_domain" {
   description = "Custom domain serving the API."
-  value       = local.api_domain
+  value       = local.primary_api_domain
 }
 
 output "api_endpoint" {

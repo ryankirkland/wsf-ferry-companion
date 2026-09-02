@@ -56,7 +56,7 @@ flowchart LR
     end
 
     subgraph edge [Global edge]
-        LEGACY[ferrysound.com] -->|308| CF[CloudFront soundferries.com]
+        CF[CloudFront soundferries.com]
     end
 
     WSF --> POLL

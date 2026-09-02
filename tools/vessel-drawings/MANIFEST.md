@@ -10,7 +10,7 @@ uv run tools/vessel-drawings/mirror-drawings.py --upload \
   --bucket wsf-prod-map-assets-654654574183
 ```
 
-Serving paths: `https://ferrysound.com/assets/vessels/<slug>.png` (white
+Serving paths: `https://soundferries.com/assets/vessels/<slug>.png` (white
 plate, the vessel card; published into `/data/vessels.json` as each
 vessel's `drawing` field) and `<slug>-t.png` (transparent background,
 the map markers - the frontend derives the `-t` URL from `drawing`).

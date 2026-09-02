@@ -31,7 +31,7 @@ import httpx
 from wsf_weather.icons import icon_token
 from wsf_weather.metrics import emit
 
-UA = {"User-Agent": "ferrysound.com weather poller (contact: via site)"}
+UA = {"User-Agent": "soundferries.com weather poller (contact: via site)"}
 NWS_RETRY_WAIT_S = 3
 HOURS_PUBLISHED = 156  # NWS's full hourly horizon (~6.5 days)
 # Publishing beats completeness: leave this much budget for the S3 put.
