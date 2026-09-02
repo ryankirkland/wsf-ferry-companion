@@ -305,10 +305,7 @@ export class VesselMarkerPool {
     this.setText(handle.leftEl, fix.left ? `Left at ${soundClock(new Date(fix.left))}` : "");
     this.setText(handle.etaEl, fix.eta ? `Est. arrival ${soundClock(new Date(fix.eta))}` : "");
     const lateMin = departureLateMinutes(fix);
-    this.setText(
-      handle.lateEl,
-      lateMin === null ? "" : `${lateMin} min${lateMin === 1 ? "" : "s"} late`,
-    );
+    this.setText(handle.lateEl, lateMin === null ? "" : `${lateMin} min late`);
 
     let stateText = "";
     if (state === "stale") stateText = asOf(new Date(Date.now() - fix.age_s * 1000));
