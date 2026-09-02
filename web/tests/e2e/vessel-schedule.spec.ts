@@ -90,9 +90,8 @@ test("Next sailings expands the current route's schedule inline and collapses ba
   await expect(origin).toContainText("1 min late");
   await expect(destination).toContainText("Est. arrival");
   await expect(destination).toContainText("Bremerton");
-  const scheduleComparison = card.getByTestId("schedule-comparison");
-  await expect(scheduleComparison).toContainText("Scheduled 12:50 AM");
-  await expect(scheduleComparison).not.toContainText("late");
+  await expect(card).not.toContainText("Underway");
+  await expect(card.getByTestId("schedule-comparison")).toHaveCount(0);
 
   const [cardBox, leftTime, lateness, originTerminal, eta, destinationTerminal] =
     await Promise.all([
@@ -161,7 +160,6 @@ test("matching displayed minutes do not claim a one-minute delay", async ({ page
   await expect(card).toBeVisible({ timeout: 20_000 });
   await expect(card.getByTestId("route-origin")).toContainText("Left at 12:50 AM");
   await expect(card.getByTestId("route-origin")).not.toContainText("late");
-  await expect(card.getByTestId("schedule-comparison")).toHaveText("Scheduled 12:50 AM");
 });
 
 test("switching days inside the expanded schedule shows that day's sailings", async ({ page }) => {

@@ -32,10 +32,10 @@ function runLine(fix: VesselFix, terms: Map<number, TerminalDim> | null): string
   return fix.state === "docked" ? `At dock in ${dep}` : dep;
 }
 
-function statusLine(fix: VesselFix): string {
+function statusLine(fix: VesselFix): string | null {
   switch (fix.state) {
     case "underway":
-      return `Underway · ${fix.speed.toFixed(1)} kn`;
+      return null;
     case "docked":
       return "At dock";
     case "yard":
@@ -109,25 +109,6 @@ function departureLateMinutes(fix: VesselFix): number | null {
   return Math.floor(lateMs / 60_000);
 }
 
-function delayLine(fix: VesselFix): { text: string; lateMin: number } | null {
-  const sched = fix.sched ? Date.parse(fix.sched) : null;
-  if (!sched) return null;
-  if (fix.left) {
-    const lateMin = departureLateMinutes(fix) ?? 0;
-    return {
-      text: `Scheduled ${soundClock(new Date(sched))}`,
-      lateMin,
-    };
-  }
-  if (fix.state === "docked" && Date.now() > sched) {
-    const lateMin = Math.round((Date.now() - sched) / 60_000);
-    // Under 2 min isn't late; over 2 h the schedule data itself is clearly
-    // not current - honest omission beats absurd precision either way.
-    if (lateMin < 2 || lateMin > 120) return null;
-    return { text: `Scheduled ${soundClock(new Date(sched))} · running ${lateMin} min behind`, lateMin };
-  }
-  return null;
-}
 
 export function VesselCard({
   fix,
@@ -167,7 +148,7 @@ export function VesselCard({
     };
   }, [fix.id]);
 
-  const delay = delayLine(fix);
+  const status = statusLine(fix);
   const leftAt = fix.left ? soundClock(new Date(fix.left)) : null;
   const departureLateMin = departureLateMinutes(fix);
   const eta = fix.eta && fix.state === "underway" ? soundClock(new Date(fix.eta)) : null;
@@ -209,15 +190,7 @@ export function VesselCard({
       ) : (
         <p className={styles.run}>{runLine(fix, terms)}</p>
       )}
-      <p className={styles.status}>{statusLine(fix)}</p>
-      {delay && (
-        <p
-          className={`${styles.delay} ${delay.lateMin >= 5 ? styles.late : ""}`}
-          data-testid="schedule-comparison"
-        >
-          {delay.text}
-        </p>
-      )}
+      {status && <p className={styles.status}>{status}</p>}
       {dim?.drawing && <ClassDrawing src={dim.drawing} className={dim.class} />}
       {dim && (
         <p className={styles.facts}>
