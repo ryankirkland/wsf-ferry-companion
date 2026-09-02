@@ -1,5 +1,6 @@
 # The diagnostic identity: everything needed to INVESTIGATE production and
-# verify a fix, and nothing needed to change it.
+# verify a fix, and nothing needed to change it - with one deliberate
+# exception, the alert-delivery DLQ redrive (see RedriveAlertDeliveryDlq).
 #
 # Why it exists: the hand-made wsf-read-only user cannot read DynamoDB,
 # Lambda configuration, or S3, so every verification pass fell back to the
@@ -129,6 +130,34 @@ data "aws_iam_policy_document" "ops" {
       "arn:aws:sqs:${var.region}:${data.aws_caller_identity.current.account_id}:wsf-prod-notify-delivery",
       "arn:aws:sqs:${var.region}:${data.aws_caller_identity.current.account_id}:wsf-prod-notify-delivery-dlq",
     ]
+  }
+
+  # --- The one deliberate exception to the change-nothing charter: DLQ
+  # redrive. A dead-lettered alert email is an operator recovery task
+  # (the module docstring calls the DLQ "the durable operator recovery
+  # point"), and 2026-09-01 proved the admin-only path too slow - three
+  # riders' emails sat in the DLQ behind an expired admin session. The
+  # grant moves messages back to the delivery queue and nothing else:
+  # source is pinned to the DLQ, destination to the delivery queue, so
+  # this cannot consume, reroute, or inject arbitrary messages. ---
+  statement {
+    sid = "RedriveAlertDeliveryDlq"
+    actions = [
+      "sqs:StartMessageMoveTask",
+      "sqs:ListMessageMoveTasks",
+      "sqs:CancelMessageMoveTask",
+      "sqs:ReceiveMessage",
+      "sqs:DeleteMessage",
+    ]
+    resources = [
+      "arn:aws:sqs:${var.region}:${data.aws_caller_identity.current.account_id}:wsf-prod-notify-delivery-dlq",
+    ]
+  }
+
+  statement {
+    sid       = "RedriveDestinationSend"
+    actions   = ["sqs:SendMessage"]
+    resources = ["arn:aws:sqs:${var.region}:${data.aws_caller_identity.current.account_id}:wsf-prod-notify-delivery"]
   }
 
   # --- Read the archives and the published contracts. The raw archive is
