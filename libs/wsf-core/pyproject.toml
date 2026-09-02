@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Shared WSDOT Ferries API client, models, and quirk handling for all WSF services."
 requires-python = ">=3.12"
 dependencies = [
-    "pydantic>=2.7",
+    "pydantic>=2.13.5",
     "urllib3>=2.2",
 ]
 
