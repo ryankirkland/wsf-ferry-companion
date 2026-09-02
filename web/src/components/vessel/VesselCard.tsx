@@ -12,6 +12,7 @@ import type { FleetUpdate } from "@/lib/data/fleet-poller";
 import { PAIRS } from "@/lib/trip/pairs";
 import type { VesselFix } from "@/lib/data/types";
 import { asOf, soundClock } from "@/lib/time/sound-time";
+import { departureLateMinutes } from "@/lib/vessel-timing";
 import styles from "./vessel-card.module.css";
 
 // The inline schedule pulls the sailing schedule's whole data + signal engine;
@@ -45,7 +46,6 @@ function statusLine(fix: VesselFix): string | null {
   }
 }
 
-/** Honest delay line, or null - omission beats fake precision (direction.md). */
 /** WSDOT's official drawing for this vessel's class.
  *
  * It is a CLASS drawing, not a portrait: all five Issaquah 130s share one,
@@ -100,14 +100,6 @@ function ClassDrawing({ src, className }: { src: string; className: string }) {
   );
 }
 
-function departureLateMinutes(fix: VesselFix): number | null {
-  if (!fix.left || !fix.sched) return null;
-  const lateMs = Date.parse(fix.left) - Date.parse(fix.sched);
-  // The card clocks omit seconds. Count only completed minutes so two
-  // identical displayed times never claim the boat left one minute late.
-  if (lateMs < 60_000 || lateMs > 120 * 60_000) return null;
-  return Math.floor(lateMs / 60_000);
-}
 
 
 export function VesselCard({

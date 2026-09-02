@@ -27,12 +27,20 @@ const DRAWING_PNG = Buffer.from(
   "base64",
 );
 
-async function openMap(page: Page) {
+async function openMap(page: Page, centeredVesselId?: number) {
   const fleet = JSON.parse(fixture("fleet-frame-0.json"));
   fleet.generated_at = new Date().toISOString();
+  const centered = fleet.vessels.find((v: { id: number }) => v.id === centeredVesselId);
+  if (centered) {
+    centered.lon = -122.48;
+    centered.lat = 47.685;
+  }
   await page.route("**/data/fleet.json", (r) => r.fulfill(json(fleet)));
   await page.route("**/data/vessels.json", (r) =>
     r.fulfill({ body: fixture("vessels.json"), contentType: "application/json" }),
+  );
+  await page.route("**/data/terminals.json", (r) =>
+    r.fulfill({ body: fixture("terminals.json"), contentType: "application/json" }),
   );
   await page.route("**/assets/vessels/*-t.png", (r) =>
     r.fulfill({ body: DRAWING_PNG, contentType: "image/png" }),
@@ -161,18 +169,30 @@ test("the anchored point stays on the boat even with the tip showing", async ({ 
   expect(m.offX).toBeLessThan(2);
 });
 
-test("boat info is hover-only: hidden at rest, tip on hover", async ({ page }) => {
-  await openMap(page);
+test("boat hover shows route timing above terminal labels", async ({ page }) => {
+  await openMap(page, 74);
 
-  const v = await vesselNearCenter(page);
-  const tip = page.locator(`[data-vessel="${v.id}"] .tip`);
-  // Hidden by default - the silhouettes carry the map.
+  const vesselId = "74";
+  const marker = page.locator(`[data-vessel="${vesselId}"]`);
+  const tip = marker.locator(".tip");
+  await expect(marker).toBeVisible();
   await expect(tip).toHaveCSS("opacity", "0");
 
-  await hoverVessel(page, v.id);
-  await expect(tip.locator(".nm")).not.toBeEmpty();
+  await hoverVessel(page, vesselId);
+  await expect(tip.locator(".nm")).toHaveText("Chimacum");
+  await expect(tip.locator(".dep")).toHaveText("Seattle");
+  await expect(tip.locator(".left")).toHaveText("Left at 12:51 AM");
+  await expect(tip.locator(".tipLate")).toHaveText("1 min late");
+  await expect(tip.locator(".arr")).toHaveText("Bremerton");
+  await expect(tip.locator(".eta")).toHaveText("Est. arrival 1:50 AM");
 
-  // Unhover hides it again.
+  await page.waitForSelector('[data-terminal="7"]');
+  const layers = await page.evaluate(() => ({
+    vessel: Number(getComputedStyle(document.querySelector('[data-vessel="74"]')!).zIndex),
+    terminal: Number(getComputedStyle(document.querySelector('[data-terminal="7"]')!).zIndex),
+  }));
+  expect(layers.vessel).toBeGreaterThan(layers.terminal);
+
   await page.mouse.move(5, 5);
   await expect(tip).toHaveCSS("opacity", "0");
 });

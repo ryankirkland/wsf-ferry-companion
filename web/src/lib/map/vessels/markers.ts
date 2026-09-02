@@ -8,6 +8,7 @@ import maplibregl, { type Map as MLMap, type Marker } from "maplibre-gl";
 import { STALE_S } from "@/config";
 import type { VesselFix, VesselState } from "@/lib/data/types";
 import { asOf, soundClock } from "@/lib/time/sound-time";
+import { departureLateMinutes } from "@/lib/vessel-timing";
 import { planMooredLabels } from "./cluster";
 import { getTerminalDims, getVesselDims } from "@/lib/data/dims";
 import { VESSEL_ANCHOR_PX } from "./anchor";
@@ -21,9 +22,15 @@ interface Handle {
   marker: Marker;
   el: HTMLElement;
   nameEl: HTMLElement;
-  statusEl: HTMLElement;
+  routeEl: HTMLElement;
+  depEl: HTMLElement;
+  leftEl: HTMLElement;
+  lateEl: HTMLElement;
+  arrEl: HTMLElement;
+  etaEl: HTMLElement;
+  stateEl: HTMLElement;
+  fix: VesselFix;
   lastState?: VesselState;
-  lastStatusText?: string;
   flip: boolean;
   lat: number;
   lon: number;
@@ -77,6 +84,7 @@ export class VesselMarkerPool {
     void getTerminalDims()
       .then((terms) => {
         terms.forEach((t) => this.terminalNames.set(t.id, t.name));
+        this.handles.forEach((h) => this.updateTip(h, h.fix, h.lastState ?? h.fix.state));
       })
       .catch(() => undefined);
 
@@ -207,14 +215,18 @@ export class VesselMarkerPool {
     const el = document.createElement("div");
     el.className = this.opts.vesselClassName;
     el.dataset.vessel = String(fix.id);
-    // Name + status live inside a hover tip (owner's 2026-08-20 call:
-    // labels on every hull read as clutter - the silhouettes carry the
-    // map). Click still opens the full card; touch has no hover and goes
-    // straight there.
-    el.innerHTML = `<div class="boat"></div><div class="wake"></div><div class="tip"><div class="nm"></div><div class="st"></div></div>`;
+    // Route timing lives inside a hover tip. Click still opens the full
+    // card; touch has no hover and goes straight there.
+    el.innerHTML = `<div class="boat"></div><div class="wake"></div><div class="tip"><div class="nm"></div><div class="tipRoute"><div class="tipEndpoint"><div class="tipPlace dep"></div><div class="tipWhen left"></div><div class="tipLate"></div></div><div class="tipArrow">→</div><div class="tipEndpoint tipDestination"><div class="tipPlace arr"></div><div class="tipWhen eta"></div></div></div><div class="st"></div></div>`;
     this.applyClassIcon(el, fix.id);
     const nameEl = el.querySelector<HTMLElement>(".nm")!;
-    const statusEl = el.querySelector<HTMLElement>(".st")!;
+    const routeEl = el.querySelector<HTMLElement>(".tipRoute")!;
+    const depEl = el.querySelector<HTMLElement>(".dep")!;
+    const leftEl = el.querySelector<HTMLElement>(".left")!;
+    const lateEl = el.querySelector<HTMLElement>(".tipLate")!;
+    const arrEl = el.querySelector<HTMLElement>(".arr")!;
+    const etaEl = el.querySelector<HTMLElement>(".eta")!;
+    const stateEl = el.querySelector<HTMLElement>(".st")!;
     nameEl.textContent = fix.name;
 
     if (this.opts.onClick) {
@@ -233,7 +245,14 @@ export class VesselMarkerPool {
       marker,
       el,
       nameEl,
-      statusEl,
+      routeEl,
+      depEl,
+      leftEl,
+      lateEl,
+      arrEl,
+      etaEl,
+      stateEl,
+      fix,
       flip: false,
       lat: fix.lat,
       lon: fix.lon,
@@ -251,6 +270,7 @@ export class VesselMarkerPool {
     companions: number,
   ): void {
     handle.el.classList.toggle("lbl-off", labelHidden);
+    handle.fix = fix;
     handle.routes = fix.routes;
     handle.insvc = fix.insvc;
     handle.el.classList.toggle("route-off", vesselHidden(fix.routes, this.hiddenRoutes));
@@ -274,29 +294,30 @@ export class VesselMarkerPool {
       }
     }
 
-    const statusText = this.statusText(fix, state);
-    if (statusText !== handle.lastStatusText) {
-      handle.statusEl.textContent = statusText;
-      handle.lastStatusText = statusText;
-    }
+    this.updateTip(handle, fix, state);
   }
 
-  private statusText(fix: VesselFix, state: VesselState): string {
-    switch (state) {
-      case "stale":
-        return asOf(new Date(Date.now() - fix.age_s * 1000));
-      case "yard":
-        return "resting";
-      case "docked":
-        return "at dock";
-      case "underway": {
-        if (!fix.eta) return "";
-        // Name the destination (owner's walk: "arrives ~5:15" leaves the
-        // rider asking WHERE); the arrow matches the run-line convention.
-        const eta = soundClock(new Date(fix.eta));
-        const arr = fix.arr != null ? this.terminalNames.get(fix.arr) : null;
-        return arr ? `→ ${arr} ~${eta}` : `arrives ~${eta}`;
-      }
-    }
+  private updateTip(handle: Handle, fix: VesselFix, state: VesselState): void {
+    const arr = fix.arr != null ? (this.terminalNames.get(fix.arr) ?? `Terminal ${fix.arr}`) : null;
+    handle.routeEl.hidden = arr === null;
+    this.setText(handle.depEl, this.terminalNames.get(fix.dep) ?? `Terminal ${fix.dep}`);
+    this.setText(handle.arrEl, arr ?? "");
+    this.setText(handle.leftEl, fix.left ? `Left at ${soundClock(new Date(fix.left))}` : "");
+    this.setText(handle.etaEl, fix.eta ? `Est. arrival ${soundClock(new Date(fix.eta))}` : "");
+    const lateMin = departureLateMinutes(fix);
+    this.setText(
+      handle.lateEl,
+      lateMin === null ? "" : `${lateMin} min${lateMin === 1 ? "" : "s"} late`,
+    );
+
+    let stateText = "";
+    if (state === "stale") stateText = asOf(new Date(Date.now() - fix.age_s * 1000));
+    if (state === "yard") stateText = "Resting";
+    if (state === "docked") stateText = "At dock";
+    this.setText(handle.stateEl, stateText);
+  }
+
+  private setText(el: HTMLElement, text: string): void {
+    if (el.textContent !== text) el.textContent = text;
   }
 }
