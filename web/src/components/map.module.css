@@ -100,6 +100,9 @@
   text-align: center;
   transition: opacity 0.4s ease, filter 0.4s ease;
 }
+.vm:hover {
+  z-index: 20;
+}
 
 /* The boat graphic is a transparent WSDOT drawing (img) with the traced
  * svg as fallback - both fill the class-proportioned marker width. */
@@ -185,12 +188,9 @@ html[data-mode="night"] .vm :global(svg) {
   opacity: 0.8;
 }
 
-/* Name + status ride in a hover tip, hidden by default (owner's
- * 2026-08-20 call: labels on every hull read as clutter). The tip stays
- * absolutely positioned OUT of the marker's layout box for the same
- * reason the labels were - the box must be the boat alone so
- * anchor:center pins the lat/lon to the hull. pointer-events:none so
- * the tip never steals the click that opens the full card. */
+/* Route timing rides in an opaque hover tip above every map marker. The
+ * tip remains outside the marker's layout box so the hull stays centered
+ * on its coordinate, and pointer-events:none preserves the card click. */
 .vm :global(.tip) {
   position: absolute;
   top: calc(100% + 4px + (var(--vm-scale, 1) - 1) * 7px);
@@ -198,12 +198,14 @@ html[data-mode="night"] .vm :global(svg) {
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 4px 10px;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 220px;
+  padding: 6px 10px;
+  border: 1px solid var(--card-line);
   border-radius: 8px;
-  background: var(--halo);
-  box-shadow: 0 2px 10px rgb(0 0 0 / 18%);
+  background: var(--card);
+  box-shadow: 0 3px 14px rgb(0 0 0 / 24%);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s ease;
@@ -215,20 +217,67 @@ html[data-mode="night"] .vm :global(svg) {
 }
 
 .vm :global(.nm) {
-  font-family: var(--font-gabarito), sans-serif;
-  font-weight: 700;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--ink);
+  font-family: var(--font-gabarito), sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.vm :global(.tipRoute) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.vm :global(.tipRoute[hidden]) {
+  display: none;
+}
+
+.vm :global(.tipEndpoint) {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.vm :global(.tipDestination) {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.vm :global(.tipPlace) {
+  color: var(--ink);
+  font-size: 10.5px;
+  font-weight: 650;
+}
+
+.vm :global(.tipWhen),
+.vm :global(.st) {
+  color: var(--ink-soft);
+  font-size: 9.5px;
+}
+
+.vm :global(.tipLate) {
+  color: var(--st-delay-fg);
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.vm :global(.tipArrow) {
+  color: var(--ink-soft);
+  font-size: 11px;
 }
 
 .vm :global(.st) {
-  font-size: 9.5px;
-  color: var(--ink-soft);
+  text-align: center;
 }
 
-/* An underway boat without an ETA has empty status - no stray gap. */
+.vm :global(.tipWhen):empty,
+.vm :global(.tipLate):empty,
 .vm :global(.st):empty {
   display: none;
 }
