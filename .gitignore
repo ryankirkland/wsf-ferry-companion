@@ -37,3 +37,6 @@ out/
 spikes/data/
 spikes/results/
 spikes/.spend.json
+
+# Subagent worktrees (Claude Code isolation) - tool-managed scratch, never project content
+.claude/worktrees/
