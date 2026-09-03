@@ -1,0 +1,314 @@
+/* The loading ferry: the map's vessel sprite, sketched on while the map
+ * chunk streams. Every part is stroked in sequence (hull, cabin, windows,
+ * stack, wake), then the fills fade in on the mode tokens and the sketch
+ * outlines give way to the sprite's own styling - only the hull keeps a
+ * stroke, in --keel, exactly as map.module.css draws it - so the finished
+ * boat IS the boat that lands on the map. Hold, fade, repeat.
+ *
+ * Every path carries pathLength=1, so a dash of 1 is "the whole outline"
+ * whatever its geometry. Undrawn parts are hidden by stroke-opacity in the
+ * keyframes rather than by the dash alone: a "fully hidden" dash still
+ * paints a sliver at its seam (round caps a dot, butt caps a hairline).
+ *
+ * One 3.4 s cycle (CYCLE_MS in LoadingFerry.tsx must match), in percent:
+ *   0-24  hull            14-34 cabin
+ *  26-40  window 1        29-43 window 2    32-46 window 3    35-49 window 4
+ *  36-48  stack           42-60 wake
+ *  50-64  fills in, sketch outlines out
+ *  64-84  hold            84-100 the whole boat fades, then it restarts.
+ * The window stagger is baked into the keyframes, never animation-delay:
+ * a delay on an infinite animation is a permanent phase shift, and the
+ * windows would sit filled over empty paper at the top of every repeat.
+ *
+ * --ferry-phase: a negative delay the component sets from
+ * performance.now() so a remount (the dynamic-import placeholder handing
+ * over to MapView's veil) resumes mid-stroke instead of restarting. */
+
+.loader {
+  display: grid;
+  place-items: center;
+}
+
+.ferry {
+  overflow: visible;
+  animation: ferry-cycle 3.4s ease-in-out infinite;
+  animation-delay: var(--ferry-phase, 0s);
+}
+
+.ferry path {
+  fill-opacity: 0;
+  stroke: var(--ink-soft);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation-duration: 3.4s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-delay: var(--ferry-phase, 0s);
+}
+
+.hull {
+  fill: var(--hull);
+  animation-name: draw-hull;
+}
+
+.cabin {
+  fill: var(--cabin);
+  animation-name: draw-cabin;
+}
+
+.win {
+  fill: var(--win);
+}
+
+.win1 {
+  animation-name: draw-win1;
+}
+
+.win2 {
+  animation-name: draw-win2;
+}
+
+.win3 {
+  animation-name: draw-win3;
+}
+
+.win4 {
+  animation-name: draw-win4;
+}
+
+.stack {
+  fill: var(--stack);
+  animation-name: draw-stack;
+}
+
+.wake {
+  fill: none;
+  stroke: var(--wake);
+  stroke-width: 1.4;
+  animation-name: draw-wake;
+}
+
+@keyframes ferry-cycle {
+  0%,
+  84% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* The hull keeps its outline and hands it to --keel, the sprite's own. */
+@keyframes draw-hull {
+  0% {
+    stroke-dashoffset: 1;
+    stroke-opacity: 0;
+    fill-opacity: 0;
+    stroke: var(--ink-soft);
+  }
+  0.5% {
+    stroke-opacity: 1;
+  }
+  24%,
+  50% {
+    stroke-dashoffset: 0;
+    fill-opacity: 0;
+    stroke: var(--ink-soft);
+  }
+  64%,
+  100% {
+    stroke-dashoffset: 0;
+    fill-opacity: 1;
+    stroke: var(--keel);
+  }
+}
+
+/* Everything else loses its sketch outline as its fill arrives - the map
+ * sprite strokes only the hull. */
+@keyframes draw-cabin {
+  0%,
+  14% {
+    stroke-dashoffset: 1;
+    stroke-opacity: 0;
+    fill-opacity: 0;
+  }
+  14.5% {
+    stroke-opacity: 1;
+  }
+  34%,
+  50% {
+    stroke-dashoffset: 0;
+    stroke-opacity: 1;
+    fill-opacity: 0;
+  }
+  64%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke-opacity: 0;
+    fill-opacity: 1;
+  }
+}
+
+@keyframes draw-win1 {
+  0%,
+  26% {
+    stroke-dashoffset: 1;
+    stroke-opacity: 0;
+    fill-opacity: 0;
+  }
+  26.5% {
+    stroke-opacity: 1;
+  }
+  40%,
+  50% {
+    stroke-dashoffset: 0;
+    stroke-opacity: 1;
+    fill-opacity: 0;
+  }
+  64%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke-opacity: 0;
+    fill-opacity: 1;
+  }
+}
+
+@keyframes draw-win2 {
+  0%,
+  29% {
+    stroke-dashoffset: 1;
+    stroke-opacity: 0;
+    fill-opacity: 0;
+  }
+  29.5% {
+    stroke-opacity: 1;
+  }
+  43%,
+  50% {
+    stroke-dashoffset: 0;
+    stroke-opacity: 1;
+    fill-opacity: 0;
+  }
+  64%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke-opacity: 0;
+    fill-opacity: 1;
+  }
+}
+
+@keyframes draw-win3 {
+  0%,
+  32% {
+    stroke-dashoffset: 1;
+    stroke-opacity: 0;
+    fill-opacity: 0;
+  }
+  32.5% {
+    stroke-opacity: 1;
+  }
+  46%,
+  50% {
+    stroke-dashoffset: 0;
+    stroke-opacity: 1;
+    fill-opacity: 0;
+  }
+  64%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke-opacity: 0;
+    fill-opacity: 1;
+  }
+}
+
+@keyframes draw-win4 {
+  0%,
+  35% {
+    stroke-dashoffset: 1;
+    stroke-opacity: 0;
+    fill-opacity: 0;
+  }
+  35.5% {
+    stroke-opacity: 1;
+  }
+  49%,
+  50% {
+    stroke-dashoffset: 0;
+    stroke-opacity: 1;
+    fill-opacity: 0;
+  }
+  64%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke-opacity: 0;
+    fill-opacity: 1;
+  }
+}
+
+@keyframes draw-stack {
+  0%,
+  36% {
+    stroke-dashoffset: 1;
+    stroke-opacity: 0;
+    fill-opacity: 0;
+  }
+  36.5% {
+    stroke-opacity: 1;
+  }
+  48%,
+  50% {
+    stroke-dashoffset: 0;
+    stroke-opacity: 1;
+    fill-opacity: 0;
+  }
+  64%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke-opacity: 0;
+    fill-opacity: 1;
+  }
+}
+
+@keyframes draw-wake {
+  0%,
+  42% {
+    stroke-dashoffset: 1;
+    stroke-opacity: 0;
+  }
+  42.5% {
+    stroke-opacity: 1;
+  }
+  60%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke-opacity: 1;
+  }
+}
+
+/* Reduced motion: the finished boat, still - the same end state the
+ * keyframes reach, with no sketching and no loop. */
+@media (prefers-reduced-motion: reduce) {
+  .ferry,
+  .ferry path {
+    animation: none;
+  }
+
+  .ferry path {
+    stroke-dashoffset: 0;
+    stroke-opacity: 0;
+    fill-opacity: 1;
+  }
+
+  .hull {
+    stroke: var(--keel);
+    stroke-opacity: 1;
+  }
+
+  .wake {
+    stroke-opacity: 1;
+  }
+}

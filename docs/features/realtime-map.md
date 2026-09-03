@@ -63,17 +63,38 @@ ambient "frame on a wall" mode (`/ambient`) that runs unattended for days.
 ## The loading screen draws the boat (2026-09-01)
 
 Owner's call: "instead of 'Talking to the Sound' as the loading screen, a
-little SVG draw animation of a ferry." `LoadingFerry` (chrome/) sketches the
-map's own vessel sprite - the same geometry as `lib/map/vessels/ferry-svg.ts`,
-so the boat being drawn is the boat that appears a moment later - stroke by
-stroke: hull, cabin, four windows, stack, wake, then the fills fade in on the
-mode tokens (dusk lantern windows included), hold, fade, and repeat until the
-map's `ready` fires. Every path carries `pathLength=1` so the CSS dash math is
-geometry-free; undrawn parts are hidden by `stroke-opacity` in the keyframes
-because a "fully hidden" dash still paints a sliver at its seam. Reduced-motion
-users get the finished boat, still. The voice line survives as the loader's
-accessible name (`role="status"`), and the failure state is unchanged - words
-and a retry, because a rider then needs to act.
+little SVG draw animation of a ferry." `LoadingFerry` (chrome/, with its own
+CSS module) sketches the map's own vessel sprite - the same geometry as
+`lib/map/vessels/ferry-svg.ts`, in the same DOM order (stack first, so the
+cabin covers its base) - stroke by stroke: hull, cabin, four windows
+(staggered), stack, wake. Then the fills fade in on the mode tokens (dusk
+lantern windows included) while the sketch outlines give way to the sprite's
+own styling - only the hull keeps a stroke, in `--keel`, as `map.module.css`
+draws it - so the finished boat IS the boat that lands on the map. Hold, fade,
+repeat until the map's `ready` fires.
+
+Three mechanics the first cut got wrong, caught in review:
+
+- **Undrawn parts are hidden by `stroke-opacity`** in the keyframes, not by
+  the dash alone: a "fully hidden" dash still paints a sliver at its seam
+  (round caps a dot, butt caps a hairline). Every path carries `pathLength=1`
+  so the dash math is geometry-free.
+- **The window stagger is baked into four keyframe blocks**, never
+  `animation-delay`: a delay on an infinite animation is a permanent phase
+  shift, and the windows would sit filled over empty paper for a few frames
+  at the top of every repeat.
+- **The loader mounts twice** on a real load - `page.tsx`'s dynamic-import
+  placeholder, then `MapView`'s own veil once the chunk lands - and a fresh
+  element restarts its CSS animation from the first stroke, resetting the
+  half-drawn boat mid-hull. Both mounts derive a negative `animation-delay`
+  (`--ferry-phase`) from `performance.now()` in a layout effect, so the second
+  resumes exactly where the first was. For the same reason the loader is an
+  image named "Talking to the Sound..." (`role="img"` + `aria-label`), not a
+  live region: a live region inserted with content is announced unreliably,
+  and two of them in a second is worse than the silent `<p>` it replaced.
+
+Reduced-motion users get the finished boat, still. The failure state is
+unchanged - words and a retry, because a rider then needs to act.
 
 ## The boats ARE the drawings now (2026-08-18)
 
