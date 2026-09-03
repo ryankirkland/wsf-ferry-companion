@@ -91,5 +91,9 @@ Grain: canvas-baked speckle, dark `rgba(38,51,58,.06)` on day/dusk, light
 Warm, brief, concrete, never cutesy about people's time.
 - Delay: "Wenatchee is running 12 minutes behind. The 6:20 just became the smart choice."
 - Empty: "That was the last boat tonight. First one out tomorrow is 4:45 AM."
-- Loading: "Talking to the Sound..."
+- Loading: the map's own vessel sprite sketched on stroke by stroke - hull,
+  cabin, windows, stack, wake - then filled in the mode tokens until it is the
+  map's boat exactly, looping until the map is up (`LoadingFerry`,
+  2026-09-01). "Talking to the Sound..." stays as its accessible name (it is
+  an image, not a live region); reduced-motion users get the finished boat.
 - Numbers are honest: percentiles over means, denominators stated, cancellations never hidden.

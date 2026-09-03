@@ -25,6 +25,7 @@
 - **Observability**: `docs/runbooks/observability.md` covers reading application logs (13 Lambda log groups + the EMF metric namespaces), tracking cost (the two budgets, the run-rate command, what July actually decomposed to), and user activity - homegrown site analytics (see above) now covers page views, clicks, referrers, and coarse geography; CloudFront access logging itself remains off (the analytics pipeline is a separate first-party beacon, not raw request logs, and never persists IPs). Update it when monitoring changes.
 
 ## General Guidelines
+- Every change ships the same way, no exceptions (owner's rule, 2026-09-01): open a PR, have it code-reviewed by a subagent, fix what the review finds, and merge only once the review and CI are both green. Never push straight to main; never merge unreviewed.
 - Never use the em dash. Use the plain dash "-" instead.
 - When writing commit messages, NEVER auto-add your agent name as co-author.
 - When making technical decisions, do not give much weight to development cost. Instead, prefer quality, simplicity, robustness, scalability, and long term maintainability.
