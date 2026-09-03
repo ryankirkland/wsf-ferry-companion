@@ -7,10 +7,8 @@ messages for that text version reach SQS; a crash therefore degrades to queue
 duplicates, which the delivery worker absorbs after a successful send.
 """
 
-import hashlib
 import json
 import os
-import re
 import time
 from dataclasses import asdict
 from datetime import datetime
@@ -20,15 +18,18 @@ import boto3
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from wsf_core.alert_parse import parse_cancelled_sailings
+from wsf_core.alerts import body_hash, text_hash
 
 from wsf_notify.metrics import emit
 
 SOUND_TZ = ZoneInfo("America/Los_Angeles")
 FALLBACK_LEAD_H = 2
 BULLETIN_TTL_S = 90 * 86400
+# An unchanged bulletin gets its TTL pushed out once it is this close to
+# expiry - so a notice that outlives 90 days is never deleted and re-sent.
+TTL_REFRESH_BELOW_S = 30 * 86400
 
 _index_cache: dict | None = None
-_WS_RE = re.compile(r"\s+")
 
 
 def _table():
@@ -44,12 +45,6 @@ def _all_route_ids() -> list[int]:
             .read()
         )
     return sorted({p["route_id"] for p in _index_cache["pairs"] if p.get("route_id") is not None})
-
-
-def _text_hash(title: str, text: str | None) -> str:
-    return hashlib.sha256(
-        f"{_WS_RE.sub(' ', title).strip()}\n{_WS_RE.sub(' ', text or '').strip()}".encode()
-    ).hexdigest()[:16]
 
 
 def lambda_handler(event, context):
@@ -68,27 +63,52 @@ def lambda_handler(event, context):
         print(json.dumps({"EmptyFeedGuard": {"stored": len(stored)}}))
         return {"queued": 0, "guarded": True}
 
-    counts = {"DeliveriesQueued": 0, "ParseMisses": 0}
+    counts = {"DeliveriesQueued": 0, "ParseMisses": 0, "BodyOnlyEdits": 0}
     fresh_ids: set[str] = set()
-    changes: list[tuple[dict, str, int]] = []
+    changes: list[tuple[dict, str, str, int]] = []
+    body_edits: list[tuple[str, str, bool]] = []
+    ttl_refreshes: list[str] = []
+    now_s = int(time.time())
 
     for alert in feed:
         bid = str(alert["id"])
         fresh_ids.add(bid)
         published_ms = int(datetime.fromisoformat(alert["published"]).timestamp() * 1000)
-        text_hash = _text_hash(alert["title"], alert.get("text"))
+        version = text_hash(alert["title"], alert.get("text"))
+        body_version = body_hash(alert.get("body"))
         prior = stored.get(bid)
         if prior:
             prior_ms = int(prior["published_ms"])
             if prior_ms > published_ms:
                 continue
-            if prior_ms == published_ms and prior.get("text_hash") == text_hash:
+            if prior_ms == published_ms and prior.get("text_hash") == version:
+                if prior.get("body_hash") != body_version:
+                    # Title/text unchanged, body moved (or is seen for the
+                    # first time by a notifier that stored no body_hash):
+                    # republished on the site, metered, never re-notified.
+                    body_edits.append((bid, body_version, "body_hash" in prior))
+                elif int(prior.get("expires_at") or 0) < now_s + TTL_REFRESH_BELOW_S:
+                    # Unchanged, but its 90-day TTL is running out. A
+                    # long-lived notice (the Kingston boarding-pass shape)
+                    # must not be TTL-deleted, come back as NEW, and
+                    # re-email everyone. One write per bulletin per ~60
+                    # days, not per poll.
+                    ttl_refreshes.append(bid)
                 continue
-        changes.append((alert, text_hash, published_ms))
+        changes.append((alert, version, body_version, published_ms))
 
-    for alert, text_hash, published_ms in changes:
-        _enqueue_matches(table, alert, text_hash, observed_at_ms, counts)
-        _record_bulletin(table, alert, text_hash, published_ms, observed_at_ms)
+    for alert, version, body_version, published_ms in changes:
+        _enqueue_matches(table, alert, version, observed_at_ms, counts)
+        _record_bulletin(table, alert, version, body_version, published_ms, observed_at_ms)
+
+    for bid, body_version, known in body_edits:
+        _record_body_hash(table, bid, body_version)
+        if known:
+            counts["BodyOnlyEdits"] += 1
+            print(json.dumps({"BodyOnlyEdit": {"bulletin_id": bid}}))
+
+    for bid in ttl_refreshes:
+        _refresh_ttl(table, bid)
 
     for bid, prior in stored.items():
         if bid not in fresh_ids and "gone_at" not in prior:
@@ -103,14 +123,19 @@ def lambda_handler(event, context):
 
 
 def _record_bulletin(
-    table, alert: dict, text_hash: str, published_ms: int, observed_at_ms: int
+    table,
+    alert: dict,
+    version: str,
+    body_version: str,
+    published_ms: int,
+    observed_at_ms: int,
 ) -> None:
     bid = str(alert["id"])
     try:
         table.update_item(
             Key={"PK": "ALERTS", "SK": f"BULLETIN#{bid}"},
             UpdateExpression=(
-                "SET published_ms = :p, text_hash = :h, route_ids = :r, "
+                "SET published_ms = :p, text_hash = :h, body_hash = :b, route_ids = :r, "
                 "all_routes = :a, first_seen_ms = if_not_exists(first_seen_ms, :seen), "
                 "expires_at = :ttl REMOVE gone_at"
             ),
@@ -120,7 +145,8 @@ def _record_bulletin(
             ),
             ExpressionAttributeValues={
                 ":p": published_ms,
-                ":h": text_hash,
+                ":h": version,
+                ":b": body_version,
                 ":r": alert.get("route_ids") or [],
                 ":a": bool(alert.get("all_routes")),
                 ":seen": observed_at_ms,
@@ -132,6 +158,39 @@ def _record_bulletin(
             raise
         # Reserved concurrency serializes normal invocations. This path is a
         # duplicate or stale manual invoke; any queued duplicate is harmless.
+
+
+def _record_body_hash(table, bid: str, body_version: str) -> None:
+    """Body-only edit: move the stored body version (and push the TTL out)
+    without touching the notification key, so the next poll does not
+    re-count it."""
+    _update_seen(
+        table,
+        bid,
+        "SET body_hash = :b, expires_at = :ttl",
+        {":b": body_version, ":ttl": int(time.time()) + BULLETIN_TTL_S},
+    )
+
+
+def _refresh_ttl(table, bid: str) -> None:
+    _update_seen(table, bid, "SET expires_at = :ttl", {":ttl": int(time.time()) + BULLETIN_TTL_S})
+
+
+def _update_seen(table, bid: str, expression: str, values: dict) -> None:
+    """A write against a bulletin we just read. The condition only fails if
+    the item was TTL-deleted between the query and now; that bulletin then
+    reappears as NEW on the next poll, which is the right outcome, and
+    raising would only trip the fan-out alarm for a non-event."""
+    try:
+        table.update_item(
+            Key={"PK": "ALERTS", "SK": f"BULLETIN#{bid}"},
+            UpdateExpression=expression,
+            ConditionExpression="attribute_exists(published_ms)",
+            ExpressionAttributeValues=values,
+        )
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] != "ConditionalCheckFailedException":
+            raise
 
 
 def _subscriptions_by_user(table, alert: dict) -> dict[str, list[dict]]:
@@ -178,11 +237,21 @@ def _sub_matches(sub, sailings, parsed_clean, published_iso) -> tuple[bool, list
     return lead <= hhmm <= end, []
 
 
-def _enqueue_matches(table, alert, text_hash, observed_at_ms, counts) -> None:
-    sailings, parsed_clean = parse_cancelled_sailings(alert.get("text"))
+def _enqueue_matches(table, alert, version, observed_at_ms, counts) -> None:
+    sailings, parsed_clean = parse_cancelled_sailings(alert.get("text"), alert.get("body"))
     if not parsed_clean:
         counts["ParseMisses"] += 1
-        print(json.dumps({"ParseMiss": {"bulletin_id": alert["id"], "text": alert.get("text")}}))
+        print(
+            json.dumps(
+                {
+                    "ParseMiss": {
+                        "bulletin_id": alert["id"],
+                        "text": alert.get("text"),
+                        "body": alert.get("body"),
+                    }
+                }
+            )
+        )
 
     for user_sub, subscriptions in _subscriptions_by_user(table, alert).items():
         matched_subs: list[dict] = []
@@ -220,7 +289,7 @@ def _enqueue_matches(table, alert, text_hash, observed_at_ms, counts) -> None:
             "v": 1,
             "user_sub": user_sub,
             "email": first["email"],
-            "text_hash": text_hash,
+            "text_hash": version,
             "observed_at_ms": observed_at_ms,
             "alert": alert,
             "parsed_clean": parsed_clean,

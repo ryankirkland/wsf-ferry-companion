@@ -31,6 +31,10 @@ def test_first_run_publishes_and_stores_watermark(aws, monkeypatch, alerts_rows_
     )
     assert doc["v"] == 1 and len(doc["alerts"]) == 9
     assert all("<" not in (a["text"] or "") for a in doc["alerts"])
+    # The body (BulletinText) rides along as plain multi-line text - it is
+    # where WSF puts the substance; the one-liner usually repeats the title.
+    assert all(a["body"] and "<" not in a["body"] for a in doc["alerts"])
+    assert any("\n\n" in a["body"] for a in doc["alerts"])
     # Newest first.
     published = [a["published"] for a in doc["alerts"]]
     assert published == sorted(published, reverse=True)

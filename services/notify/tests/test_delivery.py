@@ -207,3 +207,67 @@ def test_latency_anchors_on_this_observation(aws, sends, capsys):
     assert lines
     latency = json.loads(lines[-1])["AlertSend"]["latency_ms"]
     assert 0 <= latency < 60_000
+
+
+def rendered_text(mime: bytes) -> str:
+    """The decoded text/plain body - set_content may quoted-printable-wrap
+    long lines, so substring checks must run on the decoded content."""
+    from email import message_from_bytes, policy
+
+    return message_from_bytes(mime, policy=policy.default).get_content()
+
+
+def test_title_prints_once_when_wsf_text_repeats_it(aws, sends):
+    # The 2026-09-03 Labor Day email (bulletin 117482): title == text, no
+    # body ingested, status bulletin (parsed clean, nothing to parse).
+    doc = payload()
+    doc["alert"].update(
+        title="Service during Labor Day weekend", text="Service during Labor Day weekend"
+    )
+    doc["sailings"] = []
+
+    delivery.lambda_handler(event(doc), None)
+
+    text = rendered_text(sends[0][1])
+    assert text.count("Service during Labor Day weekend") == 1
+    assert "couldn't determine" not in text  # nothing to parse, nothing to caveat
+    assert text.startswith("Service during Labor Day weekend\n\nYour sailings:")
+
+
+def test_body_renders_under_the_title(aws, sends):
+    doc = payload()
+    doc["alert"].update(
+        title="Service during Labor Day weekend",
+        text="Service during Labor Day weekend",
+        body=(
+            "Sailings on Monday, Sept. 7 will follow the Sunday schedule.\n\n"
+            "Expect heavy traffic at Colman Dock Friday afternoon."
+        ),
+    )
+    doc["sailings"] = []
+
+    delivery.lambda_handler(event(doc), None)
+
+    text = rendered_text(sends[0][1])
+    assert text.count("Service during Labor Day weekend") == 1
+    assert (
+        "Service during Labor Day weekend\n\n"
+        "Sailings on Monday, Sept. 7 will follow the Sunday schedule.\n\n"
+        "Expect heavy traffic at Colman Dock Friday afternoon.\n\n"
+        "Your sailings:"
+    ) in text
+
+
+def test_text_and_body_both_render_when_each_adds_information(aws, sends):
+    doc = payload()
+    doc["alert"].update(
+        title="FVS #2 CATHLAMET out of service start of 7/24",
+        text="FVS #2 - Missing crew. The 0405 VASH>FAU is cancelled.",
+        body="The #2 Cathlamet will be out of service, due to missing USCG regulated crewing.",
+    )
+
+    delivery.lambda_handler(event(doc), None)
+
+    text = rendered_text(sends[0][1])
+    assert text.index("FVS #2 CATHLAMET") < text.index("Missing crew") < text.index("USCG")
+    assert "Affected sailings in your window:" in text

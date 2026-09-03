@@ -49,20 +49,24 @@ across 5 routes.**
   `basic` flags (curated 13), collection hint, synthesized effective label
   ("fares for travel {trip_date}, retrieved {date}" - upstream has NO
   effective-date field; future-date browsing notes today's tables shown).
-- `/data/alerts.json` - slimmed active alerts (plain text, route_ids,
-  BulletinID+PublishDate watermark). The route banner is M2's same-day
-  cancellation surface; free-text sailing extraction is M3 scope. The UI
-  stamps every alert with its publish time (Sound-time clock if today,
-  short date otherwise) - a 9 AM delay notice means something different
-  at 5 PM. WSF publishes two strings per bulletin (AlertFullTitle and
-  RouteAlertText) and for most bulletins they are the same sentence typed
+- `/data/alerts.json` - slimmed active alerts (title, text, body as
+  plain text, route_ids, content-digest watermark). The route banner is
+  M2's same-day cancellation surface; free-text sailing extraction is M3
+  scope. The UI stamps every alert with its publish time (Sound-time
+  clock if today, short date otherwise) - a 9 AM delay notice means
+  something different at 5 PM. WSF publishes three strings per bulletin:
+  AlertFullTitle, RouteAlertText (`text`) and BulletinText (`body`,
+  added 2026-09-03 - optional in the type because older documents lack
+  it). For most bulletins title and text are the same sentence typed
   twice, drifting only in spacing and punctuation ("Edm/King- Boarding"
-  vs "Edm/King - Boarding"), so the UI prints the body only when it says
-  something the title did not: `alertBody()`
-  (`web/src/lib/trip/alert-text.ts`, shared with the account page's
-  all-alerts list) folds case/punctuation/whitespace and drops a body the
-  title already covers. It never drops a body that EXTENDS the title -
-  that is where the cancellations live ("The 0405 VASH>FAU ... are
+  vs "Edm/King - Boarding"), and the substance lives in the body, so the
+  UI prints under the title only the texts that say something the title
+  did not: `alertDetails()` (`web/src/lib/trip/alert-text.ts`, shared
+  with the account page's all-alerts list; `wsf_core.alert_text` is its
+  Python twin for the alert email) folds case/punctuation/whitespace,
+  drops a text the title already covers and a text another candidate
+  contains in full. It never drops a text that EXTENDS the title - that
+  is where the cancellations live ("The 0405 VASH>FAU ... are
   cancelled"), and hiding those would cost a rider a sailing. Owner's
   call, 2026-08-30: "why do these alerts have unnecessary sub text?"
 - `/data/adjustments.json` (added 2026-07-29) - every timeadj row

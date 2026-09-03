@@ -63,19 +63,45 @@ class ParsedSailing:
     arr_id: int
 
 
-def parse_cancelled_sailings(text: str | None) -> tuple[list[ParsedSailing], bool]:
+def parse_cancelled_sailings(
+    text: str | None, body: str | None = None
+) -> tuple[list[ParsedSailing], bool]:
     """Returns (sailings, parsed_cleanly).
 
-    parsed_cleanly is True only when the text mentions cancellation AND
+    parsed_cleanly is True only when the prose mentions cancellation AND
     every TIME CODE>CODE mention resolved to known terminals - partial
     resolution is a miss so the fallback can cover what we couldn't read.
-    Texts that never mention cancelling parse to ([], True): there is
+    Prose that never mentions cancelling parses to ([], True): there is
     nothing to extract and nothing was missed.
+
+    RouteAlertText is read FIRST and ALONE: when WSF cancels sailings, that
+    one-liner is where the codes live, and it parsed reliably long before
+    the body existed. The BulletinText body is consulted only when the
+    one-liner has nothing to say - it is long prose full of route numbers,
+    slashes and abbreviations ("104 EB/WB", "WSDOT/WSF"), and folding it
+    into the same pass let that noise demote a clean one-liner to a miss.
+    A miss here is not harmless: the notifier then falls back to the
+    publish-time window, which can DROP the subscriber whose window covers
+    the cancelled sailing but not the moment WSF posted it (caught in
+    review, 2026-09-03).
+
+    Until 2026-09-03 only the one-liner was read at all, so a bulletin
+    whose one-liner repeats its title and whose body says "the 5:30 p.m.
+    sailing is cancelled" parsed as "nothing to extract" - clean, silent,
+    no caveat line. Now that case fails closed into the honest fallback
+    ("we couldn't determine the specific sailings").
     """
-    if not text or not _CANCEL_RE.search(text):
+    sailings, clean = _parse_prose(text)
+    if sailings or not clean:
+        return sailings, clean
+    return _parse_prose(body)
+
+
+def _parse_prose(prose: str | None) -> tuple[list[ParsedSailing], bool]:
+    if not prose or not _CANCEL_RE.search(prose):
         return [], True
 
-    mentions = _SAILING_RE.findall(text)
+    mentions = _SAILING_RE.findall(prose)
     if not mentions:
         return [], False  # cancellation prose we couldn't decode
 

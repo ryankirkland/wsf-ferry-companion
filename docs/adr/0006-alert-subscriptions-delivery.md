@@ -30,7 +30,8 @@ because mail scanners click everything.
 
 **No DynamoDB Streams - notifier-owned diff, SQS-owned delivery retry.**
 The 1-min alerts poller stays a dumb sensor: on digest change it
-async-invokes the notifier with the full slim feed (~25 KB), then writes
+async-invokes the notifier with the full slim feed (~7 KB for nine
+bulletins with bodies, measured 2026-09-03), then writes
 its watermark LAST. The notifier diffs against ALERTS/BULLETIN# items,
 evaluates every subscription before deduplicating users, and enqueues
 one delivery per matched user. Bulletin state moves only after queueing,
@@ -42,8 +43,8 @@ direct-SES implementation.)
 **Digest watermark.** The M2 `max_id:max_ms` watermark was blind to
 edits of older bulletins and to withdrawals (a live M2 bug: withdrawn
 alerts never left the site banner). Now a digest over sorted
-(id, published_ms, normalized_text_hash) tuples - moves on ANY
-appearance, edit, or disappearance.
+(id, published_ms, text_hash, body_hash) tuples - moves on ANY
+appearance, edit, or disappearance, the body included since 2026-09-03.
 
 **Pair + time-window subscriptions with a fail-closed parser (Ryan's
 call for the fullest PRD wording).** WSF publishes per-sailing

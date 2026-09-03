@@ -1,5 +1,5 @@
 import type { AlertItem } from "@/lib/trip/types";
-import { alertBody } from "@/lib/trip/alert-text";
+import { alertDetails } from "@/lib/trip/alert-text";
 import { soundStamp } from "@/lib/time/sound-time";
 import styles from "./trip.module.css";
 
@@ -7,8 +7,8 @@ import styles from "./trip.module.css";
  * live in this free text until the today-refresh instrument proves the
  * schedule feed drops them (free-text sailing parsing is M3 scope).
  * Every alert carries its publish stamp: a delay notice from 9 AM means
- * something different at 5 PM. The body renders only when it says
- * something the title did not (see alertBody). */
+ * something different at 5 PM. Text and body render only when they say
+ * something the title did not (see alertDetails). */
 export function AlertBanner({ alerts }: { alerts: AlertItem[] }) {
   if (alerts.length === 0) return null;
   const [first] = alerts;
@@ -23,7 +23,7 @@ export function AlertBanner({ alerts }: { alerts: AlertItem[] }) {
       </summary>
       <div className={styles.alertBody}>
         {alerts.map((a) => {
-          const body = alertBody(a);
+          const details = alertDetails(a);
           return (
             <div key={a.id} className={styles.alertItem}>
               <h4>
@@ -34,7 +34,9 @@ export function AlertBanner({ alerts }: { alerts: AlertItem[] }) {
                   </time>
                 )}
               </h4>
-              {body && <p>{body}</p>}
+              {details.map((detail) => (
+                <p key={detail}>{detail}</p>
+              ))}
             </div>
           );
         })}

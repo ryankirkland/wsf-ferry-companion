@@ -132,9 +132,9 @@ notifications.
 | Poll health | `META` | `POLLER#vessellocations` | last_success/attempt, polls ok/failed, last_error |
 | Refresh tokens | `META` | `CACHEFLUSH#vessels\|terminals\|schedule\|fares` | opaque cacheflushdate token |
 | Pairs horizon | `META` | `HORIZON#pairs` | last published horizon window |
-| Alerts watermark | `META` | `ALERTS#watermark` | `maxid:maxms` change gate |
+| Alerts watermark | `META` | `ALERTS#watermark` | `d:<digest>` over (id, published_ms, text_hash, body_hash) - moves on any appearance, edit (body included), or withdrawal |
 | Departures, today+tomorrow (M2) | `PAIR#0007#0003` | `DEP#<iso>` | vessel, depart_ms; TTL `expires_at` = depart + 6 h; M3's alert-evaluator Query substrate |
-| Bulletin state (M3) | `ALERTS` | `BULLETIN#<id>` | first_seen_ms, text_hash, gone_at; notifier-owned diff state |
+| Bulletin state (M3) | `ALERTS` | `BULLETIN#<id>` | first_seen_ms, text_hash (notification key: title+text, pinned), body_hash (metered, never re-notifies), gone_at; notifier-owned diff state |
 | Subscriptions (M3) | `USER#<sub>` + `ROUTE#<rid>` mirror | `SUB#...` | pair, window, email; TransactWrite pairs |
 | Send records / caps (M3) | `USER#<sub>` | `SENT#<bulletin>` / `NOTIF#<date>` | recorded after SES accepts; per-version dedup + daily caps |
 | Suppression (M3) | `EMAIL#<email>` | `SUPPRESS` / `USER` | complaint/bounce hygiene + email->user pointer |
@@ -374,6 +374,9 @@ erDiagram
     }
     ALERT {
         int id PK
+        string title "AlertFullTitle"
+        string text "RouteAlertText - parser input, notification key"
+        string body "BulletinText, HTML stripped - the substance"
         int route_ids FK
         bool all_routes
     }
