@@ -1,18 +1,24 @@
 import json
+from datetime import datetime
+from email import message_from_bytes, policy
 
 import pytest
 from conftest import jwt_event
+from wsf_core.alerts import body_hash, text_hash
 from wsf_notify import api, delivery, notifier
 
 PUBLISHED = "2026-01-15T22:05:00+00:00"  # 2:05 PM PST
 CANCEL_TEXT = "The 1630 SEA/BBI sailing is cancelled due to crewing."
 
 
-def alert(id=1001, text=CANCEL_TEXT, published=PUBLISHED, route_ids=(5,), all_routes=False):
+def alert(
+    id=1001, text=CANCEL_TEXT, published=PUBLISHED, route_ids=(5,), all_routes=False, body=None
+):
     return {
         "id": id,
         "title": "Sea/BI - Service update",
         "text": text,
+        "body": body,
         "published": published,
         "route_ids": list(route_ids),
         "all_routes": all_routes,
@@ -198,3 +204,86 @@ def test_route_queries_paginate_before_grouping_users():
 
     assert table.calls == 2
     assert set(grouped) == {"u-one", "u-two"}
+
+
+def bulletin_item(aws, bid=1001) -> dict:
+    return aws["table"].get_item(Key={"PK": "ALERTS", "SK": f"BULLETIN#{bid}"})["Item"]
+
+
+def test_deploying_body_support_does_not_requeue_live_bulletins(aws, capsys):
+    # State as the pre-2026-09-03 notifier left it: title+text hash, no
+    # body_hash. The same bulletin now arrives WITH a body. The notification
+    # key ignores the body, so nothing is queued and nobody is re-emailed;
+    # the body version is adopted silently (no BodyOnlyEdit - it is not one).
+    subscribe("u-hit", "hit@example.com", 7, 3, "13:00", "19:00")
+    status = alert(text="Sea/BI - Service update", body="Holiday schedule in effect.")
+    aws["table"].put_item(
+        Item={
+            "PK": "ALERTS",
+            "SK": "BULLETIN#1001",
+            "published_ms": int(datetime.fromisoformat(PUBLISHED).timestamp() * 1000),
+            "text_hash": text_hash(status["title"], status["text"]),
+            "route_ids": [5],
+            "all_routes": False,
+        }
+    )
+
+    result = run([status])
+
+    assert result == {"queued": 0, "changed_bulletins": 0}
+    assert queued_payloads(aws) == []
+    assert bulletin_item(aws)["body_hash"] == body_hash(status["body"])
+    assert "BodyOnlyEdit" not in capsys.readouterr().out
+
+
+def test_body_only_edit_is_metered_but_never_requeued(aws, capsys):
+    subscribe("u-hit", "hit@example.com", 7, 3, "13:00", "19:00")
+    status = alert(text="Sea/BI - Service update", body="Holiday schedule in effect.")
+    assert run([status])["queued"] == 1
+    assert queued_payloads(aws)[0]["alert"]["body"] == "Holiday schedule in effect."
+    capsys.readouterr()
+
+    edited = dict(status, body="Holiday schedule in effect. Expect heavy traffic.")
+    result = run([edited])
+
+    assert result["queued"] == 0
+    assert queued_payloads(aws) == []
+    assert bulletin_item(aws)["body_hash"] == body_hash(edited["body"])
+    out = capsys.readouterr().out
+    assert '"BodyOnlyEdit": {"bulletin_id": "1001"}' in out
+    assert '"BodyOnlyEdits": 1' in out
+
+    # Same body again: nothing moves, nothing is counted.
+    assert run([edited])["queued"] == 0
+    assert "BodyOnlyEdit" not in capsys.readouterr().out
+
+
+def test_text_edit_still_requeues_with_the_current_body(aws):
+    subscribe("u-hit", "hit@example.com", 7, 3, "13:00", "19:00")
+    run([alert(text="Sea/BI - Service update", body="Holiday schedule in effect.")])
+    queued_payloads(aws)
+
+    edited = alert(text="Sea/BI - Service update. View the Real-Time Map.", body="Now with detail.")
+    assert run([edited])["queued"] == 1
+    assert queued_payloads(aws)[0]["alert"]["body"] == "Now with detail."
+
+
+def test_cancellation_only_in_the_body_fails_closed_with_the_caveat(aws, monkeypatch):
+    # The one-liner repeats the title; the cancellation is prose in the body
+    # the codes regex cannot read. Before 2026-09-03 this parsed "clean" with
+    # zero sailings and the email carried no caveat at all.
+    subscribe("u-hit", "hit@example.com", 7, 3, "13:00", "19:00")
+    body = "Due to crewing, the 5:30 p.m. Seattle to Bainbridge sailing is cancelled."
+    result = run([alert(text="Sea/BI - Service update", body=body)])
+    queued = queued_payloads(aws)
+
+    assert result["queued"] == 1
+    assert queued[0]["parsed_clean"] is False and queued[0]["sailings"] == []
+
+    sends = []
+    monkeypatch.setattr(delivery, "_ses_send", lambda to, mime: sends.append(mime))
+    delivery.lambda_handler({"Records": [{"messageId": "m", "body": json.dumps(queued[0])}]}, None)
+
+    text = message_from_bytes(sends[0], policy=policy.default).get_content()
+    assert body in text
+    assert "We couldn't determine the specific sailings" in text

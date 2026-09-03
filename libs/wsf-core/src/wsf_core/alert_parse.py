@@ -63,19 +63,29 @@ class ParsedSailing:
     arr_id: int
 
 
-def parse_cancelled_sailings(text: str | None) -> tuple[list[ParsedSailing], bool]:
+def parse_cancelled_sailings(
+    text: str | None, body: str | None = None
+) -> tuple[list[ParsedSailing], bool]:
     """Returns (sailings, parsed_cleanly).
 
-    parsed_cleanly is True only when the text mentions cancellation AND
+    parsed_cleanly is True only when the prose mentions cancellation AND
     every TIME CODE>CODE mention resolved to known terminals - partial
     resolution is a miss so the fallback can cover what we couldn't read.
-    Texts that never mention cancelling parse to ([], True): there is
+    Prose that never mentions cancelling parses to ([], True): there is
     nothing to extract and nothing was missed.
+
+    The prose is RouteAlertText followed by the BulletinText body. Until
+    2026-09-03 only the one-liner was read, so a bulletin whose one-liner
+    repeats its title and whose body says "the 5:30 p.m. sailing is
+    cancelled" parsed as "nothing to extract" - clean, silent, no caveat
+    line. With the body in, that case fails closed into the honest
+    fallback ("we couldn't determine the specific sailings").
     """
-    if not text or not _CANCEL_RE.search(text):
+    prose = "\n".join(part for part in (text, body) if part)
+    if not prose or not _CANCEL_RE.search(prose):
         return [], True
 
-    mentions = _SAILING_RE.findall(text)
+    mentions = _SAILING_RE.findall(prose)
     if not mentions:
         return [], False  # cancellation prose we couldn't decode
 

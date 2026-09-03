@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 import boto3
 from boto3.dynamodb.types import TypeSerializer
 from botocore.exceptions import ClientError
+from wsf_core.alert_text import alert_details
 from wsf_core.tokens import sign
 
 from wsf_notify.metrics import emit, emit_latency
@@ -216,7 +217,11 @@ def _build_message(payload: dict) -> bytes:
     unsub_url = f"{os.environ['API_ORIGIN']}/v1/unsubscribe?token={token}"
     trip_url = f"{site}/trip/{sub.get('slug', '')}"
 
-    lines = [alert["title"], "", alert.get("text") or ""]
+    # Title once, then only the texts that add to it - WSF's one-liner is
+    # usually the title retyped, and the substance lives in the body.
+    lines = [alert["title"]]
+    for detail in alert_details(alert["title"], alert.get("text"), alert.get("body")):
+        lines += ["", detail]
     if sailings:
         lines += ["", "Affected sailings in your window:"]
         lines += [f"  - {s['hhmm']} {s['dep_code']} > {s['arr_code']}" for s in sailings]

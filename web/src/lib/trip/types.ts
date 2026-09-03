@@ -82,6 +82,9 @@ export interface AlertItem {
   id: number;
   title: string;
   text: string | null;
+  /** BulletinText as plain multi-line text (ingested since 2026-09-03);
+   * absent from documents published before that, so treated as optional. */
+  body?: string | null;
   published: string | null;
   route_ids: number[];
   all_routes: boolean;

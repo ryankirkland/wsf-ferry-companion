@@ -57,3 +57,24 @@ def test_non_cancellation_text_is_clean_and_empty():
 def test_absurd_time_fails_closed():
     sailings, clean = parse_cancelled_sailings("The 2905 VASH>FAU is cancelled.")
     assert sailings == [] and clean is False
+
+
+def test_body_prose_is_read_and_fails_closed():
+    title_only = "Service during Labor Day weekend"
+    # A status bulletin: nothing to extract, nothing missed - no caveat.
+    assert parse_cancelled_sailings(title_only, "Sailings follow the Sunday schedule.") == (
+        [],
+        True,
+    )
+    # The cancellation lives only in the body, in prose the codes regex
+    # cannot read: a MISS, so the notifier falls back honestly.
+    body = "Due to crewing, the 5:30 p.m. Seattle to Bainbridge sailing is cancelled."
+    assert parse_cancelled_sailings(title_only, body) == ([], False)
+    # Codes in the one-liner still parse when the body says nothing about it.
+    sailings, clean = parse_cancelled_sailings(
+        "The 1630 SEA>BBI sailing is cancelled.", "The #1 vessel is out of service."
+    )
+    assert clean and [s.hhmm for s in sailings] == ["16:30"]
+    # Body only (no one-liner at all) is read too.
+    sailings, clean = parse_cancelled_sailings(None, "The 1630 SEA>BBI sailing is cancelled.")
+    assert clean and len(sailings) == 1

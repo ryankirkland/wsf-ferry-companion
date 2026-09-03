@@ -63,6 +63,7 @@ def lambda_handler(event, context):
                 "id": a.id,
                 "title": a.title,
                 "text": a.text,
+                "body": a.body,
                 "published": a.published.astimezone(UTC).isoformat().replace("+00:00", "Z"),
                 "route_ids": a.route_ids,
                 "all_routes": a.all_routes,

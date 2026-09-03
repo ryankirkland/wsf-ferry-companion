@@ -18,20 +18,32 @@ The commuter: subscribed to Seattle-Bainbridge 16:00-19:00, wants the
 ## The pipeline
 
 1. **Sensor**: 1-min alerts poller; digest watermark (any bulletin
-   appearance/edit/withdrawal moves it); invokes the notifier with the
-   full slim feed, watermark written last (crash = harmless repeat).
+   appearance/edit/withdrawal moves it - title, one-liner AND body);
+   invokes the notifier with the full slim feed, watermark written last
+   (crash = harmless repeat).
 2. **Notifier** (`wsf-prod-notify-fanout`, reserved concurrency 1):
    diffs ALERTS/BULLETIN# state, classifies NEW/UPDATED/GONE, evaluates
    every subscription before deduplicating users, and writes one SQS
    delivery message per matched user. Bulletin state moves only after
-   every message for that text version reaches SQS.
+   every message for that text version reaches SQS. The notification
+   key is `wsf_core.alerts.text_hash` = title + RouteAlertText, PINNED
+   by a golden-value test: the body is deliberately outside it (a
+   body-only edit records `body_hash`, emits BodyOnlyEdits, and never
+   re-emails), because the same key lives in every BULLETIN#.text_hash
+   and SENT#.last_hash - moving its inputs would make every live
+   bulletin look edited on the first poll after deploy and re-email
+   every subscriber.
 3. **Parser** (`wsf_core.alert_parse`): cancellation prose ->
    (time, dep, arr) triples; fails closed (unknown code poisons the
-   text). Hit -> precise window match. Miss -> route-level fallback in
-   [window_start - 2 h, window_end] of publish time, honestly labeled
-   "we couldn't determine the specific sailings". Corpus at ship time:
-   52 distinct real texts, 51 non-cancellation, 1 cancellation (parses
-   clean) - n=1; ParseCoverage tells the real story over time.
+   text). Its input is RouteAlertText followed by the BulletinText body
+   (since 2026-09-03) so a cancellation written only in the body fails
+   closed instead of parsing as "nothing to extract". Hit -> precise
+   window match. Miss -> route-level fallback in [window_start - 2 h,
+   window_end] of publish time, honestly labeled "we couldn't determine
+   the specific sailings". Corpus at ship time: 52 distinct real texts,
+   51 non-cancellation, 1 cancellation (parses clean) - n=1;
+   ParseCoverage tells the real story over time (the body widens its
+   denominator - a ParseMisses step after the deploy is expected).
 4. **Delivery queue** (`wsf-prod-notify-delivery`): SQS isolates each
    recipient, retries transient failures five times, and retains
    exhausted messages in a 14-day DLQ. Queue age, Lambda errors, and DLQ
@@ -122,4 +134,19 @@ documented option if ParseCoverage proves the regex weak.
   again. The cutover itself briefly broke delivery (see PR #156) because
   that pin lagged the sender switch - with one identity there is no pair
   to drift apart.
+- 2026-09-03: **the Labor Day email said nothing.** Bulletin 117482
+  ("Service during Labor Day weekend") reached the owner as its title
+  printed twice, no body, no caveat. Root cause: ingest kept only
+  AlertFullTitle and RouteAlertText, and WSF fills RouteAlertText with
+  the title verbatim for most bulletins (6 of 9 in the exploration
+  sample, 2 more near-verbatim); the substance lives in BulletinText,
+  which was never read. The email then printed title + text without the
+  web banner's `alertBody` de-duplication. No caveat was correct by the
+  existing rule (nothing mentioned cancelling, so nothing was missed)
+  but blind: the parser never saw the body. Fix: `body` (BulletinText,
+  HTML -> plain multi-line text) in the Alert model, `/data/alerts.json`
+  and the notifier payload; email = title once + every text that adds
+  to it (`wsf_core.alert_text.alert_details`, the Python twin of the
+  web rule); parser reads text + body; notification key unchanged and
+  pinned (see step 2) so the deploy re-emails nobody.
 - M3 exit remaining: PRD acceptance walk + ADR-0003 tile revisit.
