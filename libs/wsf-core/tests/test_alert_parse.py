@@ -78,3 +78,33 @@ def test_body_prose_is_read_and_fails_closed():
     # Body only (no one-liner at all) is read too.
     sailings, clean = parse_cancelled_sailings(None, "The 1630 SEA>BBI sailing is cancelled.")
     assert clean and len(sailings) == 1
+
+
+def test_body_noise_cannot_demote_a_clean_one_liner():
+    # Review finding, 2026-09-03: folding the body into the same pass let a
+    # body with slashes and abbreviations ("WSDOT/WSF", "104 EB/WB") turn a
+    # one-liner that parsed cleanly into a miss - and a miss falls back to
+    # the publish-time window, which can DROP the rider whose window covers
+    # the cancelled sailing. The one-liner wins whenever it has something.
+    text = "The 0405 VASH>FAU and 0425 FAU>SW are cancelled."
+    body = "See the 2026 WSDOT/WSF notice for SR 104 EB/WB detours."
+    sailings, clean = parse_cancelled_sailings(text, body)
+    assert clean is True
+    assert [(s.hhmm, s.dep_id, s.arr_id) for s in sailings] == [("04:05", 22, 9), ("04:25", 9, 20)]
+
+
+def test_body_is_consulted_only_when_the_one_liner_has_nothing():
+    # One-liner repeats the title; the body carries the codes.
+    sailings, clean = parse_cancelled_sailings(
+        "Sea/BI - Service update", "Due to weather, the 1630 SEA>BBI sailing is cancelled."
+    )
+    assert clean is True and sailings[0].hhmm == "16:30"
+
+
+def test_a_missed_one_liner_stays_a_miss_whatever_the_body_says():
+    # Fail-closed: a cancellation mention the regex cannot resolve is a miss
+    # even if the body happens to parse; the caveat must print.
+    sailings, clean = parse_cancelled_sailings(
+        "The 0405 XYZ>FAU is cancelled.", "The 1630 SEA>BBI sailing is cancelled."
+    )
+    assert sailings == [] and clean is False

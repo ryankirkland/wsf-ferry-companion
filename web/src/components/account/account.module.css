@@ -198,6 +198,8 @@
 .alertCard p {
   margin: 0.4rem 0 0;
   font-size: 0.92rem;
+  /* Bodies are multi-paragraph; the trip banner keeps their breaks too. */
+  white-space: pre-line;
 }
 
 .alertRoutes {

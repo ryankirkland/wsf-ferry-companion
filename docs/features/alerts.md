@@ -82,7 +82,8 @@ alerts for this run" on pair pages. Pairs without an upstream route id
 ## Failure-capture / improvement loop
 
 Every parse miss: ParseMisses metric + ParseMiss log line (bulletin id +
-full text) + the raw S3 alerts archive (permanent corpus). Misses become
+the one-liner + the body, all public WSF prose) + the raw S3 alerts
+archive (permanent corpus). Misses become
 curated rules + regression tests; production stays deterministic. No
 LLM in the send path; an offline verified-grounding tier is the
 documented option if ParseCoverage proves the regex weak.

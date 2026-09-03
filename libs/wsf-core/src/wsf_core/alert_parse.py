@@ -74,14 +74,30 @@ def parse_cancelled_sailings(
     Prose that never mentions cancelling parses to ([], True): there is
     nothing to extract and nothing was missed.
 
-    The prose is RouteAlertText followed by the BulletinText body. Until
-    2026-09-03 only the one-liner was read, so a bulletin whose one-liner
-    repeats its title and whose body says "the 5:30 p.m. sailing is
-    cancelled" parsed as "nothing to extract" - clean, silent, no caveat
-    line. With the body in, that case fails closed into the honest
-    fallback ("we couldn't determine the specific sailings").
+    RouteAlertText is read FIRST and ALONE: when WSF cancels sailings, that
+    one-liner is where the codes live, and it parsed reliably long before
+    the body existed. The BulletinText body is consulted only when the
+    one-liner has nothing to say - it is long prose full of route numbers,
+    slashes and abbreviations ("104 EB/WB", "WSDOT/WSF"), and folding it
+    into the same pass let that noise demote a clean one-liner to a miss.
+    A miss here is not harmless: the notifier then falls back to the
+    publish-time window, which can DROP the subscriber whose window covers
+    the cancelled sailing but not the moment WSF posted it (caught in
+    review, 2026-09-03).
+
+    Until 2026-09-03 only the one-liner was read at all, so a bulletin
+    whose one-liner repeats its title and whose body says "the 5:30 p.m.
+    sailing is cancelled" parsed as "nothing to extract" - clean, silent,
+    no caveat line. Now that case fails closed into the honest fallback
+    ("we couldn't determine the specific sailings").
     """
-    prose = "\n".join(part for part in (text, body) if part)
+    sailings, clean = _parse_prose(text)
+    if sailings or not clean:
+        return sailings, clean
+    return _parse_prose(body)
+
+
+def _parse_prose(prose: str | None) -> tuple[list[ParsedSailing], bool]:
     if not prose or not _CANCEL_RE.search(prose):
         return [], True
 

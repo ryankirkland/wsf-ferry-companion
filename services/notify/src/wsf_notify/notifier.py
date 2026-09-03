@@ -25,6 +25,9 @@ from wsf_notify.metrics import emit
 SOUND_TZ = ZoneInfo("America/Los_Angeles")
 FALLBACK_LEAD_H = 2
 BULLETIN_TTL_S = 90 * 86400
+# An unchanged bulletin gets its TTL pushed out once it is this close to
+# expiry - so a notice that outlives 90 days is never deleted and re-sent.
+TTL_REFRESH_BELOW_S = 30 * 86400
 
 _index_cache: dict | None = None
 
@@ -64,6 +67,8 @@ def lambda_handler(event, context):
     fresh_ids: set[str] = set()
     changes: list[tuple[dict, str, str, int]] = []
     body_edits: list[tuple[str, str, bool]] = []
+    ttl_refreshes: list[str] = []
+    now_s = int(time.time())
 
     for alert in feed:
         bid = str(alert["id"])
@@ -82,6 +87,13 @@ def lambda_handler(event, context):
                     # first time by a notifier that stored no body_hash):
                     # republished on the site, metered, never re-notified.
                     body_edits.append((bid, body_version, "body_hash" in prior))
+                elif int(prior.get("expires_at") or 0) < now_s + TTL_REFRESH_BELOW_S:
+                    # Unchanged, but its 90-day TTL is running out. A
+                    # long-lived notice (the Kingston boarding-pass shape)
+                    # must not be TTL-deleted, come back as NEW, and
+                    # re-email everyone. One write per bulletin per ~60
+                    # days, not per poll.
+                    ttl_refreshes.append(bid)
                 continue
         changes.append((alert, version, body_version, published_ms))
 
@@ -94,6 +106,9 @@ def lambda_handler(event, context):
         if known:
             counts["BodyOnlyEdits"] += 1
             print(json.dumps({"BodyOnlyEdit": {"bulletin_id": bid}}))
+
+    for bid in ttl_refreshes:
+        _refresh_ttl(table, bid)
 
     for bid, prior in stored.items():
         if bid not in fresh_ids and "gone_at" not in prior:
@@ -146,14 +161,36 @@ def _record_bulletin(
 
 
 def _record_body_hash(table, bid: str, body_version: str) -> None:
-    """Body-only edit: move the stored body version without touching the
-    notification key, so the next poll does not re-count it."""
-    table.update_item(
-        Key={"PK": "ALERTS", "SK": f"BULLETIN#{bid}"},
-        UpdateExpression="SET body_hash = :b",
-        ConditionExpression="attribute_exists(published_ms)",
-        ExpressionAttributeValues={":b": body_version},
+    """Body-only edit: move the stored body version (and push the TTL out)
+    without touching the notification key, so the next poll does not
+    re-count it."""
+    _update_seen(
+        table,
+        bid,
+        "SET body_hash = :b, expires_at = :ttl",
+        {":b": body_version, ":ttl": int(time.time()) + BULLETIN_TTL_S},
     )
+
+
+def _refresh_ttl(table, bid: str) -> None:
+    _update_seen(table, bid, "SET expires_at = :ttl", {":ttl": int(time.time()) + BULLETIN_TTL_S})
+
+
+def _update_seen(table, bid: str, expression: str, values: dict) -> None:
+    """A write against a bulletin we just read. The condition only fails if
+    the item was TTL-deleted between the query and now; that bulletin then
+    reappears as NEW on the next poll, which is the right outcome, and
+    raising would only trip the fan-out alarm for a non-event."""
+    try:
+        table.update_item(
+            Key={"PK": "ALERTS", "SK": f"BULLETIN#{bid}"},
+            UpdateExpression=expression,
+            ConditionExpression="attribute_exists(published_ms)",
+            ExpressionAttributeValues=values,
+        )
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] != "ConditionalCheckFailedException":
+            raise
 
 
 def _subscriptions_by_user(table, alert: dict) -> dict[str, list[dict]]:

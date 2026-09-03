@@ -6,7 +6,7 @@
   {
    "id": 999,
    "title": "Seattle / Bainbridge - sample service notice",
-   "text": "This is a fixture alert for development.", "body": "Sailings on Monday follow the Sunday schedule.\\n\\nExpect heavy traffic at Colman Dock.",
+   "text": "This is a fixture alert for development.", "body": "Sailings on Monday follow the Sunday schedule.\n\nExpect heavy traffic at Colman Dock.",
    "published": "%%NOW%%",
    "route_ids": [
     5

@@ -38,3 +38,13 @@ def test_every_sample_body_is_plain_multi_line_text(alerts_rows):
         assert alert.body, alert.id
         assert "<" not in alert.body
         assert not alert.body.startswith("\n") and not alert.body.endswith("\n")
+
+
+def test_script_and_style_content_is_dropped_not_rendered():
+    # Review finding, 2026-09-03: their CONTENT is not prose.
+    html = (
+        "<p>Hi</p><script type='text/javascript'>var x = 1 < 2;</script>"
+        "<style>p{color:red}</style><p>Bye</p>"
+    )
+    assert html_to_text(html) == "Hi\n\nBye"
+    assert html_to_text("<STYLE>\n.a{}\n</STYLE >text") == "text"

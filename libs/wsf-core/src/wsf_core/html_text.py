@@ -13,6 +13,9 @@ notification hash inputs never move).
 import html
 import re
 
+# Whole elements whose CONTENT is not prose. Removed first, so a body that
+# ever carried a script or stylesheet does not print its source as text.
+_DROP_RE = re.compile(r"<(script|style)\b[^>]*>.*?</\1\s*>", re.IGNORECASE | re.DOTALL)
 _BLOCK_RE = re.compile(
     r"</?(?:p|div|br|li|ul|ol|h[1-6]|tr|table|blockquote)\b[^>]*>", re.IGNORECASE
 )
@@ -28,7 +31,8 @@ def html_to_text(value: str | None) -> str | None:
     is a labeled absence, not an empty string."""
     if value is None:
         return None
-    text = _BLOCK_RE.sub("\n", value)
+    text = _DROP_RE.sub("", value)
+    text = _BLOCK_RE.sub("\n", text)
     text = _TAG_RE.sub("", text)
     text = html.unescape(text).replace("\r", "")
     text = _HSPACE_RE.sub(" ", text)

@@ -1,4 +1,5 @@
 import json
+import time
 from datetime import datetime
 from email import message_from_bytes, policy
 
@@ -287,3 +288,38 @@ def test_cancellation_only_in_the_body_fails_closed_with_the_caveat(aws, monkeyp
     text = message_from_bytes(sends[0], policy=policy.default).get_content()
     assert body in text
     assert "We couldn't determine the specific sailings" in text
+
+
+def test_a_long_lived_unchanged_bulletin_gets_its_ttl_pushed_out(aws):
+    # Review finding L2, 2026-09-03: a notice that outlives its 90-day TTL
+    # was deleted, came back as NEW, and re-emailed everyone. An unchanged
+    # bulletin within 30 days of expiry gets a fresh TTL - and nothing else.
+    subscribe("u-hit", "hit@example.com", 7, 3, "13:00", "19:00")
+    status = alert(text="Sea/BI - Service update", body="Holiday schedule in effect.")
+    assert run([status])["queued"] == 1
+    fresh_ttl = bulletin_item(aws)["expires_at"]
+
+    # Far from expiry: an unchanged poll writes nothing.
+    assert run([status])["queued"] == 0
+    assert bulletin_item(aws)["expires_at"] == fresh_ttl
+
+    # Age it to 10 days before expiry: the next unchanged poll refreshes it.
+    aws["table"].update_item(
+        Key={"PK": "ALERTS", "SK": "BULLETIN#1001"},
+        UpdateExpression="SET expires_at = :t",
+        ExpressionAttributeValues={":t": int(time.time()) + 10 * 86400},
+    )
+    assert run([status])["queued"] == 0
+    assert bulletin_item(aws)["expires_at"] >= fresh_ttl
+
+
+def test_body_hash_write_tolerates_a_bulletin_that_vanished(aws, monkeypatch):
+    # Review finding L1: the conditional write can only fail if the item was
+    # TTL-deleted between the query and the update. That must not raise
+    # (a Lambda error + retry for a non-event); the bulletin reappears as
+    # NEW on the next poll, which is the right outcome.
+    status = alert(text="Sea/BI - Service update", body="Holiday schedule in effect.")
+    run([status])
+    aws["table"].delete_item(Key={"PK": "ALERTS", "SK": "BULLETIN#1001"})
+    notifier._record_body_hash(aws["table"], "1001", "deadbeefdeadbeef")  # no raise
+    notifier._refresh_ttl(aws["table"], "1001")  # no raise
