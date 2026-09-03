@@ -60,6 +60,21 @@ ambient "frame on a wall" mode (`/ambient`) that runs unattended for days.
   "stranger calls it beautiful" gate - both Ryan-side; the PMTiles switch
   test records into tools/pmtiles/RUNBOOK.md.
 
+## The loading screen draws the boat (2026-09-01)
+
+Owner's call: "instead of 'Talking to the Sound' as the loading screen, a
+little SVG draw animation of a ferry." `LoadingFerry` (chrome/) sketches the
+map's own vessel sprite - the same geometry as `lib/map/vessels/ferry-svg.ts`,
+so the boat being drawn is the boat that appears a moment later - stroke by
+stroke: hull, cabin, four windows, stack, wake, then the fills fade in on the
+mode tokens (dusk lantern windows included), hold, fade, and repeat until the
+map's `ready` fires. Every path carries `pathLength=1` so the CSS dash math is
+geometry-free; undrawn parts are hidden by `stroke-opacity` in the keyframes
+because a "fully hidden" dash still paints a sliver at its seam. Reduced-motion
+users get the finished boat, still. The voice line survives as the loader's
+accessible name (`role="status"`), and the failure state is unchanged - words
+and a retry, because a rider then needs to act.
+
 ## The boats ARE the drawings now (2026-08-18)
 
 Owner's beauty-gate call after a side-by-side A/B at real map sizes: the

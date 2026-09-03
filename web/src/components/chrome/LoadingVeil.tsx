@@ -1,9 +1,11 @@
 "use client";
 
+import { LoadingFerry } from "./LoadingFerry";
 import styles from "./chrome.module.css";
 
-/** The loading voice: warm, brief, honest (direction.md). `failed` swaps in
- * the honest failure state with a retry. */
+/** The loading state draws the ferry (LoadingFerry; the voice line is its
+ * accessible name). `failed` swaps in the honest failure state with a
+ * retry - words, because a rider needs to act. */
 export function LoadingVeil({
   gone,
   failed,
@@ -23,7 +25,7 @@ export function LoadingVeil({
           </button>
         </div>
       ) : (
-        <p className={styles.veilInner}>Talking to the Sound...</p>
+        <LoadingFerry />
       )}
     </div>
   );

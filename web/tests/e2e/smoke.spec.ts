@@ -40,7 +40,9 @@ test("the map page loads, draws the fleet, and switches modes", async ({ page })
   await page.goto("/");
 
   await expect(page.locator("canvas.maplibregl-canvas")).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByText("Talking to the Sound...")).toBeHidden({ timeout: 20_000 });
+  // The loading ferry (with the voice line as its accessible name) goes
+  // with the veil once the map is up.
+  await expect(page.getByTestId("loading-ferry")).toBeHidden({ timeout: 20_000 });
 
   // The full 21-vessel roster renders as markers.
   await expect(page.locator("[data-vessel]")).toHaveCount(21, { timeout: 15_000 });
