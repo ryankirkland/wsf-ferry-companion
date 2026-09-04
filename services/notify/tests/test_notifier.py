@@ -5,7 +5,7 @@ from email import message_from_bytes, policy
 
 import pytest
 from conftest import jwt_event
-from wsf_core.alerts import body_hash, text_hash
+from wsf_core.alerts import body_hash, send_hash, text_hash
 from wsf_notify import api, delivery, notifier
 
 PUBLISHED = "2026-01-15T22:05:00+00:00"  # 2:05 PM PST
@@ -231,32 +231,57 @@ def test_deploying_body_support_does_not_requeue_live_bulletins(aws, capsys):
 
     result = run([status])
 
+    # Adopting a first body is not an edit: WSF published nothing new, we
+    # simply started reading a field we used to drop. Nobody is emailed.
     assert result == {"queued": 0, "changed_bulletins": 0}
     assert queued_payloads(aws) == []
     assert bulletin_item(aws)["body_hash"] == body_hash(status["body"])
     assert "BodyOnlyEdit" not in capsys.readouterr().out
 
 
-def test_body_only_edit_is_metered_but_never_requeued(aws, capsys):
+def test_body_only_edit_requeues_and_says_why(aws, capsys):
+    # Owner's call, 2026-09-03: WSF telling us something new about a bulletin
+    # the rider already heard about is worth a second email, as long as the
+    # email says that is why it arrived.
     subscribe("u-hit", "hit@example.com", 7, 3, "13:00", "19:00")
     status = alert(text="Sea/BI - Service update", body="Holiday schedule in effect.")
     assert run([status])["queued"] == 1
-    assert queued_payloads(aws)[0]["alert"]["body"] == "Holiday schedule in effect."
+    first = queued_payloads(aws)[0]
+    assert first["alert"]["body"] == "Holiday schedule in effect."
+    assert first["update_reason"] is None
     capsys.readouterr()
 
     edited = dict(status, body="Holiday schedule in effect. Expect heavy traffic.")
     result = run([edited])
 
-    assert result["queued"] == 0
-    assert queued_payloads(aws) == []
+    assert result["queued"] == 1
+    requeued = queued_payloads(aws)[0]
+    assert requeued["update_reason"] == "body"
+    assert requeued["alert"]["body"] == edited["body"]
+    # The notification key never moved; only the send key did.
+    assert requeued["text_hash"] == first["text_hash"]
+    assert requeued["send_hash"] != first["send_hash"]
     assert bulletin_item(aws)["body_hash"] == body_hash(edited["body"])
     out = capsys.readouterr().out
     assert '"BodyOnlyEdit": {"bulletin_id": "1001"}' in out
     assert '"BodyOnlyEdits": 1' in out
 
-    # Same body again: nothing moves, nothing is counted.
+    # Same body again: nothing moves, nothing is queued, nothing is counted.
     assert run([edited])["queued"] == 0
+    assert queued_payloads(aws) == []
     assert "BodyOnlyEdit" not in capsys.readouterr().out
+
+
+def test_whitespace_only_body_churn_never_requeues(aws):
+    # body_hash normalizes whitespace, so WSF re-saving the same prose with
+    # different Word-paste spacing is not "new information".
+    subscribe("u-hit", "hit@example.com", 7, 3, "13:00", "19:00")
+    status = alert(text="Sea/BI - Service update", body="Holiday schedule in effect.")
+    assert run([status])["queued"] == 1
+    queued_payloads(aws)  # drain the first send
+    respaced = dict(status, body="Holiday   schedule\n in effect.")
+    assert run([respaced])["queued"] == 0
+    assert queued_payloads(aws) == []
 
 
 def test_text_edit_still_requeues_with_the_current_body(aws):
@@ -323,3 +348,25 @@ def test_body_hash_write_tolerates_a_bulletin_that_vanished(aws, monkeypatch):
     aws["table"].delete_item(Key={"PK": "ALERTS", "SK": "BULLETIN#1001"})
     notifier._record_body_hash(aws["table"], "1001", "deadbeefdeadbeef")  # no raise
     notifier._refresh_ttl(aws["table"], "1001")  # no raise
+
+
+def test_a_body_that_vanishes_never_announces_new_information(aws):
+    # html_to_text returns None for a markup-only body. Losing a body is not
+    # "new information", and announcing it would send an email whose only
+    # content is the claim that there is content.
+    subscribe("u-hit", "hit@example.com", 7, 3, "13:00", "19:00")
+    status = alert(text="Sea/BI - Service update", body="Holiday schedule in effect.")
+    assert run([status])["queued"] == 1
+    queued_payloads(aws)
+
+    assert run([dict(status, body=None)])["queued"] == 0
+    assert queued_payloads(aws) == []
+    assert bulletin_item(aws)["body_hash"] == body_hash(None)
+
+    # And when it comes back, the send key returns to one already delivered,
+    # so the rider is not emailed a third time about the same prose.
+    assert run([status])["queued"] == 1
+    restored = queued_payloads(aws)[0]
+    assert restored["send_hash"] == send_hash(
+        text_hash(status["title"], status["text"]), body_hash(status["body"])
+    )

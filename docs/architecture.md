@@ -134,9 +134,9 @@ notifications.
 | Pairs horizon | `META` | `HORIZON#pairs` | last published horizon window |
 | Alerts watermark | `META` | `ALERTS#watermark` | `d:<digest>` over (id, published_ms, text_hash, body_hash) - moves on any appearance, edit (body included), or withdrawal |
 | Departures, today+tomorrow (M2) | `PAIR#0007#0003` | `DEP#<iso>` | vessel, depart_ms; TTL `expires_at` = depart + 6 h; M3's alert-evaluator Query substrate |
-| Bulletin state (M3) | `ALERTS` | `BULLETIN#<id>` | first_seen_ms, text_hash (notification key: title+text, pinned), body_hash (metered, never re-notifies), gone_at; notifier-owned diff state |
+| Bulletin state (M3) | `ALERTS` | `BULLETIN#<id>` | first_seen_ms, text_hash (notification key: title+text, pinned), body_hash (metered; a change re-notifies with the email saying why, since 2026-09-04), gone_at; notifier-owned diff state |
 | Subscriptions (M3) | `USER#<sub>` + `ROUTE#<rid>` mirror | `SUB#...` | pair, window, email; TransactWrite pairs |
-| Send records / caps (M3) | `USER#<sub>` | `SENT#<bulletin>` / `NOTIF#<date>` | recorded after SES accepts; per-version dedup + daily caps |
+| Send records / caps (M3) | `USER#<sub>` | `SENT#<bulletin>` / `NOTIF#<date>` | recorded after SES accepts; last_hash holds send_hash (text+body) for per-send-version dedup, body_sends bounds body re-notifications, + daily caps |
 | Suppression (M3) | `EMAIL#<email>` | `SUPPRESS` / `USER` | complaint/bounce hygiene + email->user pointer |
 
 **Public snapshot contract** (`/data/fleet.json`, versioned `"v": 1`, ADR-0005):

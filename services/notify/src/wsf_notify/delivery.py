@@ -23,6 +23,13 @@ from wsf_notify.metrics import emit, emit_latency
 
 SOUND_TZ = ZoneInfo("America/Los_Angeles")
 MAX_SENDS_PER_BULLETIN = 3
+# At most one of a bulletin's three sends may be a body re-notification, so
+# two slots always remain for what the title and one-liner say. ADR-0006's
+# priority is that missing a real cancellation is the worse failure, and
+# body edits are the frequent kind (that is why BodyOnlyEdits exists): an
+# unbounded share would let a chatty weekend notice mute the Monday
+# cancellation announcement. Caught in review, 2026-09-04.
+MAX_BODY_RESENDS = 1
 DAILY_CAP = 10
 DELIVERY_TTL_S = 90 * 86400
 
@@ -61,7 +68,12 @@ def _deliver(payload: dict) -> bool:
     user_sub = str(payload["user_sub"])
     email = str(payload["email"])
     alert = payload["alert"]
-    text_hash = str(payload["text_hash"])
+    # The dedup key covers the body too, so a labelled body re-notification
+    # is not mistaken for a duplicate. A message enqueued before send_hash
+    # existed (in flight across the deploy) falls back to the old key, which
+    # is exactly what its SENT# item holds.
+    send_key = str(payload.get("send_hash") or payload["text_hash"])
+    is_body_resend = payload.get("update_reason") == "body"
     table = _table()
 
     if table.get_item(Key={"PK": f"EMAIL#{email}", "SK": "SUPPRESS"}).get("Item"):
@@ -73,15 +85,25 @@ def _deliver(payload: dict) -> bool:
         return False
 
     la_date = datetime.now(SOUND_TZ).date().isoformat()
-    reason = _ineligible_reason(table, user_sub, str(alert["id"]), text_hash, la_date)
+    reason, previously_sent = _eligibility(
+        table,
+        user_sub,
+        str(alert["id"]),
+        send_key,
+        str(payload["text_hash"]),
+        la_date,
+        is_body_resend,
+    )
     if reason:
         emit(**{reason: 1})
         return False
 
-    mime = _build_message(payload)
+    mime = _build_message(payload, previously_sent=previously_sent)
     _ses_send(email, mime)
 
-    recorded = _record_sent(table, user_sub, str(alert["id"]), text_hash, la_date)
+    recorded = _record_sent(
+        table, user_sub, str(alert["id"]), send_key, la_date, is_body_resend=is_body_resend
+    )
     latency_ms = int(time.time() * 1000) - int(payload["observed_at_ms"])
     print(
         json.dumps(
@@ -108,24 +130,53 @@ def _has_active_subscription(table, user_sub: str, subscription_ids: list[str]) 
     )
 
 
-def _ineligible_reason(
-    table, user_sub: str, bulletin_id: str, text_hash: str, la_date: str
-) -> str | None:
+def _eligibility(
+    table,
+    user_sub: str,
+    bulletin_id: str,
+    send_key: str,
+    text_key: str,
+    la_date: str,
+    is_body_resend: bool,
+) -> tuple[str | None, bool]:
+    """(reason to skip, has this rider been emailed about this bulletin before).
+
+    The second value decides whether the email may say "since we emailed
+    you": a body edit re-runs the cancellation parser, so it can match a
+    rider the first poll never matched, and that rider's FIRST email must
+    not claim a previous one (caught in review, 2026-09-04).
+    """
     prior = table.get_item(Key={"PK": f"USER#{user_sub}", "SK": f"SENT#{bulletin_id}"}).get(
         "Item", {}
     )
-    if prior.get("last_hash") == text_hash:
-        return "DeliveryDuplicates"
+    previously_sent = "last_hash" in prior
+    # Both keys block a duplicate. A SENT# item written before send_hash
+    # existed holds the raw text key for its 90-day life, and comparing only
+    # the new key would silently retire the duplicate guard for that whole
+    # window - any re-enqueue (WSF bumping PublishDate with unchanged prose,
+    # a BULLETIN# lost to TTL) would re-email everyone. The cost is one
+    # missed body update on bulletins last sent before this deploy.
+    if prior.get("last_hash") in {send_key, text_key}:
+        return "DeliveryDuplicates", previously_sent
     if int(prior.get("send_count", 0)) >= MAX_SENDS_PER_BULLETIN:
-        return "BulletinCapped"
+        return "BulletinCapped", previously_sent
+    if is_body_resend and int(prior.get("body_sends", 0)) >= MAX_BODY_RESENDS:
+        return "BodyResendCapped", previously_sent
 
     daily = table.get_item(Key={"PK": f"USER#{user_sub}", "SK": f"NOTIF#{la_date}"}).get("Item", {})
     if int(daily.get("sends", 0)) >= DAILY_CAP:
-        return "DailyCapped"
-    return None
+        return "DailyCapped", previously_sent
+    return None, previously_sent
 
 
-def _record_sent(table, user_sub: str, bulletin_id: str, text_hash: str, la_date: str) -> bool:
+def _record_sent(
+    table,
+    user_sub: str,
+    bulletin_id: str,
+    send_key: str,
+    la_date: str,
+    is_body_resend: bool = False,
+) -> bool:
     ser = TypeSerializer()
 
     def values(raw: dict) -> dict:
@@ -141,6 +192,7 @@ def _record_sent(table, user_sub: str, bulletin_id: str, text_hash: str, la_date
                         "UpdateExpression": (
                             "SET last_hash = :h, "
                             "send_count = if_not_exists(send_count, :z) + :one, "
+                            "body_sends = if_not_exists(body_sends, :z) + :body, "
                             "expires_at = :ttl"
                         ),
                         "ConditionExpression": (
@@ -150,9 +202,10 @@ def _record_sent(table, user_sub: str, bulletin_id: str, text_hash: str, la_date
                         ),
                         "ExpressionAttributeValues": values(
                             {
-                                ":h": text_hash,
+                                ":h": send_key,
                                 ":z": 0,
                                 ":one": 1,
+                                ":body": 1 if is_body_resend else 0,
                                 ":cap": MAX_SENDS_PER_BULLETIN,
                                 ":ttl": int(time.time()) + DELIVERY_TTL_S,
                             }
@@ -182,7 +235,14 @@ def _record_sent(table, user_sub: str, bulletin_id: str, text_hash: str, la_date
     except ClientError as exc:
         if exc.response["Error"]["Code"] != "TransactionCanceledException":
             raise
-        reason = _ineligible_reason(table, user_sub, bulletin_id, text_hash, la_date)
+        # Re-read: a concurrent send may have claimed this version, capped
+        # the bulletin, or filled the day. Only a reason we recognize turns
+        # the cancelled transaction into a skip; anything else is a real
+        # error and must reach the retry. `send_key` covers the pre-deploy
+        # text key too, so a legacy SENT# item still reads as a duplicate.
+        reason, _ = _eligibility(
+            table, user_sub, bulletin_id, send_key, send_key, la_date, is_body_resend
+        )
         if reason is None:
             raise
         print(
@@ -200,7 +260,7 @@ def _record_sent(table, user_sub: str, bulletin_id: str, text_hash: str, la_date
     return True
 
 
-def _build_message(payload: dict) -> bytes:
+def _build_message(payload: dict, previously_sent: bool = False) -> bytes:
     alert = payload["alert"]
     sub = payload["subscription"]
     sailings = payload.get("sailings") or []
@@ -220,6 +280,11 @@ def _build_message(payload: dict) -> bytes:
     # Title once, then only the texts that add to it - WSF's one-liner is
     # usually the title retyped, and the substance lives in the body.
     lines = [alert["title"]]
+    if payload.get("update_reason") == "body" and previously_sent:
+        # A second email about a bulletin the rider already heard about. Say
+        # why up front, before the detail it is pointing at (owner's call,
+        # 2026-09-03) - an unexplained repeat reads as a bug.
+        lines += ["", "WSF has added new information to this notice since we emailed you."]
     for detail in alert_details(alert["title"], alert.get("text"), alert.get("body")):
         lines += ["", detail]
     if sailings:

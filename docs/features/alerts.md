@@ -25,14 +25,41 @@ The commuter: subscribed to Seattle-Bainbridge 16:00-19:00, wants the
    diffs ALERTS/BULLETIN# state, classifies NEW/UPDATED/GONE, evaluates
    every subscription before deduplicating users, and writes one SQS
    delivery message per matched user. Bulletin state moves only after
-   every message for that text version reaches SQS. The notification
-   key is `wsf_core.alerts.text_hash` = title + RouteAlertText, PINNED
-   by a golden-value test: the body is deliberately outside it (a
-   body-only edit records `body_hash`, emits BodyOnlyEdits, and never
-   re-emails), because the same key lives in every BULLETIN#.text_hash
-   and SENT#.last_hash - moving its inputs would make every live
-   bulletin look edited on the first poll after deploy and re-email
-   every subscriber.
+   every message for that version reaches SQS.
+
+   Two keys, deliberately separate:
+
+   - The **change-detection key** is `wsf_core.alerts.text_hash` = title
+     + RouteAlertText, PINNED by a golden-value test. The body is
+     outside it because this key lives in every BULLETIN#.text_hash, and
+     moving its inputs would make every live bulletin look edited on the
+     first poll after a deploy. `body_hash` is tracked beside it.
+   - The **send key** is `send_hash` = text_hash + body_hash, which is
+     what the email actually renders and what SENT#.last_hash dedups on.
+
+   A body-only edit therefore moves the send key but not the change key:
+   it re-notifies, and the email opens with "WSF has added new
+   information to this notice since we emailed you" so a second email
+   never reads as a bug (owner's call, 2026-09-03 - "it is okay to
+   re-notify if we let the user know it is the result of receiving new
+   information"). Three things bound it, all found in review:
+
+   - **The caps**: 3 sends per bulletin per rider, 10 per day. On top of
+     those, at most ONE send per bulletin may be a body re-notification
+     (`MAX_BODY_RESENDS`, metered as BodyResendCapped), so a chatty
+     weekend notice can never spend the slot a Monday cancellation
+     announcement needs - ADR-0006's priority, not a spam ceiling.
+   - **What counts as an edit**: not whitespace churn (`body_hash`
+     normalizes it); not a bulletin stored before bodies existed adopting
+     its FIRST body; and not a body that VANISHES (markup-only bodies
+     resolve to None, and announcing a loss would send an email whose only
+     content is the claim that there is content). When a vanished body
+     returns, `send_hash` returns to a value that rider was already sent,
+     so delivery dedups it too.
+   - **Who may be told "since we emailed you"**: only a rider whose SENT#
+     record proves we did. A body edit re-runs the cancellation parser, so
+     it can match a rider the first poll never matched - their FIRST email
+     must not claim a previous one.
 3. **Parser** (`wsf_core.alert_parse`): cancellation prose ->
    (time, dep, arr) triples; fails closed (unknown code poisons the
    text). Its input is RouteAlertText followed by the BulletinText body

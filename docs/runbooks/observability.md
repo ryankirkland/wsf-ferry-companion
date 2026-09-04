@@ -84,7 +84,8 @@ worth knowing:
 | `AlertEmailLatency` | WSF/Notify | current bulletin text observation -> SES acceptance |
 | `DeliveryDuplicates` / `DeliverySuppressed` / `DeliveryUnsubscribed` / `BulletinCapped` / `DailyCapped` | WSF/Notify | queue duplicates, hygiene skips, and intentional send limits |
 | `ParseMisses` | WSF/Notify | prose the parser could not decode |
-| `BodyOnlyEdits` | WSF/Notify | WSF edited a bulletin's body without touching its title/one-liner - republished on the site, never re-notified (decide re-notify policy with this number in hand) |
+| `BodyOnlyEdits` | WSF/Notify | WSF edited a bulletin's body without touching its title/one-liner. These re-notify (the email says why); watch it if riders report alert emails feeling chatty |
+| `BodyResendCapped` | WSF/Notify | a body re-notification withheld because this rider already had one for that bulletin. Working as intended - one of a bulletin's three sends is the most a body may take, so a later cancellation always has a slot |
 | `StatsPublished` / `StatsDataLagDays` | WSF/Analytics | the F4 freshness SLO |
 | `UnmappedSlip` | WSF/Analytics | vocabulary drift, sailings in quarantine |
 | `CapacityTerminalsReporting` | WSF/Analytics | how many terminals report space |

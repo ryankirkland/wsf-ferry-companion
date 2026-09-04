@@ -55,13 +55,17 @@ closed - one unknown code poisons the whole text, because a half-true
 whose sailing we failed to decode. Parse hit -> precise window match;
 parse miss -> route-level fallback inside [window_start - 2 h,
 window_end] of the publish time, honestly labeled. Missing a real
-cancellation is the worse failure; caps bound the spam side.
+cancellation is the worse failure; caps bound the spam side. Amended
+2026-09-04: because body re-notifications share those caps, at most ONE
+of a bulletin's three sends may be a body update (MAX_BODY_RESENDS), so
+a chatty weekend notice can never spend the slot a Monday cancellation
+announcement needs.
 ParseCoverage/ParseMisses metrics + ParseMiss text capture feed the
 improvement loop (misses become rules + regression tests; no LLM in the
 send path - an offline verified-grounding tier is the documented
 fallback if real-world coverage proves weak).
 
-**At-least-once delivery per (user, bulletin, text-version).** A
+**At-least-once delivery per (user, bulletin, send-version).** A
 reserved-concurrency-1 delivery Lambda consumes one SQS message at a
 time, verifies at least one matched subscription remains active, checks
 suppression and the 3/bulletin + 10/day caps, sends through SES, then
@@ -72,6 +76,14 @@ duplicate an email; this is the chosen side of the irreducible
 cross-service atomicity gap because a duplicate is safer than a missed
 cancellation. Duplicate queue messages after a committed send are
 absorbed by the SENT record.
+
+Amended 2026-09-04: the dedup unit is the SEND version - `send_hash` =
+text_hash + body_hash - not the text version, so a body re-notification
+is not mistaken for a duplicate of the email already sent. SENT# items
+written before `send_hash` existed hold a raw text_hash for their 90-day
+life, and the guard accepts EITHER key so that window cannot re-open the
+duplicate path; the cost is one skipped body update on bulletins last
+sent before the cutover.
 
 The source queue retries five receives, retains messages four days, and
 moves exhaustion to a 14-day DLQ. Delivery Lambda errors, queue age over
