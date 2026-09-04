@@ -5,7 +5,7 @@ from email import message_from_bytes, policy
 
 import pytest
 from conftest import jwt_event
-from wsf_core.alerts import body_hash, text_hash
+from wsf_core.alerts import body_hash, send_hash, text_hash
 from wsf_notify import api, delivery, notifier
 
 PUBLISHED = "2026-01-15T22:05:00+00:00"  # 2:05 PM PST
@@ -348,3 +348,25 @@ def test_body_hash_write_tolerates_a_bulletin_that_vanished(aws, monkeypatch):
     aws["table"].delete_item(Key={"PK": "ALERTS", "SK": "BULLETIN#1001"})
     notifier._record_body_hash(aws["table"], "1001", "deadbeefdeadbeef")  # no raise
     notifier._refresh_ttl(aws["table"], "1001")  # no raise
+
+
+def test_a_body_that_vanishes_never_announces_new_information(aws):
+    # html_to_text returns None for a markup-only body. Losing a body is not
+    # "new information", and announcing it would send an email whose only
+    # content is the claim that there is content.
+    subscribe("u-hit", "hit@example.com", 7, 3, "13:00", "19:00")
+    status = alert(text="Sea/BI - Service update", body="Holiday schedule in effect.")
+    assert run([status])["queued"] == 1
+    queued_payloads(aws)
+
+    assert run([dict(status, body=None)])["queued"] == 0
+    assert queued_payloads(aws) == []
+    assert bulletin_item(aws)["body_hash"] == body_hash(None)
+
+    # And when it comes back, the send key returns to one already delivered,
+    # so the rider is not emailed a third time about the same prose.
+    assert run([status])["queued"] == 1
+    restored = queued_payloads(aws)[0]
+    assert restored["send_hash"] == send_hash(
+        text_hash(status["title"], status["text"]), body_hash(status["body"])
+    )

@@ -61,20 +61,27 @@ def text_hash(title: str, text: str | None) -> str:
 
     title + RouteAlertText, whitespace-normalized (upstream is Word-paste
     soup; a whitespace-only edit must not count as an update). The notifier
-    stores it in ALERTS/BULLETIN#.text_hash, the delivery worker in
-    USER#/SENT#.last_hash, and both compare against it on every poll. If its
-    inputs ever move, every live bulletin looks edited on the first poll
-    after deploy and every subscriber is re-emailed - so the body is
-    deliberately NOT in here (see body_hash), and test_alerts pins the
+    stores it in ALERTS/BULLETIN#.text_hash and compares against it on every
+    poll. If its inputs ever move, every live bulletin looks edited on the
+    first poll after deploy and every subscriber is re-emailed - so the body
+    is deliberately NOT in here (see body_hash), and test_alerts pins the
     formula with a golden value.
+
+    What an EMAIL is deduplicated by is send_hash, which folds this key
+    together with the body; USER#/SENT#.last_hash holds that.
     """
     return hashlib.sha256(f"{_norm(title)}\n{_norm(text)}".encode()).hexdigest()[:16]
 
 
 def body_hash(body: str | None) -> str:
-    """BulletinText version, tracked separately: a body-only edit republishes
-    the site and is metered (BodyOnlyEdits) but does not re-notify - whether
-    it should is a decision to take with that metric in hand, not by default."""
+    """BulletinText version, tracked separately from the notification key.
+
+    A body-only edit republishes the site, counts BodyOnlyEdits, and since
+    2026-09-04 re-notifies (the email says why) - the owner's call, with the
+    caps as the ceiling. It is kept out of text_hash so that adding it could
+    never make every live bulletin look edited at once; send_hash is where
+    the two meet.
+    """
     return hashlib.sha256(_norm(body).encode()).hexdigest()[:16]
 
 

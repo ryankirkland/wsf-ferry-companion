@@ -3,7 +3,7 @@
 Invoked by the alerts poller with the full slimmed feed on every digest
 change. The notifier owns bulletin state and matching, then enqueues one
 retryable delivery per matched user. Bulletin state is written only after all
-messages for that text version reach SQS; a crash therefore degrades to queue
+messages for that version reach SQS; a crash therefore degrades to queue
 duplicates, which the delivery worker absorbs after a successful send.
 """
 
@@ -28,6 +28,7 @@ BULLETIN_TTL_S = 90 * 86400
 # An unchanged bulletin gets its TTL pushed out once it is this close to
 # expiry - so a notice that outlives 90 days is never deleted and re-sent.
 TTL_REFRESH_BELOW_S = 30 * 86400
+_EMPTY_BODY = body_hash(None)
 
 _index_cache: dict | None = None
 
@@ -82,7 +83,7 @@ def lambda_handler(event, context):
             if prior_ms > published_ms:
                 continue
             if prior_ms == published_ms and prior.get("text_hash") == version:
-                if prior.get("body_hash") != body_version:
+                if prior.get("body_hash") != body_version and body_version != _EMPTY_BODY:
                     # Title/text unchanged, body moved. WSF told us something
                     # new about a bulletin the rider already heard about, so
                     # they hear about it again and the email says why
@@ -93,6 +94,15 @@ def lambda_handler(event, context):
                     # stored before bodies existed adopting its first one.
                     # Nothing new was published, so nobody is emailed.
                     body_edits.append((alert, body_version, "body_hash" in prior))
+                elif prior.get("body_hash") != body_version:
+                    # The body went away (html_to_text returns None for a
+                    # markup-only body). Losing prose is not new information,
+                    # and announcing it would send an email whose only
+                    # content is the claim that there is content. Record it
+                    # so the site follows, and say nothing. When the body
+                    # returns, send_hash returns to a value the rider was
+                    # already sent, so delivery dedups that too.
+                    body_edits.append((alert, body_version, False))
                 elif int(prior.get("expires_at") or 0) < now_s + TTL_REFRESH_BELOW_S:
                     # Unchanged, but its 90-day TTL is running out. A
                     # long-lived notice (the Kingston boarding-pass shape)

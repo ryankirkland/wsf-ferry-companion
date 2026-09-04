@@ -25,7 +25,7 @@ The commuter: subscribed to Seattle-Bainbridge 16:00-19:00, wants the
    diffs ALERTS/BULLETIN# state, classifies NEW/UPDATED/GONE, evaluates
    every subscription before deduplicating users, and writes one SQS
    delivery message per matched user. Bulletin state moves only after
-   every message for that text version reaches SQS.
+   every message for that version reaches SQS.
 
    Two keys, deliberately separate:
 
@@ -42,11 +42,24 @@ The commuter: subscribed to Seattle-Bainbridge 16:00-19:00, wants the
    information to this notice since we emailed you" so a second email
    never reads as a bug (owner's call, 2026-09-03 - "it is okay to
    re-notify if we let the user know it is the result of receiving new
-   information"). What bounds it is the existing cap: 3 sends per
-   bulletin per rider, 10 per day, however often WSF edits. Whitespace
-   churn is not an edit (`body_hash` normalizes it), and a bulletin
-   stored before bodies existed adopting its FIRST body is not an edit
-   either - nothing new was published, so nobody is emailed.
+   information"). Three things bound it, all found in review:
+
+   - **The caps**: 3 sends per bulletin per rider, 10 per day. On top of
+     those, at most ONE send per bulletin may be a body re-notification
+     (`MAX_BODY_RESENDS`, metered as BodyResendCapped), so a chatty
+     weekend notice can never spend the slot a Monday cancellation
+     announcement needs - ADR-0006's priority, not a spam ceiling.
+   - **What counts as an edit**: not whitespace churn (`body_hash`
+     normalizes it); not a bulletin stored before bodies existed adopting
+     its FIRST body; and not a body that VANISHES (markup-only bodies
+     resolve to None, and announcing a loss would send an email whose only
+     content is the claim that there is content). When a vanished body
+     returns, `send_hash` returns to a value that rider was already sent,
+     so delivery dedups it too.
+   - **Who may be told "since we emailed you"**: only a rider whose SENT#
+     record proves we did. A body edit re-runs the cancellation parser, so
+     it can match a rider the first poll never matched - their FIRST email
+     must not claim a previous one.
 3. **Parser** (`wsf_core.alert_parse`): cancellation prose ->
    (time, dep, arr) triples; fails closed (unknown code poisons the
    text). Its input is RouteAlertText followed by the BulletinText body
