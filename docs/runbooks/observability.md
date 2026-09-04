@@ -84,7 +84,7 @@ worth knowing:
 | `AlertEmailLatency` | WSF/Notify | current bulletin text observation -> SES acceptance |
 | `DeliveryDuplicates` / `DeliverySuppressed` / `DeliveryUnsubscribed` / `BulletinCapped` / `DailyCapped` | WSF/Notify | queue duplicates, hygiene skips, and intentional send limits |
 | `ParseMisses` | WSF/Notify | prose the parser could not decode |
-| `BodyOnlyEdits` | WSF/Notify | WSF edited a bulletin's body without touching its title/one-liner - republished on the site, never re-notified (decide re-notify policy with this number in hand) |
+| `BodyOnlyEdits` | WSF/Notify | WSF edited a bulletin's body without touching its title/one-liner. Since 2026-09-03 these re-notify (the email says why); this is the number to watch if riders report alert emails feeling chatty - the 3-per-bulletin cap is the ceiling |
 | `StatsPublished` / `StatsDataLagDays` | WSF/Analytics | the F4 freshness SLO |
 | `UnmappedSlip` | WSF/Analytics | vocabulary drift, sailings in quarantine |
 | `CapacityTerminalsReporting` | WSF/Analytics | how many terminals report space |

@@ -61,7 +61,11 @@ def _deliver(payload: dict) -> bool:
     user_sub = str(payload["user_sub"])
     email = str(payload["email"])
     alert = payload["alert"]
-    text_hash = str(payload["text_hash"])
+    # The dedup key covers the body too, so a labelled body re-notification
+    # is not mistaken for a duplicate. A message enqueued before send_hash
+    # existed (in flight across the deploy) falls back to the old key, which
+    # is exactly what its SENT# item holds.
+    send_key = str(payload.get("send_hash") or payload["text_hash"])
     table = _table()
 
     if table.get_item(Key={"PK": f"EMAIL#{email}", "SK": "SUPPRESS"}).get("Item"):
@@ -73,7 +77,7 @@ def _deliver(payload: dict) -> bool:
         return False
 
     la_date = datetime.now(SOUND_TZ).date().isoformat()
-    reason = _ineligible_reason(table, user_sub, str(alert["id"]), text_hash, la_date)
+    reason = _ineligible_reason(table, user_sub, str(alert["id"]), send_key, la_date)
     if reason:
         emit(**{reason: 1})
         return False
@@ -81,7 +85,7 @@ def _deliver(payload: dict) -> bool:
     mime = _build_message(payload)
     _ses_send(email, mime)
 
-    recorded = _record_sent(table, user_sub, str(alert["id"]), text_hash, la_date)
+    recorded = _record_sent(table, user_sub, str(alert["id"]), send_key, la_date)
     latency_ms = int(time.time() * 1000) - int(payload["observed_at_ms"])
     print(
         json.dumps(
@@ -220,6 +224,11 @@ def _build_message(payload: dict) -> bytes:
     # Title once, then only the texts that add to it - WSF's one-liner is
     # usually the title retyped, and the substance lives in the body.
     lines = [alert["title"]]
+    if payload.get("update_reason") == "body":
+        # A second email about a bulletin the rider already heard about. Say
+        # why up front, before the detail it is pointing at (owner's call,
+        # 2026-09-03) - an unexplained repeat reads as a bug.
+        lines += ["", "WSF has added new information to this notice since we emailed you."]
     for detail in alert_details(alert["title"], alert.get("text"), alert.get("body")):
         lines += ["", detail]
     if sailings:

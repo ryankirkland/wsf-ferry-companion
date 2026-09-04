@@ -78,6 +78,18 @@ def body_hash(body: str | None) -> str:
     return hashlib.sha256(_norm(body).encode()).hexdigest()[:16]
 
 
+def send_hash(text_version: str, body_version: str) -> str:
+    """What an EMAIL renders: the notification key plus the body version.
+
+    The delivery worker dedups on this rather than on text_hash alone, so a
+    body-only re-notification (owner's call, 2026-09-03: re-notify when WSF
+    tells us something new, and say that is why) is not mistaken for a
+    duplicate of the email we already sent. Idempotency is unchanged: an SQS
+    retry of the same message carries the same send_hash.
+    """
+    return hashlib.sha256(f"{text_version}\n{body_version}".encode()).hexdigest()[:16]
+
+
 def alert_text_hash(alert: Alert) -> str:
     return text_hash(alert.title, alert.text)
 

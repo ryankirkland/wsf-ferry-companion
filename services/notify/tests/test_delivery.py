@@ -8,7 +8,7 @@ from botocore.exceptions import ClientError
 from wsf_notify import delivery
 
 
-def payload(*, text_hash="hash-1", observed_at_ms=None, matches=None):
+def payload(*, text_hash="hash-1", observed_at_ms=None, matches=None, **extra):
     match = {
         "dep": 7,
         "arr": 3,
@@ -30,6 +30,7 @@ def payload(*, text_hash="hash-1", observed_at_ms=None, matches=None):
             "route_ids": [5],
             "all_routes": False,
         },
+        **extra,
         "parsed_clean": True,
         "sailings": [
             {
@@ -271,3 +272,61 @@ def test_text_and_body_both_render_when_each_adds_information(aws, sends):
     text = rendered_text(sends[0][1])
     assert text.index("FVS #2 CATHLAMET") < text.index("Missing crew") < text.index("USCG")
     assert "Affected sailings in your window:" in text
+
+
+def _rendered(sends) -> str:
+    return sends[-1][1].decode()
+
+
+def test_body_update_email_says_why_it_arrived_again(aws, sends):
+    # Owner's call, 2026-09-03: a second email is fine when WSF told us
+    # something new, as long as the email says that is why.
+    message = payload(send_hash="send-2", update_reason="body")
+    message["alert"]["body"] = "Holiday schedule in effect. Expect heavy traffic at Colman Dock."
+
+    delivery.lambda_handler(event(message), None)
+
+    sent = _rendered(sends)
+    assert "WSF has added new information to this notice since we emailed you." in sent
+    # The explanation comes before the new information it points at.
+    assert sent.index("added new information") < sent.index("Expect heavy traffic")
+
+
+def test_a_first_send_never_claims_new_information(aws, sends):
+    delivery.lambda_handler(event(payload(send_hash="send-1")), None)
+    assert "added new information" not in _rendered(sends)
+
+
+def test_dedup_follows_the_send_key_not_the_notification_key(aws, sends):
+    # Same bulletin, same text_hash, different body: it must send. The
+    # identical message again (an SQS retry) must not.
+    delivery.lambda_handler(event(payload(send_hash="send-1")), None)
+    delivery.lambda_handler(event(payload(send_hash="send-2", update_reason="body")), None)
+    result = delivery.lambda_handler(event(payload(send_hash="send-2", update_reason="body")), None)
+
+    assert result == {"processed": 1, "sent": 0}
+    assert len(sends) == 2
+    claim = aws["table"].get_item(Key={"PK": "USER#u-hit", "SK": "SENT#1001"})["Item"]
+    assert claim["last_hash"] == "send-2"
+    assert int(claim["send_count"]) == 2
+
+
+def test_a_message_enqueued_before_send_hash_existed_still_dedups(aws, sends):
+    # In flight across the deploy: no send_hash, so the old text_hash is the
+    # key - which is exactly what its SENT# item holds.
+    delivery.lambda_handler(event(payload(text_hash="hash-1")), None)
+    result = delivery.lambda_handler(event(payload(text_hash="hash-1")), None)
+
+    assert result == {"processed": 1, "sent": 0}
+    assert len(sends) == 1
+
+
+def test_the_three_per_bulletin_cap_bounds_body_renotifications(aws, sends):
+    # The cap is what keeps a chatty WSF from filling an inbox: three sends
+    # about one bulletin, however many times its body moves.
+    for i in range(5):
+        delivery.lambda_handler(
+            event(payload(send_hash=f"send-{i}", update_reason="body" if i else None)), None
+        )
+
+    assert len(sends) == 3

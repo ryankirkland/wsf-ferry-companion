@@ -25,14 +25,28 @@ The commuter: subscribed to Seattle-Bainbridge 16:00-19:00, wants the
    diffs ALERTS/BULLETIN# state, classifies NEW/UPDATED/GONE, evaluates
    every subscription before deduplicating users, and writes one SQS
    delivery message per matched user. Bulletin state moves only after
-   every message for that text version reaches SQS. The notification
-   key is `wsf_core.alerts.text_hash` = title + RouteAlertText, PINNED
-   by a golden-value test: the body is deliberately outside it (a
-   body-only edit records `body_hash`, emits BodyOnlyEdits, and never
-   re-emails), because the same key lives in every BULLETIN#.text_hash
-   and SENT#.last_hash - moving its inputs would make every live
-   bulletin look edited on the first poll after deploy and re-email
-   every subscriber.
+   every message for that text version reaches SQS.
+
+   Two keys, deliberately separate:
+
+   - The **change-detection key** is `wsf_core.alerts.text_hash` = title
+     + RouteAlertText, PINNED by a golden-value test. The body is
+     outside it because this key lives in every BULLETIN#.text_hash, and
+     moving its inputs would make every live bulletin look edited on the
+     first poll after a deploy. `body_hash` is tracked beside it.
+   - The **send key** is `send_hash` = text_hash + body_hash, which is
+     what the email actually renders and what SENT#.last_hash dedups on.
+
+   A body-only edit therefore moves the send key but not the change key:
+   it re-notifies, and the email opens with "WSF has added new
+   information to this notice since we emailed you" so a second email
+   never reads as a bug (owner's call, 2026-09-03 - "it is okay to
+   re-notify if we let the user know it is the result of receiving new
+   information"). What bounds it is the existing cap: 3 sends per
+   bulletin per rider, 10 per day, however often WSF edits. Whitespace
+   churn is not an edit (`body_hash` normalizes it), and a bulletin
+   stored before bodies existed adopting its FIRST body is not an edit
+   either - nothing new was published, so nobody is emailed.
 3. **Parser** (`wsf_core.alert_parse`): cancellation prose ->
    (time, dep, arr) triples; fails closed (unknown code poisons the
    text). Its input is RouteAlertText followed by the BulletinText body

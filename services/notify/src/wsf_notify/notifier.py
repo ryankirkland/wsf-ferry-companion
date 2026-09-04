@@ -18,7 +18,7 @@ import boto3
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from wsf_core.alert_parse import parse_cancelled_sailings
-from wsf_core.alerts import body_hash, text_hash
+from wsf_core.alerts import body_hash, send_hash, text_hash
 
 from wsf_notify.metrics import emit
 
@@ -66,7 +66,7 @@ def lambda_handler(event, context):
     counts = {"DeliveriesQueued": 0, "ParseMisses": 0, "BodyOnlyEdits": 0}
     fresh_ids: set[str] = set()
     changes: list[tuple[dict, str, str, int]] = []
-    body_edits: list[tuple[str, str, bool]] = []
+    body_edits: list[tuple[dict, str, bool]] = []
     ttl_refreshes: list[str] = []
     now_s = int(time.time())
 
@@ -83,10 +83,16 @@ def lambda_handler(event, context):
                 continue
             if prior_ms == published_ms and prior.get("text_hash") == version:
                 if prior.get("body_hash") != body_version:
-                    # Title/text unchanged, body moved (or is seen for the
-                    # first time by a notifier that stored no body_hash):
-                    # republished on the site, metered, never re-notified.
-                    body_edits.append((bid, body_version, "body_hash" in prior))
+                    # Title/text unchanged, body moved. WSF told us something
+                    # new about a bulletin the rider already heard about, so
+                    # they hear about it again and the email says why
+                    # (owner's call, 2026-09-03). The 3-per-bulletin and
+                    # 10-per-day caps bound how chatty WSF can make us.
+                    #
+                    # "body_hash" missing is NOT an edit: that is a bulletin
+                    # stored before bodies existed adopting its first one.
+                    # Nothing new was published, so nobody is emailed.
+                    body_edits.append((alert, body_version, "body_hash" in prior))
                 elif int(prior.get("expires_at") or 0) < now_s + TTL_REFRESH_BELOW_S:
                     # Unchanged, but its 90-day TTL is running out. A
                     # long-lived notice (the Kingston boarding-pass shape)
@@ -98,14 +104,27 @@ def lambda_handler(event, context):
         changes.append((alert, version, body_version, published_ms))
 
     for alert, version, body_version, published_ms in changes:
-        _enqueue_matches(table, alert, version, observed_at_ms, counts)
+        _enqueue_matches(table, alert, version, body_version, observed_at_ms, counts)
         _record_bulletin(table, alert, version, body_version, published_ms, observed_at_ms)
 
-    for bid, body_version, known in body_edits:
-        _record_body_hash(table, bid, body_version)
+    for alert, body_version, known in body_edits:
+        bid = str(alert["id"])
         if known:
+            # Enqueue BEFORE moving the stored hash, as the text path does: a
+            # crash between the two repeats the enqueue next poll, and the
+            # delivery worker absorbs the duplicate on send_hash.
+            _enqueue_matches(
+                table,
+                alert,
+                text_hash(alert["title"], alert.get("text")),
+                body_version,
+                observed_at_ms,
+                counts,
+                update_reason="body",
+            )
             counts["BodyOnlyEdits"] += 1
             print(json.dumps({"BodyOnlyEdit": {"bulletin_id": bid}}))
+        _record_body_hash(table, bid, body_version)
 
     for bid in ttl_refreshes:
         _refresh_ttl(table, bid)
@@ -237,7 +256,9 @@ def _sub_matches(sub, sailings, parsed_clean, published_iso) -> tuple[bool, list
     return lead <= hhmm <= end, []
 
 
-def _enqueue_matches(table, alert, version, observed_at_ms, counts) -> None:
+def _enqueue_matches(
+    table, alert, version, body_version, observed_at_ms, counts, update_reason=None
+) -> None:
     sailings, parsed_clean = parse_cancelled_sailings(alert.get("text"), alert.get("body"))
     if not parsed_clean:
         counts["ParseMisses"] += 1
@@ -290,6 +311,10 @@ def _enqueue_matches(table, alert, version, observed_at_ms, counts) -> None:
             "user_sub": user_sub,
             "email": first["email"],
             "text_hash": version,
+            # What the email renders, and what delivery dedups on - a body
+            # edit changes this while the notification key stays put.
+            "send_hash": send_hash(version, body_version),
+            "update_reason": update_reason,
             "observed_at_ms": observed_at_ms,
             "alert": alert,
             "parsed_clean": parsed_clean,
