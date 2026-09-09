@@ -169,7 +169,14 @@
  * FIRST snap, and then jumps again the instant the async day fetch swaps
  * the loading placeholder for the real list. Measuring the content and
  * re-triggering this transition on every resize keeps the whole reveal
- * one continuous ease, however many stages the content goes through. */
+ * one continuous ease, however many stages the content goes through. This
+ * is the whole reveal's animation - a separate transform/opacity transition
+ * on .scheduleBody was tried and removed: CSS transitions never fire on an
+ * element's initial insertion, and the content mounts fresh in the same
+ * commit .scheduleWrap's data-expanded flips, so it can only ever paint at
+ * its end state, not animate to it. This height track growing already
+ * reads as one continuous motion; use-collapsible-height.ts's COLLAPSE_MS
+ * must match the duration below. */
 .scheduleCollapse {
   overflow: hidden;
   transition: height 320ms cubic-bezier(0.3, 0, 0.2, 1);
@@ -177,19 +184,6 @@
 
 .scheduleBody {
   padding-top: 0.2rem;
-  /* Rides the row's reveal with its own slide-up-and-fade, so the content
-   * itself visibly travels up from the bottom rather than just appearing
-   * once the row has room for it. */
-  transform: translateY(10px);
-  opacity: 0;
-  transition:
-    transform 280ms cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 200ms ease;
-}
-
-.scheduleWrap[data-expanded="true"] .scheduleBody {
-  transform: translateY(0);
-  opacity: 1;
 }
 
 /* WSDOT's class drawing.
@@ -226,8 +220,7 @@ html[data-mode="night"] .drawing {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .scheduleCollapse,
-  .scheduleBody {
+  .scheduleCollapse {
     transition: none;
   }
 }
