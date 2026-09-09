@@ -13,14 +13,26 @@ import { PAIRS } from "@/lib/trip/pairs";
 import type { VesselFix } from "@/lib/data/types";
 import { asOf, soundClock } from "@/lib/time/sound-time";
 import { departureLateMinutes } from "@/lib/vessel-timing";
+import { useCollapsibleHeight } from "@/hooks/use-collapsible-height";
+import tripStyles from "@/components/trip/trip.module.css";
 import styles from "./vessel-card.module.css";
 
 // The inline schedule pulls the sailing schedule's whole data + signal engine;
 // loaded only when the disclosure opens, warmed on card mount so the tap
-// feels instant (bundle-conditional).
+// feels instant (bundle-conditional). The loading fallback matters even
+// warmed: it's what the open animation has to slide in for the first
+// frame, so the reveal starts immediately on tap instead of sitting dead
+// until the chunk resolves.
 const VesselSchedule = dynamic(
   () => import("./VesselSchedule").then((m) => m.VesselSchedule),
-  { ssr: false },
+  {
+    ssr: false,
+    loading: () => (
+      <div className={styles.scheduleBody}>
+        <p className={tripStyles.rangeNote}>Loading sailings…</p>
+      </div>
+    ),
+  },
 );
 
 function runLine(fix: VesselFix, terms: Map<number, TerminalDim> | null): string {
@@ -124,6 +136,7 @@ export function VesselCard({
     setPrevFixId(fix.id);
     setExpanded(false);
   }
+  const { contentRef: scheduleRef, height: scheduleHeight } = useCollapsibleHeight(expanded);
 
   useEffect(() => {
     let alive = true;
@@ -211,7 +224,11 @@ export function VesselCard({
                 {expanded ? "⌃" : "⌄"}
               </span>
             </button>
-            {expanded && <VesselSchedule entry={pair} fleet={fleet} />}
+            <div className={styles.scheduleCollapse} style={{ height: expanded ? scheduleHeight : 0 }}>
+              <div ref={scheduleRef} className={styles.scheduleCollapseInner}>
+                {expanded && <VesselSchedule entry={pair} fleet={fleet} />}
+              </div>
+            </div>
           </div>
         );
       })()}
