@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import {
   getTerminalDims,
@@ -13,15 +12,8 @@ import { PAIRS } from "@/lib/trip/pairs";
 import type { VesselFix } from "@/lib/data/types";
 import { asOf, soundClock } from "@/lib/time/sound-time";
 import { departureLateMinutes } from "@/lib/vessel-timing";
+import { ScheduleDisclosure } from "./ScheduleDisclosure";
 import styles from "./vessel-card.module.css";
-
-// The inline schedule pulls the sailing schedule's whole data + signal engine;
-// loaded only when the disclosure opens, warmed on card mount so the tap
-// feels instant (bundle-conditional).
-const VesselSchedule = dynamic(
-  () => import("./VesselSchedule").then((m) => m.VesselSchedule),
-  { ssr: false },
-);
 
 function runLine(fix: VesselFix, terms: Map<number, TerminalDim> | null): string {
   const dep = terms?.get(fix.dep)?.name ?? `terminal ${fix.dep}`;
@@ -113,18 +105,6 @@ export function VesselCard({
 }) {
   const [dim, setDim] = useState<VesselDim | null>(null);
   const [terms, setTerms] = useState<Map<number, TerminalDim> | null>(null);
-  const [expanded, setExpanded] = useState(false);
-  // A different boat means a different route (or none) - the schedule
-  // always reopens on today for whichever boat is now selected, never the
-  // day last browsed for the previous one. Adjusted during render (React's
-  // "resetting state when a prop changes" pattern), not an effect, so it
-  // never fires a redundant extra render.
-  const [prevFixId, setPrevFixId] = useState(fix.id);
-  if (fix.id !== prevFixId) {
-    setPrevFixId(fix.id);
-    setExpanded(false);
-  }
-
   useEffect(() => {
     let alive = true;
     getVesselDims()
@@ -133,7 +113,8 @@ export function VesselCard({
     getTerminalDims()
       .then((m) => alive && setTerms(m))
       .catch(() => {});
-    // Warm the schedule chunk: the disclosure tap must not wait on it.
+    // Warm the schedule chunk (ScheduleDisclosure loads it on demand): the
+    // disclosure tap must not wait on it.
     void import("./VesselSchedule");
     return () => {
       alive = false;
@@ -193,27 +174,15 @@ export function VesselCard({
       )}
       {(() => {
         // The card must never be a dead end: an inline look at this run's
-        // schedule, expanded in place rather than navigating away.
+        // schedule, expanded in place rather than navigating away. Keyed on
+        // the vessel so a different boat always gets a fresh, closed
+        // disclosure (see ScheduleDisclosure).
         const entry = Object.entries(PAIRS).find(
           ([, e]) => e.dep === fix.dep && e.arr === fix.arr,
         );
         if (!entry) return null;
         const [, pair] = entry;
-        return (
-          <div className={styles.scheduleWrap} data-expanded={expanded} data-testid="schedule-wrap">
-            <button
-              className={styles.tripLink}
-              onClick={() => setExpanded((e) => !e)}
-              aria-expanded={expanded}
-            >
-              Next sailings: {pair.depName} → {pair.arrName}
-              <span className={styles.chevron} aria-hidden>
-                {expanded ? "⌃" : "⌄"}
-              </span>
-            </button>
-            {expanded && <VesselSchedule entry={pair} fleet={fleet} />}
-          </div>
-        );
+        return <ScheduleDisclosure key={fix.id} pair={pair} fleet={fleet} />;
       })()}
     </aside>
   );

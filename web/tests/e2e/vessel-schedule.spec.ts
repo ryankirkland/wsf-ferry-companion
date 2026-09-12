@@ -145,10 +145,36 @@ test("Next sailings expands the current route's schedule inline and collapses ba
   // No navigation happened - still the map, same vessel selected.
   await expect(page).toHaveURL(/\/\?vessel=74/);
 
+  // The reveal is a measured pixel height (useCollapsibleHeight), so the
+  // track carries a real px value while open, never "auto".
+  const track = card.getByTestId("schedule-collapse");
+  await expect(track).toHaveCSS("overflow", "hidden");
+  await expect
+    .poll(async () => parseFloat(await track.evaluate((e) => (e as HTMLElement).style.height)))
+    .toBeGreaterThan(0);
+
   // The chevron/toggle stays reachable and collapses back to the base card.
-  await toggle.click();
+  // Closing drops the track to 0 on the same commit the toggle flips, but
+  // the list stays mounted until that transition has run - it must not
+  // vanish a third of a second before the box around it catches up. The
+  // click and the read happen inside ONE in-page evaluate, one microtask
+  // apart (React flushes a discrete event's updates by then), so the
+  // 320 ms mounted window is never raced by protocol round trips on a
+  // slow runner.
+  const justClosed = await toggle.evaluate(async (button) => {
+    (button as HTMLButtonElement).click();
+    await Promise.resolve();
+    const collapse = document.querySelector("[data-testid='schedule-collapse']") as HTMLElement;
+    return {
+      expanded: button.getAttribute("aria-expanded"),
+      height: collapse.style.height,
+      listMounted: collapse.querySelector("[data-testid='vessel-schedule']") !== null,
+    };
+  });
+  expect(justClosed).toEqual({ expanded: "false", height: "0px", listMounted: true });
+  // ...and once the transition has run, the list is unmounted (Playwright's
+  // hidden check ignores ancestor clipping, so this is the unmount).
   await expect(schedule).toBeHidden();
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
 });
 
 test("matching displayed minutes do not claim a one-minute delay", async ({ page }) => {

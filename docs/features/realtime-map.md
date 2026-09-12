@@ -316,37 +316,41 @@ field cannot wait for a WSDOT cacheflush that may be weeks away.
 
 "Next sailings" on `VesselCard` used to be a plain link out to the full
 `/trip/{pair}` planner page, abandoning the map. Tapping it now expands the
-card in place: a sticky toggle row (the same label, now with a chevron)
+card in place: a toggle row (the same label, now with a chevron)
 reveals a scrollable schedule section underneath the existing name/status/
 drawing content, built entirely from F2's existing pieces -
-`useTripData`/`buildDayView`/`computeSignal`/`DepartureList`/`DateStrip` -
+`usePairDay`/`buildDayView`/`computeSignal`/`DepartureList`/`DateStrip` -
 via a new `VesselSchedule` component
 (`web/src/components/vessel/VesselSchedule.tsx`). Zero new backend or data
 work; this is a client-side reuse of a pipeline that already ships.
 
 **Scope is the vessel's current route, not a cross-route boat schedule.**
 Ryan's call: riders think "what's the whole Bremerton-Seattle schedule
-today," not "everywhere this hull goes." The pair is fixed to whatever
-`PAIRS` lookup matched when the card opened (same lookup the old link
-used); if the boat swaps routes while the card stays open, the schedule
-does not follow it live - a documented limitation, not a bug. A boat with
-no determinable current pair (yard, out of service) shows no control at
-all, unchanged from before.
+today," not "everywhere this hull goes." The pair is the `PAIRS` lookup
+on the boat's current dep/arr (same lookup the old link used), re-read on
+every fleet frame: if the boat swaps routes while the card stays open, the
+open schedule follows it to the new pair and fetches that day. A boat
+with no determinable current pair (yard, out of service, or docked with no
+next leg yet) shows no control at all, and a boat that loses its pair
+mid-read drops the disclosure with it.
 
 **Day range is today..+13**, the same horizon and the same DateStrip
 component the trip planner uses, so an out-of-range date degrades exactly
 the same way. Defaults to today on every open - expansion state and the
-selected day both reset when a different vessel is selected (React's
-"adjust state during render" pattern, not an effect, so it never fires a
-redundant render): the day last browsed for one boat must never bleed into
-the next boat you tap.
+selected day both reset when a different vessel is selected (the
+disclosure is keyed on the vessel id, so a new boat mounts it fresh and
+closed): the day last browsed for one boat must never bleed into the next
+boat you tap.
 
-**Only the toggle button is sticky**, not the date strip beneath it - it
-pins to the top of the schedule's own scroll container
-(`.scheduleWrap[data-expanded="true"]`, capped at `min(50vh, 420px)`) so
-the collapse control is reachable at any scroll depth, matching Ryan's
-explicit ask ("no matter how far the user scrolls there's just always that
-chevron there"). No gesture library: this is a tap-triggered expand, not a
+**Only the schedule scrolls, never the toggle**: the day picker and the
+list live in their own scroll box (`.scheduleScroll`, capped at
+`min(50vh, 420px)`) beneath a toggle row that stays put, so the collapse
+control is reachable at any scroll depth, matching Ryan's explicit ask
+("no matter how far the user scrolls there's just always that chevron
+there"). Until 2026-09-12 the whole disclosure scrolled with a sticky
+toggle pinned inside it; the sticky styling was keyed on the open flag
+and jumped at both ends of the animated reveal, so the toggle now simply
+sits above the box. No gesture library: this is a tap-triggered expand, not a
 finger-drag sheet - "swipe up" in the original ask described intent, not a
 literal drag physics (confirmed with Ryan).
 
@@ -359,3 +363,28 @@ chrome underneath it, not contend with it for the same pixels - the card's
 `z-index` moved to 31 (still under the nav drawer/backdrop at 39/40).
 Guarded by a Playwright regression test alongside the existing
 FAB-vs-attribution one.
+
+**The open/close is a measured-height reveal (2026-09-12)**, not a CSS
+`max-height` or grid-row track. The disclosure's content changes height
+twice after the tap - the lazy `VesselSchedule` chunk's loading line, then
+the real list once the day fetch lands - and a CSS-only transition eases
+only the first snap, so the reveal used to stutter. `useCollapsibleHeight`
+(`web/src/hooks/use-collapsible-height.ts`) watches the content with a
+ResizeObserver and animates an explicit pixel height on
+`.scheduleCollapse`, so every stage gets its own eased leg. The measured
+node is the scroll box itself, so its `min(50vh, 420px)` cap is what the
+observer reports and a long day eases to the visible height rather than
+to an off-screen total the cap would cut the motion off at partway.
+Closing drops the height to 0 during the same render the toggle flips,
+and the list stays mounted for `COLLAPSE_MS` (kept equal to the CSS
+duration by hand) so it shrinks with its box instead of vanishing ahead
+of it; a reopen inside that window keeps the mounted instance and its
+browsed day. The previous-`active` edge is held in state, not a ref:
+React's render-phase ref writes and effect-body setState are both lint
+errors under eslint-config-next 16. The toggle, hook and track are one
+`ScheduleDisclosure` component keyed on the vessel id, so its lifecycle
+matches the DOM the hook measures: a boat that docks mid-view (no current
+pair) or a switch to another boat takes the open state and the mounted
+schedule down with it, instead of leaving the card "open" over an empty
+track or showing the old route's rows under the new boat's name for the
+collapse window. Reduced motion disables the transition.
