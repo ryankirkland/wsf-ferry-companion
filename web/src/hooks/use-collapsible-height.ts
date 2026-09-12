@@ -10,8 +10,8 @@
 // instead means each of those resizes gets its own eased leg, so a
 // multi-stage reveal still reads as one continuous motion no matter how
 // many stages the content goes through. The observer reports the measured
-// node's own box, so a max-height on that node (VesselCard makes it the
-// scroll box) caps the reveal at what is visible: the transition then eases
+// node's own box, so a max-height on that node (ScheduleDisclosure makes
+// it the scroll box) caps the reveal at what is visible: the transition eases
 // to the capped height over its full duration instead of overshooting to a
 // taller total and getting cut off partway.
 //
@@ -22,9 +22,9 @@
 // visibly shrink for the rest of the transition - callers should render
 // their collapsible content on `render`, not `active`. The active->inactive
 // edge is caught synchronously during render (React's "adjusting state
-// when a prop changes" pattern - previous value held in state, the same
-// shape VesselCard uses for prevFixId; a ref would be a render-phase ref
-// write, which react-hooks/refs rejects), not in an effect: an effect runs
+// when a prop changes" pattern - previous value held in state; a ref
+// would be a render-phase ref write, which react-hooks/refs rejects), not
+// in an effect: an effect runs
 // after the commit that already flipped `active` false, which is one render
 // too late and reproduces the exact same disappear-then-shrink bug this
 // hook exists to fix. The effect below only wires up the observer and the

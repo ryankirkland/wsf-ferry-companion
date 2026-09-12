@@ -43,7 +43,7 @@ export function ScheduleDisclosure({ pair, fleet }: { pair: PairEntry; fleet: Fl
   const [expanded, setExpanded] = useState(false);
   const { contentRef, height, render } = useCollapsibleHeight(expanded);
   return (
-    <div className={styles.scheduleWrap} data-testid="schedule-wrap">
+    <div className={styles.scheduleWrap}>
       <button
         className={styles.tripLink}
         onClick={() => setExpanded((e) => !e)}

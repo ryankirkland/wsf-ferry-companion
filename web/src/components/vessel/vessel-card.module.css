@@ -158,7 +158,7 @@
  * is the whole reveal's animation - a separate transform/opacity transition
  * on .scheduleBody was tried and removed: CSS transitions never fire on an
  * element's initial insertion, and the content mounts fresh in the same
- * commit .scheduleWrap's data-expanded flips, so it can only ever paint at
+ * commit the disclosure opens, so it can only ever paint at
  * its end state, not animate to it. This height track growing already
  * reads as one continuous motion; use-collapsible-height.ts's COLLAPSE_MS
  * must match the duration below. */

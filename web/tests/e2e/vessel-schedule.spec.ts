@@ -156,17 +156,22 @@ test("Next sailings expands the current route's schedule inline and collapses ba
   // The chevron/toggle stays reachable and collapses back to the base card.
   // Closing drops the track to 0 on the same commit the toggle flips, but
   // the list stays mounted until that transition has run - it must not
-  // vanish a third of a second before the box around it catches up. Both
-  // facts are read in ONE round trip right after the click: the mounted
-  // window is only 320 ms wide, and three separate assertions could
-  // straddle it on a slow runner.
-  await toggle.click();
-  const justClosed = await track.evaluate((e) => ({
-    height: (e as HTMLElement).style.height,
-    listMounted: e.querySelector("[data-testid='vessel-schedule']") !== null,
-  }));
-  expect(justClosed).toEqual({ height: "0px", listMounted: true });
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  // vanish a third of a second before the box around it catches up. The
+  // click and the read happen inside ONE in-page evaluate, one microtask
+  // apart (React flushes a discrete event's updates by then), so the
+  // 320 ms mounted window is never raced by protocol round trips on a
+  // slow runner.
+  const justClosed = await toggle.evaluate(async (button) => {
+    (button as HTMLButtonElement).click();
+    await Promise.resolve();
+    const collapse = document.querySelector("[data-testid='schedule-collapse']") as HTMLElement;
+    return {
+      expanded: button.getAttribute("aria-expanded"),
+      height: collapse.style.height,
+      listMounted: collapse.querySelector("[data-testid='vessel-schedule']") !== null,
+    };
+  });
+  expect(justClosed).toEqual({ expanded: "false", height: "0px", listMounted: true });
   // ...and once the transition has run, the list is unmounted (Playwright's
   // hidden check ignores ancestor clipping, so this is the unmount).
   await expect(schedule).toBeHidden();
