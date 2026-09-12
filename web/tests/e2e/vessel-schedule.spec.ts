@@ -156,11 +156,19 @@ test("Next sailings expands the current route's schedule inline and collapses ba
   // The chevron/toggle stays reachable and collapses back to the base card.
   // Closing drops the track to 0 on the same commit the toggle flips, but
   // the list stays mounted until that transition has run - it must not
-  // vanish a third of a second before the box around it catches up.
+  // vanish a third of a second before the box around it catches up. Both
+  // facts are read in ONE round trip right after the click: the mounted
+  // window is only 320 ms wide, and three separate assertions could
+  // straddle it on a slow runner.
   await toggle.click();
+  const justClosed = await track.evaluate((e) => ({
+    height: (e as HTMLElement).style.height,
+    listMounted: e.querySelector("[data-testid='vessel-schedule']") !== null,
+  }));
+  expect(justClosed).toEqual({ height: "0px", listMounted: true });
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
-  expect(await track.evaluate((e) => (e as HTMLElement).style.height)).toBe("0px");
-  await expect(schedule).toBeAttached();
+  // ...and once the transition has run, the list is unmounted (Playwright's
+  // hidden check ignores ancestor clipping, so this is the unmount).
   await expect(schedule).toBeHidden();
 });
 

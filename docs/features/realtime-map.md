@@ -305,12 +305,15 @@ selected day both reset when a different vessel is selected (React's
 redundant render): the day last browsed for one boat must never bleed into
 the next boat you tap.
 
-**Only the toggle button is sticky**, not the date strip beneath it - it
-pins to the top of the schedule's own scroll container
-(`.scheduleWrap[data-expanded="true"]`, capped at `min(50vh, 420px)`) so
-the collapse control is reachable at any scroll depth, matching Ryan's
-explicit ask ("no matter how far the user scrolls there's just always that
-chevron there"). No gesture library: this is a tap-triggered expand, not a
+**Only the schedule scrolls, never the toggle**: the day picker and the
+list live in their own scroll box (`.scheduleScroll`, capped at
+`min(50vh, 420px)`) beneath a toggle row that stays put, so the collapse
+control is reachable at any scroll depth, matching Ryan's explicit ask
+("no matter how far the user scrolls there's just always that chevron
+there"). Until 2026-09-12 the whole disclosure scrolled with a sticky
+toggle pinned inside it; the sticky styling was keyed on the open flag
+and jumped at both ends of the animated reveal, so the toggle now simply
+sits above the box. No gesture library: this is a tap-triggered expand, not a
 finger-drag sheet - "swipe up" in the original ask described intent, not a
 literal drag physics (confirmed with Ryan).
 
@@ -331,11 +334,20 @@ the real list once the day fetch lands - and a CSS-only transition eases
 only the first snap, so the reveal used to stutter. `useCollapsibleHeight`
 (`web/src/hooks/use-collapsible-height.ts`) watches the content with a
 ResizeObserver and animates an explicit pixel height on
-`.scheduleCollapse`, so every stage gets its own eased leg. Closing drops
-that height to 0 during the same render the toggle flips, and the list
-stays mounted for `COLLAPSE_MS` (kept equal to the CSS duration by hand)
-so it shrinks with its box instead of vanishing ahead of it. The
-previous-`active` edge is held in state, not a ref: React's render-phase
-ref writes and effect-body setState are both lint errors under
-eslint-config-next 16, and the state form is the same shape the card
-already uses for `prevFixId`. Reduced motion disables the transition.
+`.scheduleCollapse`, so every stage gets its own eased leg. The measured
+node is the scroll box itself, so its `min(50vh, 420px)` cap is what the
+observer reports and a long day eases to the visible height rather than
+to an off-screen total the cap would cut the motion off at partway.
+Closing drops the height to 0 during the same render the toggle flips,
+and the list stays mounted for `COLLAPSE_MS` (kept equal to the CSS
+duration by hand) so it shrinks with its box instead of vanishing ahead
+of it; a reopen inside that window keeps the mounted instance and its
+browsed day. The previous-`active` edge is held in state, not a ref:
+React's render-phase ref writes and effect-body setState are both lint
+errors under eslint-config-next 16. The toggle, hook and track are one
+`ScheduleDisclosure` component keyed on the vessel id, so its lifecycle
+matches the DOM the hook measures: a boat that docks mid-view (no current
+pair) or a switch to another boat takes the open state and the mounted
+schedule down with it, instead of leaving the card "open" over an empty
+track or showing the old route's rows under the new boat's name for the
+collapse window. Reduced motion disables the transition.

@@ -121,13 +121,6 @@
   margin-top: 0.6rem;
 }
 
-.scheduleWrap[data-expanded="true"] {
-  max-height: min(50vh, 420px);
-  overflow-y: auto;
-  /* Anchors the sticky toggle below to this box, not the page. */
-  position: relative;
-}
-
 .tripLink {
   display: flex;
   align-items: center;
@@ -143,14 +136,6 @@
   text-align: left;
   white-space: nowrap;
   cursor: pointer;
-}
-
-.scheduleWrap[data-expanded="true"] .tripLink {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--card);
-  padding-bottom: 0.4rem;
 }
 
 .tripLink:hover {
@@ -180,6 +165,18 @@
 .scheduleCollapse {
   overflow: hidden;
   transition: height 320ms cubic-bezier(0.3, 0, 0.2, 1);
+}
+
+/* The scroll box inside the track, and the node the hook measures. Putting
+ * the cap here rather than on .scheduleWrap does two things: the toggle
+ * above stays put and visible at any scroll depth with no sticky
+ * positioning (Ryan's "always that chevron there"), and the observer
+ * reports the CAPPED height, so a long day eases the track to the box the
+ * rider actually sees instead of to an off-screen total the cap would cut
+ * the motion off at partway through. */
+.scheduleScroll {
+  max-height: min(50vh, 420px);
+  overflow-y: auto;
 }
 
 .scheduleBody {

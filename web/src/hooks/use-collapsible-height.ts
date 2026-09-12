@@ -9,7 +9,11 @@
 // content with a ResizeObserver and animating an explicit pixel height
 // instead means each of those resizes gets its own eased leg, so a
 // multi-stage reveal still reads as one continuous motion no matter how
-// many stages the content goes through.
+// many stages the content goes through. The observer reports the measured
+// node's own box, so a max-height on that node (VesselCard makes it the
+// scroll box) caps the reveal at what is visible: the transition then eases
+// to the capped height over its full duration instead of overshooting to a
+// taller total and getting cut off partway.
 //
 // `render` also stays true for COLLAPSE_MS after `active` goes false, so the
 // height-to-0 transition and the content's own removal happen together.

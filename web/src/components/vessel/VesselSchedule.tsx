@@ -20,8 +20,12 @@ import tripStyles from "@/components/trip/trip.module.css";
 import styles from "./vessel-card.module.css";
 
 export function VesselSchedule({ entry, fleet }: { entry: PairEntry; fleet: FleetUpdate }) {
-  // Mounted fresh each time a card expands (see VesselCard), so this always
-  // starts on today - no stale day carried over from the last boat viewed.
+  // Mounted fresh each time the disclosure opens from closed, and remounted
+  // with the card's per-vessel key (see ScheduleDisclosure), so this starts
+  // on today - no stale day carried over from the last boat viewed. The one
+  // exception is a reopen inside the collapse window (COLLAPSE_MS): the
+  // instance is still mounted, so the day being browsed survives the
+  // double tap rather than snapping back to today mid-motion.
   const [date, setDate] = useState(() => soundDate());
   const now = useNow(30_000);
   const today = soundDate(new Date(now));
