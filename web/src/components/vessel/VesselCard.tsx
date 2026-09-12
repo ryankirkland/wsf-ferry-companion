@@ -228,8 +228,12 @@ export function VesselCard({
                 {expanded ? "⌃" : "⌄"}
               </span>
             </button>
-            <div className={styles.scheduleCollapse} style={{ height: expanded ? scheduleHeight : 0 }}>
-              <div ref={scheduleRef} className={styles.scheduleCollapseInner}>
+            <div
+              className={styles.scheduleCollapse}
+              style={{ height: scheduleHeight }}
+              data-testid="schedule-collapse"
+            >
+              <div ref={scheduleRef}>
                 {/* Gated on `render`, not `expanded`: `expanded` flips false
                     the instant the toggle is clicked closed, but the
                     departure list must stay mounted until the height-to-0

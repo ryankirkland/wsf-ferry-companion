@@ -18,10 +18,14 @@
 // visibly shrink for the rest of the transition - callers should render
 // their collapsible content on `render`, not `active`. The active->inactive
 // edge is caught synchronously during render (React's "adjusting state
-// when a prop changes" pattern, same one VesselCard uses for prevFixId),
-// not in an effect: an effect runs after the commit that already flipped
-// `active` false, which is one render too late and reproduces the exact
-// same disappear-then-shrink bug this hook exists to fix.
+// when a prop changes" pattern - previous value held in state, the same
+// shape VesselCard uses for prevFixId; a ref would be a render-phase ref
+// write, which react-hooks/refs rejects), not in an effect: an effect runs
+// after the commit that already flipped `active` false, which is one render
+// too late and reproduces the exact same disappear-then-shrink bug this
+// hook exists to fix. The effect below only wires up the observer and the
+// collapse timer; every state change it causes comes from a callback, never
+// from the effect body itself (react-hooks/set-state-in-effect).
 
 import { useEffect, useRef, useState } from "react";
 
@@ -35,15 +39,19 @@ export function useCollapsibleHeight(active: boolean) {
   const [height, setHeight] = useState(0);
   const [pendingCollapse, setPendingCollapse] = useState(false);
 
-  const prevActiveRef = useRef(active);
-  if (prevActiveRef.current !== active) {
-    prevActiveRef.current = active;
-    if (!active) setPendingCollapse(true);
+  const [prevActive, setPrevActive] = useState(active);
+  if (prevActive !== active) {
+    setPrevActive(active);
+    // Opening cancels any collapse still pending (reopened mid-close);
+    // closing drops the height to 0 in this same render, so the transition
+    // starts on the very commit the toggle flips, and the next open grows
+    // from 0 again rather than snapping to the previous content's height.
+    setPendingCollapse(!active);
+    if (!active) setHeight(0);
   }
 
   useEffect(() => {
     if (active) {
-      setPendingCollapse(false);
       const node = contentRef.current;
       if (!node) return;
       const observer = new ResizeObserver((entries) => {
@@ -53,11 +61,9 @@ export function useCollapsibleHeight(active: boolean) {
       observer.observe(node);
       return () => observer.disconnect();
     }
-    // Closing: the height has already been dropped to 0 (VesselCard reads
-    // `active` directly for that), so the collapse transition is already
-    // underway by the time this effect runs. Just clear the pending flag
-    // once that transition has had time to finish.
-    setHeight(0);
+    // Closing: the height-to-0 transition is already underway (dropped
+    // during render, above). Clear the pending flag once it has had time
+    // to finish, so the content unmounts with the box, not before it.
     const timer = setTimeout(() => setPendingCollapse(false), COLLAPSE_MS);
     return () => clearTimeout(timer);
   }, [active]);

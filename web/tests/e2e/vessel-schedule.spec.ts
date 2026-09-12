@@ -145,10 +145,23 @@ test("Next sailings expands the current route's schedule inline and collapses ba
   // No navigation happened - still the map, same vessel selected.
   await expect(page).toHaveURL(/\/\?vessel=74/);
 
+  // The reveal is a measured pixel height (useCollapsibleHeight), so the
+  // track carries a real px value while open, never "auto".
+  const track = card.getByTestId("schedule-collapse");
+  await expect(track).toHaveCSS("overflow", "hidden");
+  await expect
+    .poll(async () => parseFloat(await track.evaluate((e) => (e as HTMLElement).style.height)))
+    .toBeGreaterThan(0);
+
   // The chevron/toggle stays reachable and collapses back to the base card.
+  // Closing drops the track to 0 on the same commit the toggle flips, but
+  // the list stays mounted until that transition has run - it must not
+  // vanish a third of a second before the box around it catches up.
   await toggle.click();
-  await expect(schedule).toBeHidden();
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  expect(await track.evaluate((e) => (e as HTMLElement).style.height)).toBe("0px");
+  await expect(schedule).toBeAttached();
+  await expect(schedule).toBeHidden();
 });
 
 test("matching displayed minutes do not claim a one-minute delay", async ({ page }) => {

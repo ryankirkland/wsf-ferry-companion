@@ -323,3 +323,19 @@ chrome underneath it, not contend with it for the same pixels - the card's
 `z-index` moved to 31 (still under the nav drawer/backdrop at 39/40).
 Guarded by a Playwright regression test alongside the existing
 FAB-vs-attribution one.
+
+**The open/close is a measured-height reveal (2026-09-12)**, not a CSS
+`max-height` or grid-row track. The disclosure's content changes height
+twice after the tap - the lazy `VesselSchedule` chunk's loading line, then
+the real list once the day fetch lands - and a CSS-only transition eases
+only the first snap, so the reveal used to stutter. `useCollapsibleHeight`
+(`web/src/hooks/use-collapsible-height.ts`) watches the content with a
+ResizeObserver and animates an explicit pixel height on
+`.scheduleCollapse`, so every stage gets its own eased leg. Closing drops
+that height to 0 during the same render the toggle flips, and the list
+stays mounted for `COLLAPSE_MS` (kept equal to the CSS duration by hand)
+so it shrinks with its box instead of vanishing ahead of it. The
+previous-`active` edge is held in state, not a ref: React's render-phase
+ref writes and effect-body setState are both lint errors under
+eslint-config-next 16, and the state form is the same shape the card
+already uses for `prevFixId`. Reduced motion disables the transition.
