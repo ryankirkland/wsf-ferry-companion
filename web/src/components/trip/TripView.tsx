@@ -9,7 +9,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CAPACITY_STALE_MS, TRIP_HORIZON_DAYS } from "@/config";
 import { useFleet } from "@/hooks/use-fleet";
 import { useNow } from "@/hooks/use-now";
@@ -17,10 +17,11 @@ import { usePairStats } from "@/hooks/use-pair-stats";
 import { useMode } from "@/hooks/use-mode";
 import { useTripData } from "@/hooks/use-trip-data";
 import { makeTripFetchers } from "@/lib/data/trip-data";
-import { buildDayView } from "@/lib/trip/day";
+import { buildDayView, type GhostCancel } from "@/lib/trip/day";
 import { PAIRS } from "@/lib/trip/pairs";
 import { computeSignal } from "@/lib/trip/signal";
-import type { Sailing } from "@/lib/trip/types";
+import { alertForSlot } from "@/lib/trip/slot-alert";
+import type { AlertItem, Sailing } from "@/lib/trip/types";
 import { writeStorage, YOUR_RUN_KEY } from "@/lib/storage";
 import { shiftDate, soundDate, soundTimeShort } from "@/lib/time/sound-time";
 import { TerminalWeather } from "@/components/weather/TerminalWeather";
@@ -141,6 +142,13 @@ export function TripView({ slug }: { slug: string }) {
     [trip.alerts, routeId],
   );
 
+  // Cancelled slots WSF already removed from the schedule link to the
+  // bulletin that explains them, when one mentions the slot (or the tide).
+  const alertForGhost = useCallback(
+    (ghost: GhostCancel) => alertForSlot(ghost, matchedAlerts),
+    [matchedAlerts],
+  );
+
   const setDate = (d: string) =>
     router.replace(d === today ? `/trip/${slug}` : `/trip/${slug}?date=${d}`, { scroll: false });
 
@@ -155,9 +163,21 @@ export function TripView({ slug }: { slug: string }) {
               ⇄ {entry.arrName} → {entry.depName}
             </Link>
           )}
-          {crossingMin !== null && <span className={styles.badge}>~{crossingMin} min crossing</span>}
-          {indexPair?.reservable && <span className={styles.badge}>Reservations</span>}
-          {indexPair?.passenger_only && <span className={styles.badge}>Passengers only</span>}
+          {/* Crossing time is not badged here: every row already says
+              "~ arrives". Reservations link straight to WSF's Save A Spot -
+              the bare word "Reservations" read as a mystery badge (owner,
+              2026-09-13). Passenger-only rides on the rows it applies to
+              (DepartureRow), never over the whole day. */}
+          {indexPair?.reservable && (
+            <a
+              href="https://secureapps.wsdot.wa.gov/ferries/reservations/vehicle/default.aspx"
+              className={styles.swap}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Reserve a vehicle spot ↗
+            </a>
+          )}
           {indexPair?.route_id != null && (
             <Link href={`/alerts?dep=${entry.dep}&arr=${entry.arr}`} className={styles.swap}>
               Get alerts for this run
@@ -180,14 +200,6 @@ export function TripView({ slug }: { slug: string }) {
 
         {rangeNote && <p className={styles.rangeNote}>{rangeNote}</p>}
 
-        {dayView && dayView.dayNotes.length > 0 && (
-          <ul className={styles.dayNotes}>
-            {dayView.dayNotes.map((note) => (
-              <li key={note}>{note}</li>
-            ))}
-          </ul>
-        )}
-
         {!trip.daySettled && !dayView && <p className={styles.rangeNote}>Loading sailings…</p>}
 
         {exhausted ? (
@@ -196,6 +208,9 @@ export function TripView({ slug }: { slug: string }) {
             date={date}
             isToday={isToday}
             items={items}
+            ghosts={dayView?.ghosts ?? []}
+            alertForGhost={alertForGhost}
+            nowMs={now}
             crossingMin={crossingMin}
             onTomorrow={() => setDate(shiftDate(today, 1))}
           />
@@ -206,6 +221,10 @@ export function TripView({ slug }: { slug: string }) {
               nextIndex={isToday ? Math.max(nextIndex, 0) : 0}
               crossingMin={crossingMin}
               capacity={isToday ? capacityBySailing : undefined}
+              routePassengerOnly={indexPair?.passenger_only ?? false}
+              ghosts={dayView?.ghosts}
+              alertForGhost={alertForGhost}
+              nowMs={now}
             />
           )
         )}
@@ -242,6 +261,9 @@ function EmptyDay({
   date,
   isToday,
   items,
+  ghosts,
+  alertForGhost,
+  nowMs,
   crossingMin,
   onTomorrow,
 }: {
@@ -249,6 +271,9 @@ function EmptyDay({
   date: string;
   isToday: boolean;
   items: DepartureItem[];
+  ghosts: GhostCancel[];
+  alertForGhost: (ghost: GhostCancel) => AlertItem | null;
+  nowMs: number;
   crossingMin: number | null;
   onTomorrow: () => void;
 }) {
@@ -269,7 +294,14 @@ function EmptyDay({
   return (
     <div>
       {items.length > 0 && (
-        <DepartureList items={items} nextIndex={items.length} crossingMin={crossingMin} />
+        <DepartureList
+          items={items}
+          nextIndex={items.length}
+          crossingMin={crossingMin}
+          ghosts={ghosts}
+          alertForGhost={alertForGhost}
+          nowMs={nowMs}
+        />
       )}
       <div className={styles.emptyDay} data-testid="empty-day">
         <h3 className="display">{items.length > 0 ? "No more sailings today" : "No sailings this day"}</h3>

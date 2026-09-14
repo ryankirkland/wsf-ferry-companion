@@ -70,14 +70,6 @@ export function VesselSchedule({ entry, fleet }: { entry: PairEntry; fleet: Flee
     <div className={styles.scheduleBody} data-testid="vessel-schedule">
       <DateStrip today={today} selected={date} onSelect={setDate} />
 
-      {dayView && dayView.dayNotes.length > 0 && (
-        <ul className={tripStyles.dayNotes}>
-          {dayView.dayNotes.map((note) => (
-            <li key={note}>{note}</li>
-          ))}
-        </ul>
-      )}
-
       {!trip.daySettled && !dayView && <p className={tripStyles.rangeNote}>Loading sailings…</p>}
 
       {trip.daySettled && items.length === 0 && (
@@ -91,6 +83,8 @@ export function VesselSchedule({ entry, fleet }: { entry: PairEntry; fleet: Flee
           items={items}
           nextIndex={isToday ? Math.max(nextIndex, 0) : 0}
           crossingMin={crossingMin}
+          ghosts={dayView?.ghosts}
+          nowMs={now}
         />
       )}
     </div>

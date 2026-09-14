@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LoadingVeil } from "@/components/chrome/LoadingVeil";
 import { TopBar } from "@/components/chrome/TopBar";
 import { BoatFab } from "@/components/nav/BoatFab";
+import { getTerminalDims, getVesselDims } from "@/lib/data/dims";
 import { useFleet } from "@/hooks/use-fleet";
 import { useMode } from "@/hooks/use-mode";
 import styles from "./page.module.css";
@@ -62,7 +63,14 @@ export default function Home() {
   // it must never wait on the network. Optional-chained because older
   // Safari lacks requestIdleCallback; the timer path covers it.
   useEffect(() => {
-    const preload = () => void import("@/components/vessel/VesselCard");
+    const preload = () => {
+      void import("@/components/vessel/VesselCard");
+      // The card reads these caches synchronously on mount (dims.ts
+      // peek*): warmed here, the first card opens complete on frame one
+      // rather than growing as two fetches land mid-slide.
+      getVesselDims().catch(() => {});
+      getTerminalDims().catch(() => {});
+    };
     const idleId = window.requestIdleCallback?.(preload);
     if (idleId !== undefined) return () => window.cancelIdleCallback(idleId);
     const t = window.setTimeout(preload, 2500);

@@ -47,16 +47,21 @@ export default async function TripPairPage({ params }: { params: Promise<{ pair:
         {/* Each name carries an empty weather slot; TerminalWeather (inside
             TripView, which owns the viewed-sailing hour) portals a compact
             conditions chip into it once the forecast doc loads. Keeping the
-            h1 server-rendered preserves the static export's real body. */}
+            h1 server-rendered preserves the static export's real body.
+            Layout is a two-column grid (one per end): the names share ONE
+            line whatever the viewport, and each end's chip sits under its
+            own name - so both terminals' AQI read side by side instead of
+            the arrival's trailing the line. The arrow rides in the
+            departure cell so it hugs that name (trip.module.css). */}
         <h1 className={`display ${styles.pairTitle}`}>
           <span className={styles.pairEnd}>
-            {entry.depName}
+            <span className={styles.pairName}>
+              {entry.depName} <span className={styles.pairArrow}>→</span>
+            </span>
             <span id="wx-slot-dep" className={styles.wxSlot} />
-          </span>{" "}
+          </span>
           <span className={styles.pairEnd}>
-            {/* The arrow travels with the arrival name so a narrow wrap
-                can never orphan it onto its own line. */}
-            <span>→ {entry.arrName}</span>
+            <span className={styles.pairName}>{entry.arrName}</span>
             <span id="wx-slot-arr" className={styles.wxSlot} />
           </span>
         </h1>

@@ -31,6 +31,18 @@ export interface TerminalDim {
 let vesselCache: Map<number, VesselDim> | null = null;
 let terminalCache: Map<number, TerminalDim> | null = null;
 
+/** Synchronous reads of whatever is already cached. Lets a component that
+ * mounts after the dims have landed render complete on its first frame
+ * instead of one frame empty and one full (the vessel card's bottom sheet
+ * animates in, and growing mid-slide read as stutter on phones). */
+export function peekVesselDims(): Map<number, VesselDim> | null {
+  return vesselCache;
+}
+
+export function peekTerminalDims(): Map<number, TerminalDim> | null {
+  return terminalCache;
+}
+
 function url(livePath: string, fixtureName: string): string {
   return process.env.NODE_ENV === "development" && DATA_MODE === "fixture" ? `/dev-fixtures/${fixtureName}` : `${DATA_BASE}${livePath}`;
 }

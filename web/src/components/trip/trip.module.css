@@ -35,36 +35,71 @@
   color: var(--accent);
 }
 
+/* "Dep → Arr" as a two-column grid, one per end: the names and the arrow
+ * share one line at every width (the longest pair, Port Townsend →
+ * Coupeville, fits a 375 px phone at the clamp's floor), and each end's
+ * weather chip sits in the row beneath its own name. The NAME sizes its
+ * column: the chip slot is inline-size-contained so a wide chip (a long
+ * AQI category) wraps its pill under the temperature instead of pushing
+ * the arrow away from the name it belongs to. */
 .pairTitle {
-  font-size: 1.6rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 0.55rem;
+  align-items: start;
+  font-size: clamp(1.25rem, 5.4vw, 1.6rem);
   font-weight: 800;
   line-height: 1.15;
   margin: 0.2rem 0 0.15rem;
 }
 
-/* Each end of "Dep → Arr" pairs a name with its portaled weather chip;
- * the chip wraps beneath its own name on narrow screens rather than
- * orphaning to the far side of the arrow. */
 .pairEnd {
-  display: inline-flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  column-gap: 0.7rem;
+  display: grid;
+  row-gap: 0.25rem;
+  min-width: 0;
+}
+
+.pairName {
+  white-space: nowrap;
+}
+
+.pairArrow {
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .wxSlot {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 0.25rem 0.5rem;
+  min-width: 0;
+  contain: inline-size;
 }
 
+/* One line, always: the row scrolls sideways (scrollbar hidden) instead
+ * of stacking pills. It bleeds to the column edge so a scrolled pill
+ * clips at the page margin, not mid-column. */
 .pairMeta {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.55rem;
   color: var(--ink-soft);
   font-size: 0.85rem;
-  margin-bottom: 0.9rem;
+  margin: 0 -1rem 0.9rem;
+  padding: 0.15rem 1rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.pairMeta::-webkit-scrollbar {
+  display: none;
+}
+
+.pairMeta > * {
+  flex: none;
+  white-space: nowrap;
 }
 
 .swap {
@@ -181,20 +216,6 @@
 
 /* ---- departures ---- */
 
-.dayNotes {
-  margin: 0 0 0.8rem;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 0.4rem;
-}
-
-.dayNotes li {
-  font-size: 0.84rem;
-  color: var(--ink-soft);
-  border-left: 3px solid var(--stack);
-  padding-left: 0.6rem;
-}
 
 .list {
   display: grid;
@@ -235,6 +256,32 @@
   text-decoration: line-through;
   text-decoration-thickness: 2px;
   text-decoration-color: var(--stack);
+}
+
+/* A cancelled slot with no sailing behind it (CancelledSlotRow): the
+ * struck voice of a cancelled row on a dashed card, so the eye reads
+ * "there was a boat here" without mistaking it for one. */
+.rowGhost {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--card) 60%, transparent);
+}
+
+/* Only the time is struck: the label describes the removal, it is not
+ * the thing removed. */
+.ghostVessel {
+  color: var(--ink-soft);
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.slotAlertLink {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.slotAlertLink:hover {
+  text-decoration: underline;
 }
 
 .time {

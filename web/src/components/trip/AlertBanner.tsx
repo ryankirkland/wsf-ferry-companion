@@ -9,11 +9,14 @@ import styles from "./trip.module.css";
  * Every alert carries its publish stamp: a delay notice from 9 AM means
  * something different at 5 PM. Text and body render only when they say
  * something the title did not (see alertDetails). */
+export const ROUTE_ALERTS_ID = "route-alerts";
+export const ALERT_ITEM_ID = (id: number) => `alert-${id}`;
+
 export function AlertBanner({ alerts }: { alerts: AlertItem[] }) {
   if (alerts.length === 0) return null;
   const [first] = alerts;
   return (
-    <details className={styles.alertBanner} data-testid="alert-banner">
+    <details className={styles.alertBanner} id={ROUTE_ALERTS_ID} data-testid="alert-banner">
       <summary className={styles.alertSummary}>
         <span>{first!.title}</span>
         <span className={styles.alertCount}>
@@ -25,7 +28,7 @@ export function AlertBanner({ alerts }: { alerts: AlertItem[] }) {
         {alerts.map((a) => {
           const details = alertDetails(a);
           return (
-            <div key={a.id} className={styles.alertItem}>
+            <div key={a.id} id={ALERT_ITEM_ID(a.id)} className={styles.alertItem}>
               <h4>
                 {a.title}
                 {a.published && (

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import {
   getTerminalDims,
   getVesselDims,
+  peekTerminalDims,
+  peekVesselDims,
   type TerminalDim,
   type VesselDim,
 } from "@/lib/data/dims";
@@ -103,23 +105,38 @@ export function VesselCard({
   fleet: FleetUpdate;
   onClose: () => void;
 }) {
-  const [dim, setDim] = useState<VesselDim | null>(null);
-  const [terms, setTerms] = useState<Map<number, TerminalDim> | null>(null);
+  // The whole maps, not this boat's row: switching boats then derives the
+  // new class/drawing in the same render as the new name, with no frame
+  // showing the previous boat's class under the new one's name. Seeded from
+  // the caches so a card that opens after the idle warm-up (page.tsx)
+  // renders complete on its first frame - the entry animation must not run
+  // over a card still growing as fetches land.
+  const [vesselDims, setVesselDims] = useState<Map<number, VesselDim> | null>(peekVesselDims);
+  const [terms, setTerms] = useState<Map<number, TerminalDim> | null>(peekTerminalDims);
+  const dim = vesselDims?.get(fix.id) ?? null;
+
   useEffect(() => {
     let alive = true;
-    getVesselDims()
-      .then((m) => alive && setDim(m.get(fix.id) ?? null))
-      .catch(() => {});
-    getTerminalDims()
-      .then((m) => alive && setTerms(m))
-      .catch(() => {});
-    // Warm the schedule chunk (ScheduleDisclosure loads it on demand): the
-    // disclosure tap must not wait on it.
-    void import("./VesselSchedule");
+    if (!vesselDims) {
+      getVesselDims()
+        .then((m) => alive && setVesselDims(m))
+        .catch(() => {});
+    }
+    if (!terms) {
+      getTerminalDims()
+        .then((m) => alive && setTerms(m))
+        .catch(() => {});
+    }
     return () => {
       alive = false;
     };
-  }, [fix.id]);
+  }, [vesselDims, terms]);
+
+  useEffect(() => {
+    // Warm the schedule chunk (ScheduleDisclosure loads it on demand): the
+    // disclosure tap must not wait on it.
+    void import("./VesselSchedule");
+  }, []);
 
   const status = statusLine(fix);
   const leftAt = fix.left ? soundClock(new Date(fix.left)) : null;

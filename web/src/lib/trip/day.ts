@@ -1,10 +1,26 @@
-// Day-view assembly: strike cancelled rows, surface unmatched adjustments
-// as day-level notes, and merge yesterday's post-midnight tail before 3 AM
-// Sound time. timeadj is annotation, never schedule math - /schedule/{date}
+// Day-view assembly: strike cancelled rows, surface unpinnable cancels as
+// ghost slots, and merge yesterday's post-midnight tail before 3 AM Sound
+// time. timeadj is annotation, never schedule math - /schedule/{date}
 // already applies adjustments to Times, so we only decorate.
 
 import { SOUND_TZ } from "@/config";
+import { shiftDate, soundLocalMs } from "@/lib/time/sound-time";
 import type { Adjustment, PairDay, Sailing } from "./types";
+
+/** A timeadj cancel with no row to strike. WSF drops advance-published
+ * (tidal) cancels from /schedule/{date} itself, so the sailing is simply
+ * absent from the list - a rider looking for "the 2:05" would find
+ * nothing. The ghost holds the slot: it renders in the list at the
+ * cancelled time, not as a note floating above the day. */
+export interface GhostCancel {
+  /** The cancelled slot as an instant - orders the ghost among real rows. */
+  depart_ms: number;
+  /** Sound-local HH:MM as WSF published it. */
+  time_local: string;
+  /** e.g. "tidal cancellation". */
+  reason: string;
+  tidal: boolean;
+}
 
 export interface DayView {
   sailings: Sailing[];
@@ -12,8 +28,16 @@ export interface DayView {
   cancelledMs: Set<number>;
   /** Reason per struck sailing, e.g. "tidal cancellation". */
   cancelReason: Map<number, string>;
-  /** Adjustments we could not pin to a row - shown as day-level notes. */
-  dayNotes: string[];
+  /** Cancels we could not pin to a row, sorted by slot. */
+  ghosts: GhostCancel[];
+}
+
+/** WSF's service day runs past midnight: an HH:MM before 03:00 in a
+ * day's file names the following calendar morning (the same rule that
+ * tags after_midnight rows). */
+function slotMs(serviceDate: string, hhmm: string): number {
+  const afterMidnight = hhmm < "03:00";
+  return soundLocalMs(afterMidnight ? shiftDate(serviceDate, 1) : serviceDate, hhmm);
 }
 
 const HHMM = new Intl.DateTimeFormat("en-GB", {
@@ -55,25 +79,35 @@ export function buildDayView(today: PairDay, yesterday: PairDay | null = null): 
   const sailings = mergeDays(today, yesterday);
   const cancelledMs = new Set<number>();
   const cancelReason = new Map<number, string>();
-  // A Set, not an array: yesterday's file and today's can carry the same
-  // unmatched adjustment, and the reader should see that cancellation once.
-  const dayNotes = new Set<string>();
+  // Keyed by slot instant: yesterday's file and today's can carry the same
+  // cancel, and the reader should see that slot once. Yesterday's cancels
+  // count only when they name its post-midnight tail - the part of that
+  // service day this list actually shows.
+  const ghosts = new Map<number, GhostCancel>();
 
-  const adjustments = [...(yesterday?.adjustments ?? []), ...today.adjustments];
-  for (const adj of adjustments) {
-    if (adj.type !== "cancel") continue; // additions are badged by the builder
-    const row = adj.matched
-      ? sailings.find((s) => localHHMM(s.depart_ms) === adj.time_local)
-      : undefined;
-    if (row) {
-      cancelledMs.add(row.depart_ms);
-      cancelReason.set(row.depart_ms, reason(adj));
-    } else {
-      dayNotes.add(
-        `A ${adj.time_local} departure from this terminal area is cancelled (${reason(adj)}) - ` +
-          "check the alert for details.",
-      );
+  const files: { doc: PairDay; tailOnly: boolean }[] = [
+    ...(yesterday ? [{ doc: yesterday, tailOnly: true }] : []),
+    { doc: today, tailOnly: false },
+  ];
+  for (const { doc, tailOnly } of files) {
+    for (const adj of doc.adjustments) {
+      if (adj.type !== "cancel") continue; // additions are badged by the builder
+      const row = adj.matched
+        ? sailings.find((s) => localHHMM(s.depart_ms) === adj.time_local)
+        : undefined;
+      if (row) {
+        cancelledMs.add(row.depart_ms);
+        cancelReason.set(row.depart_ms, reason(adj));
+      } else if (!tailOnly || adj.time_local < "03:00") {
+        const ms = slotMs(doc.service_date, adj.time_local);
+        ghosts.set(ms, { depart_ms: ms, time_local: adj.time_local, reason: reason(adj), tidal: adj.tidal });
+      }
     }
   }
-  return { sailings, cancelledMs, cancelReason, dayNotes: [...dayNotes] };
+  return {
+    sailings,
+    cancelledMs,
+    cancelReason,
+    ghosts: [...ghosts.values()].sort((a, b) => a.depart_ms - b.depart_ms),
+  };
 }

@@ -97,3 +97,37 @@ export function soundStamp(iso: string, now: Date = new Date()): string {
   if (Number.isNaN(d.getTime())) return "";
   return soundDate(d) === soundDate(now) ? soundTimeShort(d.getTime()) : STAMP_DAY.format(d);
 }
+
+const WALL = new Intl.DateTimeFormat("en-US", {
+  timeZone: SOUND_TZ,
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  hour: "numeric",
+  minute: "numeric",
+  hourCycle: "h23",
+});
+
+/** The epoch-ms instant at which Sound wall clocks read `ymd hh:mm`.
+ * Two passes of "format the guess, correct by the difference" resolve
+ * the zone offset without a tz library; a DST-gap time (02:30 on the
+ * spring-forward night) lands an hour later, which is fine for the
+ * schedule slots this serves (WSF publishes none in the gap). */
+export function soundLocalMs(ymd: string, hhmm: string): number {
+  const [y, mo, d] = ymd.split("-").map(Number) as [number, number, number];
+  const [h, mi] = hhmm.split(":").map(Number) as [number, number];
+  const wanted = Date.UTC(y, mo - 1, d, h, mi);
+  const wallAsUtc = (ms: number): number => {
+    const p = Object.fromEntries(WALL.formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+    return Date.UTC(
+      Number(p.year),
+      Number(p.month) - 1,
+      Number(p.day),
+      Number(p.hour) % 24,
+      Number(p.minute),
+    );
+  };
+  let guess = wanted - (wallAsUtc(wanted) - wanted);
+  guess = wanted - (wallAsUtc(guess) - guess);
+  return guess;
+}

@@ -63,10 +63,10 @@ describe("buildDayView adjustments", () => {
     const view = buildDayView(day([sailing(D), sailing(D + 90 * MIN)], [{ ...cancel, time_local: "14:05" }]));
     expect(view.cancelledMs.has(D)).toBe(true);
     expect(view.cancelReason.get(D)).toBe("tidal cancellation");
-    expect(view.dayNotes).toHaveLength(0);
+    expect(view.ghosts).toHaveLength(0);
   });
 
-  it("unmatched or unpinnable cancels become day-level notes", () => {
+  it("unmatched or unpinnable cancels become ghost slots at their Sound-local instant", () => {
     const view = buildDayView(
       day([sailing(D)], [
         { ...cancel, time_local: "14:05", matched: false },
@@ -74,7 +74,32 @@ describe("buildDayView adjustments", () => {
       ]),
     );
     expect(view.cancelledMs.size).toBe(0);
-    expect(view.dayNotes).toHaveLength(2);
+    // Sorted by slot: 09:59 PST then 14:05 PST (= D) on the service date.
+    expect(view.ghosts.map((g) => g.time_local)).toEqual(["09:59", "14:05"]);
+    expect(view.ghosts[1]!.depart_ms).toBe(D);
+    expect(view.ghosts[0]!.depart_ms).toBe(Date.parse("2026-01-15T17:59:00Z"));
+    expect(view.ghosts[0]).toMatchObject({ reason: "tidal cancellation", tidal: true });
+  });
+
+  it("a pre-03:00 cancel names the service day's post-midnight morning", () => {
+    const view = buildDayView(day([sailing(D)], [{ ...cancel, time_local: "00:30", matched: false }]));
+    expect(view.ghosts[0]!.depart_ms).toBe(Date.parse("2026-01-16T08:30:00Z"));
+  });
+
+  it("yesterday's cancels ghost only in its post-midnight tail, deduped against today's", () => {
+    const yesterday = {
+      ...day([], [
+        { ...cancel, time_local: "14:05", matched: false }, // yesterday afternoon: gone
+        { ...cancel, time_local: "00:30", matched: false }, // this morning: shown
+      ]),
+      service_date: "2026-01-14",
+    };
+    const today = day([sailing(D)], [{ ...cancel, time_local: "00:30", matched: false }]);
+    const view = buildDayView(today, yesterday);
+    expect(view.ghosts.map((g) => new Date(g.depart_ms).toISOString())).toEqual([
+      "2026-01-15T08:30:00.000Z",
+      "2026-01-16T08:30:00.000Z",
+    ]);
   });
 
   it("additions never strike rows", () => {
