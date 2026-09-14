@@ -291,14 +291,16 @@ test("a cancel WSF already dropped from the schedule holds its slot in the list"
   await interceptTripData(page, baseMs);
 
   // Override (LIFO): a tidal cancel at a time with no row - WSF drops
-  // advance-published cancels from /schedule/{date} itself - sitting
-  // between the +6 and +18 min sailings, plus a route bulletin naming it
-  // in WSF's military form.
+  // advance-published cancels from /schedule/{date} itself - two minutes
+  // out, i.e. AHEAD of the boarding +6 boat yet after the departed -8 one,
+  // plus a route bulletin naming it in WSF's military form.
   const day = buildDay(baseMs);
-  const slotMs = baseMs + 12 * MIN;
+  const slotMs = baseMs + 2 * MIN;
   const hhmm = HHMM.format(new Date(slotMs));
+  // matched: true - Seattle/Bainbridge is a two-terminal route, so the
+  // builder pins the cancel to this pair and the row speaks with certainty.
   day.adjustments = [
-    { type: "cancel", time_local: hhmm, terminal_id: DEP, tidal: true, matched: false },
+    { type: "cancel", time_local: hhmm, terminal_id: DEP, tidal: true, matched: true },
   ];
   const today = soundToday();
   await page.route(`**/data/pairs/${DEP}-${ARR}/*.json`, (r) =>
@@ -334,16 +336,19 @@ test("a cancel WSF already dropped from the schedule holds its slot in the list"
   await page.goto(`/trip/${SLUG}/`);
   await expect(page.getByTestId("answer-line")).toBeVisible({ timeout: 15_000 });
 
-  // No floating day note; the slot is a row in the list, in time order,
-  // between the boarding boat and the next one.
+  // No floating day note; the slot is a row in the list, in time order.
+  // It is still in the future, so it shows even though it precedes the
+  // next real boat - it must not hide behind "Show earlier sailings",
+  // which counts sailings only.
   await expect(page.getByText(/departure from this terminal area is cancelled/)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Show 3 earlier sailings/ })).toBeVisible();
   const rows = page.getByTestId("departures").locator("li");
   const slot = page.getByTestId("cancelled-slot");
   await expect(slot).toHaveCount(1);
   await expect(slot).toContainText("Sailing removed by WSF");
   await expect(slot).toContainText("tidal cancellation");
-  await expect(rows.nth(0)).toHaveAttribute("data-state", "boarding");
-  await expect(rows.nth(1)).toHaveAttribute("data-state", "removed");
+  await expect(rows.nth(0)).toHaveAttribute("data-state", "removed");
+  await expect(rows.nth(1)).toHaveAttribute("data-state", "boarding");
   await expect(rows.nth(2)).toHaveAttribute("data-state", "tight");
 
   // The link opens the route-alerts disclosure on the bulletin that names

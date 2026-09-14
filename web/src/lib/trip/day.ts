@@ -3,7 +3,6 @@
 // time. timeadj is annotation, never schedule math - /schedule/{date}
 // already applies adjustments to Times, so we only decorate.
 
-import { SOUND_TZ } from "@/config";
 import { shiftDate, soundLocalMs } from "@/lib/time/sound-time";
 import type { Adjustment, PairDay, Sailing } from "./types";
 
@@ -20,6 +19,11 @@ export interface GhostCancel {
   /** e.g. "tidal cancellation". */
   reason: string;
   tidal: boolean;
+  /** True when the builder could pin the cancel to THIS pair (two-terminal
+   * route). On a multi-terminal route (Fauntleroy/Vashon/Southworth, the
+   * San Juans) timeadj names only the departure terminal, so the cancelled
+   * boat may have been bound elsewhere - the row must say so. */
+  certain: boolean;
 }
 
 export interface DayView {
@@ -28,7 +32,11 @@ export interface DayView {
   cancelledMs: Set<number>;
   /** Reason per struck sailing, e.g. "tidal cancellation". */
   cancelReason: Map<number, string>;
-  /** Cancels we could not pin to a row, sorted by slot. */
+  /** Hedged notes for rows an UNMATCHED cancel names by time: the sailing
+   * is still published, and on a multi-terminal route the cancel may be
+   * another destination's - so the row stays live and carries the doubt. */
+  rowNotes: Map<number, string>;
+  /** Cancels with no row at their time, sorted by slot. */
   ghosts: GhostCancel[];
 }
 
@@ -38,17 +46,6 @@ export interface DayView {
 function slotMs(serviceDate: string, hhmm: string): number {
   const afterMidnight = hhmm < "03:00";
   return soundLocalMs(afterMidnight ? shiftDate(serviceDate, 1) : serviceDate, hhmm);
-}
-
-const HHMM = new Intl.DateTimeFormat("en-GB", {
-  timeZone: SOUND_TZ,
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
-
-function localHHMM(ms: number): string {
-  return HHMM.format(new Date(ms));
 }
 
 function reason(adj: Adjustment): string {
@@ -79,12 +76,14 @@ export function buildDayView(today: PairDay, yesterday: PairDay | null = null): 
   const sailings = mergeDays(today, yesterday);
   const cancelledMs = new Set<number>();
   const cancelReason = new Map<number, string>();
+  const rowNotes = new Map<number, string>();
   // Keyed by slot instant: yesterday's file and today's can carry the same
-  // cancel, and the reader should see that slot once. Yesterday's cancels
-  // count only when they name its post-midnight tail - the part of that
-  // service day this list actually shows.
+  // cancel, and the reader should see that slot once.
   const ghosts = new Map<number, GhostCancel>();
 
+  // Yesterday's file contributes only its post-midnight tail - the part of
+  // that service day this list shows. Its afternoon cancels must neither
+  // strike today's same-HH:MM sailing nor ghost into today.
   const files: { doc: PairDay; tailOnly: boolean }[] = [
     ...(yesterday ? [{ doc: yesterday, tailOnly: true }] : []),
     { doc: today, tailOnly: false },
@@ -92,15 +91,27 @@ export function buildDayView(today: PairDay, yesterday: PairDay | null = null): 
   for (const { doc, tailOnly } of files) {
     for (const adj of doc.adjustments) {
       if (adj.type !== "cancel") continue; // additions are badged by the builder
-      const row = adj.matched
-        ? sailings.find((s) => localHHMM(s.depart_ms) === adj.time_local)
-        : undefined;
-      if (row) {
+      if (tailOnly && adj.time_local >= "03:00") continue;
+      const ms = slotMs(doc.service_date, adj.time_local);
+      // Minute-granular: timeadj carries HH:MM, and the instant compare is
+      // what keeps yesterday's 22:00 from striking today's 22:00.
+      const row = sailings.find((s) => Math.floor(s.depart_ms / 60_000) === Math.floor(ms / 60_000));
+      if (row && adj.matched) {
         cancelledMs.add(row.depart_ms);
         cancelReason.set(row.depart_ms, reason(adj));
-      } else if (!tailOnly || adj.time_local < "03:00") {
-        const ms = slotMs(doc.service_date, adj.time_local);
-        ghosts.set(ms, { depart_ms: ms, time_local: adj.time_local, reason: reason(adj), tidal: adj.tidal });
+      } else if (row) {
+        rowNotes.set(
+          row.depart_ms,
+          `WSF lists a ${adj.time_local} ${reason(adj)} from this terminal - it may be this sailing`,
+        );
+      } else {
+        ghosts.set(ms, {
+          depart_ms: ms,
+          time_local: adj.time_local,
+          reason: reason(adj),
+          tidal: adj.tidal,
+          certain: adj.matched,
+        });
       }
     }
   }
@@ -108,6 +119,7 @@ export function buildDayView(today: PairDay, yesterday: PairDay | null = null): 
     sailings,
     cancelledMs,
     cancelReason,
+    rowNotes,
     ghosts: [...ghosts.values()].sort((a, b) => a.depart_ms - b.depart_ms),
   };
 }

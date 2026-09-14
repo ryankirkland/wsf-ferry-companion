@@ -86,7 +86,12 @@ export function TripView({ slug }: { slug: string }) {
         depTerminalId: entry.dep,
         nowMs: now,
       });
-      return { sailing, signal, cancelledReason };
+      return {
+        sailing,
+        signal,
+        cancelledReason,
+        cancelNote: dayView.rowNotes.get(sailing.depart_ms) ?? null,
+      };
     });
   }, [dayView, fleet.snapshot, entry.dep, now]);
 
@@ -293,7 +298,9 @@ function EmptyDay({
 
   return (
     <div>
-      {items.length > 0 && (
+      {/* Ghosts render even with no sailings: a day WSF cancelled outright
+          must still list what it cancelled, not just say "no sailings". */}
+      {(items.length > 0 || ghosts.length > 0) && (
         <DepartureList
           items={items}
           nextIndex={items.length}

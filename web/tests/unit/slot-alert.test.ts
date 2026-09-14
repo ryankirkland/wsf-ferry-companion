@@ -24,6 +24,18 @@ describe("alertForSlot", () => {
     expect(alertForSlot({ ...slot, tidal: false }, [alert(5, "Bulletin 11405")])).toBeNull();
   });
 
+  it("a stated meridiem must agree with the slot", () => {
+    const pm = { time_local: "16:05", tidal: false };
+    const am = { time_local: "04:05", tidal: false };
+    const bulletin = alert(10, "The 4:05 a.m. sailing is cancelled");
+    expect(alertForSlot(am, [bulletin])?.id).toBe(10);
+    expect(alertForSlot(pm, [bulletin])).toBeNull();
+    expect(alertForSlot(pm, [alert(11, "4:05pm departure cancelled")])?.id).toBe(11);
+    expect(alertForSlot(am, [alert(11, "4:05pm departure cancelled")])).toBeNull();
+    // No meridiem stated: either slot may match.
+    expect(alertForSlot(pm, [alert(12, "4:05 sailing cancelled")])?.id).toBe(12);
+  });
+
   it("prefers the alert naming the time over a generic tidal notice", () => {
     const tidal = alert(6, "Sea/Brem - tidal cancellations this week");
     const named = alert(7, "The 1405 is cancelled due to tides");

@@ -7,16 +7,19 @@
 
 import type { AlertItem } from "./types";
 
-function timeForms(hhmm: string): string[] {
-  const [h, m] = hhmm.split(":") as [string, string];
-  const h12 = String(((Number(h) + 11) % 12) + 1);
-  return [`${h}${m}`, `${h}:${m}`, `${h12}:${m}`];
-}
-
+/** The three spellings, each as a whole token. The spoken form may carry
+ * a meridiem ("4:05 p.m.", "4:05pm"); when it does it must agree with the
+ * slot, so a 16:05 cancel never links a bulletin about the 4:05 a.m. */
 function mentionsTime(haystack: string, hhmm: string): boolean {
-  return timeForms(hhmm).some((form) =>
-    new RegExp(`(^|[^0-9:])${form.replace(":", "\\:")}([^0-9:]|$)`).test(haystack),
-  );
+  const [h, m] = hhmm.split(":") as [string, string];
+  const hour = Number(h);
+  const h12 = String(((hour + 11) % 12) + 1);
+  const meridiem = hour < 12 ? "a" : "p";
+  const token = (form: string) => new RegExp(`(^|[^0-9:])${form}([^0-9:]|$)`);
+  if (token(`${h}${m}`).test(haystack) || token(`${h}:${m}`).test(haystack)) return true;
+  const spoken = new RegExp(`(^|[^0-9:])${h12}:${m}(?:\\s*([ap])\\.?m\\b\\.?)?(?![0-9:])`, "i");
+  const hit = spoken.exec(haystack);
+  return hit !== null && (hit[2] === undefined || hit[2].toLowerCase() === meridiem);
 }
 
 const TIDAL = /\btid(al|e|es)\b|low water/i;

@@ -13,6 +13,8 @@ export interface DepartureItem {
   sailing: Sailing;
   signal: Signal;
   cancelledReason: string | null;
+  /** An unmatched cancel names this row's time - see DayView.rowNotes. */
+  cancelNote?: string | null;
 }
 
 type Row = { kind: "sailing"; item: DepartureItem } | { kind: "ghost"; ghost: GhostCancel };
@@ -39,9 +41,10 @@ export function DepartureList({
   /** Live drive-up readings keyed by depart_ms - the same instant WSF puts
    *  on both the schedule and the space feed. */
   capacity?: Map<number, CapacitySailing>;
-  /** Cancelled slots with no row of their own, interleaved by time. They
-   *  collapse with the earlier sailings when they fall before the next
-   *  boat - the count on the button is sailings only. */
+  /** Cancelled slots with no row of their own, interleaved by time. Past
+   *  ones collapse with the earlier sailings; a future one always shows,
+   *  even ahead of the next real boat - that is the slot a rider is
+   *  looking for. The count on the button is sailings only. */
   ghosts?: GhostCancel[];
   alertForGhost?: (ghost: GhostCancel) => AlertItem | null;
   /** The page clock; a ghost slot behind it fades like a departed row. */
@@ -54,11 +57,11 @@ export function DepartureList({
   const hidden = items.slice(0, cut);
   const visible = items.slice(cut);
   const firstVisibleMs = visible[0]?.sailing.depart_ms ?? Infinity;
+  const ghostShown = (g: GhostCancel) =>
+    cut === 0 || (nowMs !== undefined ? g.depart_ms >= nowMs : g.depart_ms > firstVisibleMs);
   const rows: Row[] = [
     ...visible.map((item): Row => ({ kind: "sailing", item })),
-    ...ghosts
-      .filter((g) => cut === 0 || g.depart_ms > firstVisibleMs)
-      .map((ghost): Row => ({ kind: "ghost", ghost })),
+    ...ghosts.filter(ghostShown).map((ghost): Row => ({ kind: "ghost", ghost })),
   ].sort((a, b) => rowMs(a) - rowMs(b));
 
   return (
@@ -81,6 +84,7 @@ export function DepartureList({
               sailing={row.item.sailing}
               signal={row.item.signal}
               cancelledReason={row.item.cancelledReason}
+              cancelNote={row.item.cancelNote ?? null}
               crossingMin={crossingMin}
               capacity={capacity?.get(row.item.sailing.depart_ms) ?? null}
               routePassengerOnly={routePassengerOnly}

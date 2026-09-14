@@ -56,7 +56,12 @@ export function VesselSchedule({ entry, fleet }: { entry: PairEntry; fleet: Flee
         depTerminalId: entry.dep,
         nowMs: now,
       });
-      return { sailing, signal, cancelledReason };
+      return {
+        sailing,
+        signal,
+        cancelledReason,
+        cancelNote: dayView.rowNotes.get(sailing.depart_ms) ?? null,
+      };
     });
   }, [dayView, fleet.snapshot, entry.dep, now]);
 

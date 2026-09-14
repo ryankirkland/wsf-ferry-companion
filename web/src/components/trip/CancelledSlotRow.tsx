@@ -34,11 +34,16 @@ export function CancelledSlotRow({
     >
       <span className={styles.time}>{soundTimeShort(ghost.depart_ms)}</span>
       <span className={styles.vesselCell}>
-        <span className={styles.ghostVessel}>Sailing removed by WSF</span>
+        <span className={styles.ghostVessel}>
+          {ghost.certain ? "Sailing removed by WSF" : "A sailing from this terminal"}
+        </span>
       </span>
       <span className={`${styles.pill} ${styles.pillMuted}`}>Cancelled</span>
       <span className={styles.rowMeta}>
         <span className={styles.reason}>{ghost.reason}</span>
+        {/* Multi-terminal route: timeadj names the departure terminal only,
+            so the boat may have been bound for another destination. */}
+        {!ghost.certain && <span>may have been bound elsewhere on this route</span>}
         {alert && (
           <a className={styles.slotAlertLink} href={`#${ALERT_ITEM_ID(alert.id)}`} onClick={openAlerts}>
             See WSF alert

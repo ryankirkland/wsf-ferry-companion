@@ -14,6 +14,9 @@ export interface DepartureRowProps {
   sailing: Sailing;
   signal: Signal;
   cancelledReason: string | null;
+  /** A cancel the builder could not pin to this pair names this row's
+   *  time (multi-terminal route): the row stays live and says so. */
+  cancelNote?: string | null;
   crossingMin: number | null;
   /** WSF's live drive-up reading for THIS departure, joined on depart_ms;
    *  null whenever the terminal, the sailing, or the hour has none. */
@@ -32,6 +35,7 @@ export function DepartureRow({
   sailing,
   signal,
   cancelledReason,
+  cancelNote = null,
   crossingMin,
   capacity = null,
   routePassengerOnly = false,
@@ -69,6 +73,13 @@ export function DepartureRow({
   // departure (capacityFor's now-5min window).
   if (capacity && !cancelled && !past) {
     meta.push(<DriveUpChip key="driveup" sailing={capacity} />);
+  }
+  if (cancelNote) {
+    meta.push(
+      <span key="cancelNote" className={styles.reason}>
+        {cancelNote}
+      </span>,
+    );
   }
   const loading = routePassengerOnly ? LOADING_NOTE[1] : LOADING_NOTE[sailing.loading_rule ?? 3];
   if (loading) meta.push(<span key="loading">{loading}</span>);

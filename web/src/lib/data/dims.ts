@@ -30,6 +30,11 @@ export interface TerminalDim {
 
 let vesselCache: Map<number, VesselDim> | null = null;
 let terminalCache: Map<number, TerminalDim> | null = null;
+// In-flight promises: two callers in the same tick (the map controller and
+// a vessel card, or a card effect re-running) share ONE request. A failed
+// fetch clears its slot so the next caller retries.
+let vesselInflight: Promise<Map<number, VesselDim>> | null = null;
+let terminalInflight: Promise<Map<number, TerminalDim>> | null = null;
 
 /** Synchronous reads of whatever is already cached. Lets a component that
  * mounts after the dims have landed render complete on its first frame
@@ -47,22 +52,30 @@ function url(livePath: string, fixtureName: string): string {
   return process.env.NODE_ENV === "development" && DATA_MODE === "fixture" ? `/dev-fixtures/${fixtureName}` : `${DATA_BASE}${livePath}`;
 }
 
-export async function getVesselDims(): Promise<Map<number, VesselDim>> {
-  if (!vesselCache) {
+export function getVesselDims(): Promise<Map<number, VesselDim>> {
+  if (vesselCache) return Promise.resolve(vesselCache);
+  vesselInflight ??= (async () => {
     const res = await fetch(url(DIMS_PATH, "vessels.json"));
     if (!res.ok) throw new Error(`vessels dims: HTTP ${res.status}`);
     const body = (await res.json()) as { vessels: VesselDim[] };
     vesselCache = new Map(body.vessels.map((v) => [v.id, v]));
-  }
-  return vesselCache;
+    return vesselCache;
+  })().finally(() => {
+    vesselInflight = null;
+  });
+  return vesselInflight;
 }
 
-export async function getTerminalDims(): Promise<Map<number, TerminalDim>> {
-  if (!terminalCache) {
+export function getTerminalDims(): Promise<Map<number, TerminalDim>> {
+  if (terminalCache) return Promise.resolve(terminalCache);
+  terminalInflight ??= (async () => {
     const res = await fetch(url(TERMINALS_PATH, "terminals.json"));
     if (!res.ok) throw new Error(`terminal dims: HTTP ${res.status}`);
     const body = (await res.json()) as { terminals: TerminalDim[] };
     terminalCache = new Map(body.terminals.map((t) => [t.id, t]));
-  }
-  return terminalCache;
+    return terminalCache;
+  })().finally(() => {
+    terminalInflight = null;
+  });
+  return terminalInflight;
 }

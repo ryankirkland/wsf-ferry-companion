@@ -148,13 +148,24 @@ in `web/src/config.ts`.
 Day view (`lib/trip/day.ts`): before 3 AM Sound time yesterday's
 `after_midnight` tail merges in (dedup on vessel_id+depart_ms), covering
 the ~1 h upstream server-day lag when today's file may not exist yet.
-Matched cancels strike rows with a reason; unpinnable ones become
-`GhostCancel` slots - WSF drops advance-published (tidal) cancels from
-`/schedule/{date}` itself, so the sailing is simply absent - rendered by
-`CancelledSlotRow` IN the departure list at the cancelled time (Sound-local
-instant via `soundLocalMs`; pre-03:00 times name the service day's
-post-midnight morning; yesterday's file contributes only its tail), dimmed
-once behind the clock, collapsing with the earlier sailings. The row links
+Cancels resolve against the row at their Sound-local instant
+(`soundLocalMs`; pre-03:00 times name the service day's post-midnight
+morning; yesterday's file contributes only its tail - on BOTH branches, so
+its 22:00 cancel never strikes today's 22:00). `matched` is the builder's
+"two-terminal route" flag: a matched cancel with a row strikes it with a
+reason; a matched cancel with no row - WSF drops advance-published (tidal)
+cancels from `/schedule/{date}` itself, so the sailing is simply absent -
+becomes a `GhostCancel` rendered by `CancelledSlotRow` IN the list at the
+cancelled time ("Sailing removed by WSF"). An UNMATCHED cancel
+(Fauntleroy/Vashon/Southworth, the San Juans: timeadj names only the
+departure terminal, so the boat may have been bound elsewhere) never
+strikes: with a same-time row it becomes a hedged note on that live row
+("WSF lists a 14:05 tidal cancellation from this terminal - it may be this
+sailing"); with none, a hedged ghost ("A sailing from this terminal ... may
+have been bound elsewhere on this route"). Past ghosts dim and collapse
+with the earlier sailings; a future ghost always shows, even ahead of the
+next real boat, and a day WSF cancelled outright still lists its ghosts
+under "No sailings". The row links
 "See WSF alert" to the route bulletin that names the slot (`slot-alert.ts`:
 WSF's "0405", "04:05" and "4:05" forms as whole tokens, tidal notices as
 the fallback for tidal cancels), opening the `<details>` before the anchor
