@@ -312,6 +312,28 @@ Shipping it needs two credentialed steps - upload the mirror, then
 `{"mode": "force-rebuild"}` on the dims refresher, because a new CONTRACT
 field cannot wait for a WSDOT cacheflush that may be weeks away.
 
+## Vessel card entry motion (2026-09-13)
+
+The card used to pop in - and on phones it read as a stutter, because the
+sheet mounted empty and then grew twice as the vessel-dims and terminal-dims
+promises resolved (one frame per fetch), each step shoving the bottom sheet
+upward. Two changes, both needed:
+
+- `dims.ts` gained `peekVesselDims()` / `peekTerminalDims()` - synchronous
+  reads of the fetch-once caches. `VesselCard` seeds its state from them
+  (and holds the whole maps rather than one boat's row, so switching boats
+  derives the new class in the same render as the new name - no frame of
+  the previous class under the new name). `page.tsx` warms both caches in
+  the same idle callback that preloads the card chunk, so the first card
+  renders complete on frame one. Verified by sampling `offsetHeight` every
+  animation frame after a marker tap: constant from frame 0.
+- `vessel-card.module.css` animates the entry on transform + opacity only:
+  phones slide the sheet up from `translateY(100%)` over 380 ms on an
+  ease-out curve (`cubic-bezier(0.22, 1, 0.36, 1)`), desktop lifts 14 px +
+  fades over 260 ms. It plays once per mount - switching boats keeps the
+  card mounted so content swaps in place - and `prefers-reduced-motion`
+  disables it.
+
 ## Inline route schedule on the vessel card (2026-08-03)
 
 "Next sailings" on `VesselCard` used to be a plain link out to the full

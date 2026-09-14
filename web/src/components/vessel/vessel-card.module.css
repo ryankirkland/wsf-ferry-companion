@@ -18,6 +18,27 @@
   right: 0;
   bottom: 0;
   border-radius: 18px 18px 0 0;
+
+  /* Entry: the sheet rises from below the viewport on a decelerating
+   * curve (fast off the line, settling gently), the way a native bottom
+   * sheet moves. Only transform + opacity animate, so it stays on the
+   * compositor. It plays once per mount: switching boats keeps the card
+   * mounted, so the content swaps in place without the sheet re-rising.
+   * The content itself must be settled before this runs - see VesselCard,
+   * which reads the dims caches synchronously so the card does not grow in
+   * steps mid-animation (that stepping read as stutter on phones). */
+  animation: card-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes card-in {
+  from {
+    transform: translateY(100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 @media (min-width: 640px) {
@@ -28,6 +49,26 @@
     bottom: 1.25rem;
     width: 400px;
     border-radius: 14px;
+    /* A floating card does not come from off-screen: a short lift + fade
+     * instead of a full-height slide. */
+    animation: card-in-desktop 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@keyframes card-in-desktop {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
   }
 }
 

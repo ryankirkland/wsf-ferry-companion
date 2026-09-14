@@ -285,3 +285,78 @@ test("picker filters to real mates and remembers your run", async ({ page }) => 
   await page.getByRole("button", { name: "Next sailings" }).click();
   await expect(page).toHaveURL(new RegExp(`/trip/${SLUG}/?`));
 });
+
+test("a cancel WSF already dropped from the schedule holds its slot in the list", async ({ page }) => {
+  const baseMs = Date.now();
+  await interceptTripData(page, baseMs);
+
+  // Override (LIFO): a tidal cancel at a time with no row - WSF drops
+  // advance-published cancels from /schedule/{date} itself - two minutes
+  // out, i.e. AHEAD of the boarding +6 boat yet after the departed -8 one,
+  // plus a route bulletin naming it in WSF's military form.
+  const day = buildDay(baseMs);
+  const slotMs = baseMs + 2 * MIN;
+  const hhmm = HHMM.format(new Date(slotMs));
+  // matched: true - Seattle/Bainbridge is a two-terminal route, so the
+  // builder pins the cancel to this pair and the row speaks with certainty.
+  day.adjustments = [
+    { type: "cancel", time_local: hhmm, terminal_id: DEP, tidal: true, matched: true },
+  ];
+  const today = soundToday();
+  await page.route(`**/data/pairs/${DEP}-${ARR}/*.json`, (r) =>
+    r.request().url().endsWith(`/${today}.json`)
+      ? r.fulfill({ body: JSON.stringify(day), contentType: "application/json" })
+      : r.fulfill({ status: 404, body: "" }),
+  );
+  const index = JSON.parse(fixture("pairs-index.json")) as {
+    pairs: { dep: number; arr: number; route_id: number | null }[];
+  };
+  const routeId = index.pairs.find((p) => p.dep === DEP && p.arr === ARR)!.route_id!;
+  await page.route("**/data/alerts.json", (r) =>
+    r.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        v: 1,
+        generated_at: new Date(baseMs).toISOString(),
+        watermark: "7:0",
+        alerts: [
+          {
+            id: 7,
+            title: "Sea/BI - Tidal cancellation",
+            text: `The ${hhmm.replace(":", "")} SEA>BI sailing is cancelled due to low tides.`,
+            published: new Date(baseMs).toISOString(),
+            route_ids: [routeId],
+            all_routes: false,
+          },
+        ],
+      }),
+    }),
+  );
+
+  await page.goto(`/trip/${SLUG}/`);
+  await expect(page.getByTestId("answer-line")).toBeVisible({ timeout: 15_000 });
+
+  // No floating day note; the slot is a row in the list, in time order.
+  // It is still in the future, so it shows even though it precedes the
+  // next real boat - it must not hide behind "Show earlier sailings",
+  // which counts sailings only.
+  await expect(page.getByText(/departure from this terminal area is cancelled/)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Show 3 earlier sailings/ })).toBeVisible();
+  const rows = page.getByTestId("departures").locator("li");
+  const slot = page.getByTestId("cancelled-slot");
+  await expect(slot).toHaveCount(1);
+  await expect(slot).toContainText("Sailing removed by WSF");
+  await expect(slot).toContainText("tidal cancellation");
+  await expect(rows.nth(0)).toHaveAttribute("data-state", "removed");
+  await expect(rows.nth(1)).toHaveAttribute("data-state", "boarding");
+  await expect(rows.nth(2)).toHaveAttribute("data-state", "tight");
+
+  // The link opens the route-alerts disclosure on the bulletin that names
+  // the slot (a closed <details> would swallow the anchor jump).
+  const banner = page.getByTestId("alert-banner");
+  await expect(banner).not.toHaveAttribute("open", "");
+  await slot.getByRole("link", { name: "See WSF alert" }).click();
+  await expect(banner).toHaveAttribute("open", "");
+  await expect(page).toHaveURL(/#alert-7$/);
+  await expect(banner.locator("#alert-7")).toBeInViewport();
+});

@@ -56,7 +56,12 @@ export function VesselSchedule({ entry, fleet }: { entry: PairEntry; fleet: Flee
         depTerminalId: entry.dep,
         nowMs: now,
       });
-      return { sailing, signal, cancelledReason };
+      return {
+        sailing,
+        signal,
+        cancelledReason,
+        cancelNote: dayView.rowNotes.get(sailing.depart_ms) ?? null,
+      };
     });
   }, [dayView, fleet.snapshot, entry.dep, now]);
 
@@ -69,14 +74,6 @@ export function VesselSchedule({ entry, fleet }: { entry: PairEntry; fleet: Flee
   return (
     <div className={styles.scheduleBody} data-testid="vessel-schedule">
       <DateStrip today={today} selected={date} onSelect={setDate} />
-
-      {dayView && dayView.dayNotes.length > 0 && (
-        <ul className={tripStyles.dayNotes}>
-          {dayView.dayNotes.map((note) => (
-            <li key={note}>{note}</li>
-          ))}
-        </ul>
-      )}
 
       {!trip.daySettled && !dayView && <p className={tripStyles.rangeNote}>Loading sailings…</p>}
 
@@ -91,6 +88,8 @@ export function VesselSchedule({ entry, fleet }: { entry: PairEntry; fleet: Flee
           items={items}
           nextIndex={isToday ? Math.max(nextIndex, 0) : 0}
           crossingMin={crossingMin}
+          ghosts={dayView?.ghosts}
+          nowMs={now}
         />
       )}
     </div>

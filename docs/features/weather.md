@@ -101,9 +101,24 @@ the day - including the air, in smoke season.
   move: outside the horizon a slot stays empty, per-end unavailability
   is silent absence (the old "no forecast" text died with the section),
   and a stale as_of still prints out loud as a note where the strip sat.
+  2026-09-13 layout: the h1 is a two-column grid, one per end - the
+  names (and the arrow, which rides in the departure cell) share ONE
+  line at every width, and each chip sits in the row UNDER its own name,
+  so both terminals' AQI read side by side. The chip is caption-sized
+  (1rem, 22 px icon, 0.72rem AQI pill) and its slot is
+  `contain: inline-size`, so the name sizes the column and a long AQI
+  category wraps its pill under the temperature instead of pushing the
+  arrow off the name. The stale note now says "Weather is from a
+  forecast published {soundStamp} and may be out of date" - the old
+  "forecast from 11:26 AM" printed the clock only, so a days-old
+  forecast read as this morning's (owner: "What is this?").
 
 ## Status
 
+- 2026-09-13: h1 chips restacked under the names (one-line title, both
+  AQIs side by side), stale-forecast copy made explicit, dev fixture
+  filled with per-area AQI for every covered terminal to match
+  production (it had AQI on 3 terminals, so dev showed one end only).
 - 2026-08-30: trip-page weather moved out of its own section and onto
   the h1's terminal names (portaled chips; stale note stays inline).
   Owner call for a cleaner page.

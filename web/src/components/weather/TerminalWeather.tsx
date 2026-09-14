@@ -23,6 +23,7 @@ import {
   type TerminalWx,
   type WeatherDoc,
 } from "@/lib/data/weather";
+import { soundStamp } from "@/lib/time/sound-time";
 import { WeatherIcon } from "./WeatherIcon";
 import styles from "./weather.module.css";
 
@@ -42,7 +43,7 @@ function chipTitle(row: HourRow, t: TerminalWx): string {
 function Chip({ t, row }: { t: TerminalWx; row: HourRow }) {
   return (
     <span className={styles.wxChip} title={chipTitle(row, t)} data-testid={`wx-${t.name}`}>
-      <WeatherIcon token={row[2]} size={26} />
+      <WeatherIcon token={row[2]} size={22} />
       {row[1] !== null && <strong>{row[1]}°</strong>}
       {row[3] >= 15 && <span className={styles.wxDetail}>{row[3]}%</span>}
       {t.aqi && (
@@ -106,14 +107,13 @@ export function TerminalWeather({
   return (
     <>
       {ends.map((e) => e.slot && createPortal(<Chip t={e.wx} row={e.row} />, e.slot, e.wx.name))}
+      {/* Stale disclosure: which forecast the chips came from. soundStamp
+          gives the clock only when that is today - a days-old forecast
+          used to print just "11:26 AM", which read as this morning's. */}
       {Number.isFinite(stalest) && nowMs - stalest > STALE_FORECAST_MS && (
         <p className={styles.stale} data-testid="weather-stale">
-          forecast from{" "}
-          {new Date(stalest).toLocaleString("en-US", {
-            hour: "numeric",
-            minute: "2-digit",
-            timeZone: "America/Los_Angeles",
-          })}
+          Weather is from a forecast published {soundStamp(new Date(stalest).toISOString(), new Date(nowMs))}{" "}
+          and may be out of date.
         </p>
       )}
     </>

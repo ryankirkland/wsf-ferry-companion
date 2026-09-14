@@ -112,8 +112,11 @@ GENERATED from the live index by `tools/fixtures/build-trip-fixture.mjs`;
 a vitest drift test compares it against the checked-in index fixture - WSF
 adding/dropping a pair fails CI and the regeneration script is the fix.
 
-Page anatomy: pair header (swap link, crossing badge) -> route-matched
-alert banner (the same-day-truth surface) -> answer line ("Next boat:
+Page anatomy: pair header (h1 with each terminal's weather chip under
+its own name - see weather.md; a one-line meta row: swap link, "Reserve a
+vehicle spot" linking WSF's Save A Spot on reservable routes, "Get
+alerts") -> route-matched alert banner (the same-day-truth surface) ->
+answer line ("Next boat:
 5:30 PM - leaves in 42 min · Wenatchee is at the dock") -> departures with
 signal pills and today's live drive-up space on the card itself (earlier
 sailings collapsed; the F5 join and its honesty rules live in
@@ -145,8 +148,37 @@ in `web/src/config.ts`.
 Day view (`lib/trip/day.ts`): before 3 AM Sound time yesterday's
 `after_midnight` tail merges in (dedup on vessel_id+depart_ms), covering
 the ~1 h upstream server-day lag when today's file may not exist yet.
-Matched cancels strike rows with a reason; unpinnable ones surface as
-day-level notes. Empty/exhausted days show tomorrow's first sailings.
+Cancels resolve against the row at their Sound-local instant
+(`soundLocalMs`; pre-03:00 times name the service day's post-midnight
+morning; yesterday's file contributes only its tail - on BOTH branches, so
+its 22:00 cancel never strikes today's 22:00). `matched` is the builder's
+"two-terminal route" flag: a matched cancel with a row strikes it with a
+reason; a matched cancel with no row - WSF drops advance-published (tidal)
+cancels from `/schedule/{date}` itself, so the sailing is simply absent -
+becomes a `GhostCancel` rendered by `CancelledSlotRow` IN the list at the
+cancelled time ("Sailing removed by WSF"). An UNMATCHED cancel
+(Fauntleroy/Vashon/Southworth, the San Juans: timeadj names only the
+departure terminal, so the boat may have been bound elsewhere) never
+strikes: with a same-time row it becomes a hedged note on that live row
+("WSF lists a 14:05 tidal cancellation from this terminal - it may be this
+sailing"); with none, a hedged ghost ("A sailing from this terminal ... may
+have been bound elsewhere on this route"). Past ghosts dim and collapse
+with the earlier sailings; a future ghost always shows, even ahead of the
+next real boat, and a day WSF cancelled outright still lists its ghosts
+under "No sailings". The row links
+"See WSF alert" to the route bulletin that names the slot (`slot-alert.ts`:
+WSF's "0405", "04:05" and "4:05" forms as whole tokens, tidal notices as
+the fallback for tidal cancels), opening the `<details>` before the anchor
+jump. Owner's 2026-09-13 call: the old day-level note "floated above all
+slots" and pointed at "the alert" without naming one. Empty/exhausted days
+show tomorrow's first sailings.
+
+Row meta says who can board per sailing (`LoadingRule` 1 "Passengers
+only" / 2 "Vehicles only", or the quirk-filtered route flag) - the old
+route-level "Passengers only" badge sat over the whole day, and the dev
+fixture still carried the RouteID 8 false flag production had already
+suppressed (fixed 2026-09-13). The "~N min crossing" badge is gone: every
+row already prints "~ arrives".
 
 Dev fixtures re-time a real pair-day around load time via a placeholder
 grammar (`%%MS±n%%`), so every signal band renders at once in dev and in

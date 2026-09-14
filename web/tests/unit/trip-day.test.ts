@@ -63,18 +63,79 @@ describe("buildDayView adjustments", () => {
     const view = buildDayView(day([sailing(D), sailing(D + 90 * MIN)], [{ ...cancel, time_local: "14:05" }]));
     expect(view.cancelledMs.has(D)).toBe(true);
     expect(view.cancelReason.get(D)).toBe("tidal cancellation");
-    expect(view.dayNotes).toHaveLength(0);
+    expect(view.ghosts).toHaveLength(0);
   });
 
-  it("unmatched or unpinnable cancels become day-level notes", () => {
+  it("a matched cancel with no row becomes a certain ghost slot at its Sound-local instant", () => {
+    const view = buildDayView(day([sailing(D)], [{ ...cancel, time_local: "09:59" }]));
+    expect(view.cancelledMs.size).toBe(0);
+    expect(view.rowNotes.size).toBe(0);
+    expect(view.ghosts).toHaveLength(1);
+    expect(view.ghosts[0]).toMatchObject({
+      time_local: "09:59",
+      depart_ms: Date.parse("2026-01-15T17:59:00Z"),
+      reason: "tidal cancellation",
+      tidal: true,
+      certain: true,
+    });
+  });
+
+  it("an unmatched cancel (multi-terminal route) never strikes: it notes the same-time row", () => {
+    // The 14:05 boat is still published, and the cancel may be another
+    // destination's - the row stays live and carries the doubt.
+    const view = buildDayView(day([sailing(D)], [{ ...cancel, time_local: "14:05", matched: false }]));
+    expect(view.cancelledMs.size).toBe(0);
+    expect(view.ghosts).toHaveLength(0);
+    expect(view.rowNotes.get(D)).toBe(
+      "WSF lists a 14:05 tidal cancellation from this terminal - it may be this sailing",
+    );
+  });
+
+  it("an unmatched cancel with no row is a hedged ghost", () => {
+    const view = buildDayView(day([sailing(D)], [{ ...cancel, time_local: "09:59", matched: false }]));
+    expect(view.ghosts).toHaveLength(1);
+    expect(view.ghosts[0]).toMatchObject({ time_local: "09:59", certain: false });
+  });
+
+  it("ghosts sort by slot", () => {
     const view = buildDayView(
       day([sailing(D)], [
-        { ...cancel, time_local: "14:05", matched: false },
+        { ...cancel, time_local: "16:00" },
         { ...cancel, time_local: "09:59" },
       ]),
     );
+    expect(view.ghosts.map((g) => g.time_local)).toEqual(["09:59", "16:00"]);
+  });
+
+  it("a pre-03:00 cancel names the service day's post-midnight morning", () => {
+    const view = buildDayView(day([sailing(D)], [{ ...cancel, time_local: "00:30" }]));
+    expect(view.ghosts[0]!.depart_ms).toBe(Date.parse("2026-01-16T08:30:00Z"));
+  });
+
+  it("yesterday's file contributes only its post-midnight tail, on both branches", () => {
+    const yesterday = {
+      ...day([], [
+        { ...cancel, time_local: "14:05" }, // yesterday's 2:05 PM: must NOT strike today's 2:05 PM
+        { ...cancel, time_local: "00:30" }, // this morning: shown
+      ]),
+      service_date: "2026-01-14",
+    };
+    const today = day([sailing(D)], [{ ...cancel, time_local: "00:30" }]);
+    const view = buildDayView(today, yesterday);
     expect(view.cancelledMs.size).toBe(0);
-    expect(view.dayNotes).toHaveLength(2);
+    // Each file's 00:30 names its OWN morning: two distinct slots.
+    expect(view.ghosts.map((g) => new Date(g.depart_ms).toISOString())).toEqual([
+      "2026-01-15T08:30:00.000Z",
+      "2026-01-16T08:30:00.000Z",
+    ]);
+  });
+
+  it("the same slot named twice renders once", () => {
+    const today = day([sailing(D)], [
+      { ...cancel, time_local: "09:59" },
+      { ...cancel, time_local: "09:59", tidal: false },
+    ]);
+    expect(buildDayView(today).ghosts.filter((g) => g.time_local === "09:59")).toHaveLength(1);
   });
 
   it("additions never strike rows", () => {

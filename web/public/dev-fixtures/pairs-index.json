@@ -191,7 +191,7 @@
    "route_id": 8,
    "crossing_min": 35,
    "reservable": true,
-   "passenger_only": true
+   "passenger_only": false
   },
   {
    "dep": 8,
@@ -400,7 +400,7 @@
    "route_id": 8,
    "crossing_min": 35,
    "reservable": true,
-   "passenger_only": true
+   "passenger_only": false
   },
   {
    "dep": 7,
