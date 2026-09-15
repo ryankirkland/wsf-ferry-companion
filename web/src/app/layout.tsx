@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { ConsentBanner } from "@/components/analytics/ConsentBanner";
 import { ConstructionNotice } from "@/components/chrome/ConstructionNotice";
 import { DataNotice } from "@/components/chrome/DataNotice";
+import { DevToolbar } from "@/components/chrome/DevToolbar";
 import { PageviewTracker } from "@/components/analytics/PageviewTracker";
 import noticeStyles from "@/components/chrome/notices.module.css";
 import "@/styles/tokens.css";
@@ -63,6 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ConsentBanner />
         </div>
         <ConstructionNotice />
+        <DevToolbar />
       </body>
     </html>
   );

@@ -23,6 +23,7 @@
     "@types/node": "^25.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "agentation": "^3.0.2",
     "eslint": "^9.39.0",
     "eslint-config-next": "~16.2.12",
     "serve": "^14.2.6",
