@@ -185,6 +185,26 @@ def test_transient_5xx_backoff_grows(monkeypatch):
     client = WsfClient("test-code", transport_retries=2, http=http)  # type: ignore[arg-type]
     client.alerts_raw()
     assert sleeps == [0.5, 1.0]
+    assert http.calls == 3
+
+
+def test_transient_5xx_then_transport_failure_reports_the_last_failure(monkeypatch):
+    monkeypatch.setattr("wsf_core.client.time.sleep", lambda s: None)
+
+    class MixedHttp:
+        calls = 0
+
+        def request(self, method: str, url: str) -> FakeResponse:
+            self.calls += 1
+            if self.calls == 1:
+                return FakeResponse(503, b"unavailable")
+            raise TimeoutError("read timed out")
+
+    http = MixedHttp()
+    client = WsfClient("test-code", transport_retries=1, http=http)  # type: ignore[arg-type]
+    with pytest.raises(WsfApiError, match="transport failure"):
+        client.alerts_raw()
+    assert http.calls == 2
 
 
 def test_vessel_history_strips_spaces_from_names():
