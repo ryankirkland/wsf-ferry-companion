@@ -129,15 +129,62 @@ def test_default_client_never_retries_transport():
     assert http.calls == 1
 
 
-def test_http_errors_never_retry():
-    class CountingHttp(FakeHttp):
-        pass
-
-    http = CountingHttp(FakeResponse(503, b"unavailable"))
+@pytest.mark.parametrize("status", [500, 400, 404])
+def test_non_transient_http_errors_never_retry(status):
+    http = FakeHttp(FakeResponse(status, b"nope"))
     client = WsfClient("test-code", transport_retries=3, http=http)  # type: ignore[arg-type]
     with pytest.raises(WsfApiError):
         client.vessel_locations()
     assert len(http.requested_urls) == 1
+
+
+class SequenceHttp:
+    """Answers each request with the next response in the sequence."""
+
+    def __init__(self, *responses: FakeResponse):
+        self._responses = list(responses)
+        self.calls = 0
+
+    def request(self, method: str, url: str) -> FakeResponse:
+        resp = self._responses[min(self.calls, len(self._responses) - 1)]
+        self.calls += 1
+        return resp
+
+
+@pytest.mark.parametrize("status", [502, 503, 504])
+def test_transient_5xx_retries_then_recovers(monkeypatch, status):
+    monkeypatch.setattr("wsf_core.client.time.sleep", lambda s: None)
+    http = SequenceHttp(FakeResponse(status, b"unavailable"), FakeResponse(200, [{"ok": True}]))
+    client = WsfClient("test-code", transport_retries=1, http=http)  # type: ignore[arg-type]
+    assert client.alerts_raw() == [{"ok": True}]
+    assert http.calls == 2
+
+
+def test_transient_5xx_exhausted_raises_with_status(monkeypatch):
+    monkeypatch.setattr("wsf_core.client.time.sleep", lambda s: None)
+    http = SequenceHttp(FakeResponse(503, b"unavailable"))
+    client = WsfClient("test-code", transport_retries=2, http=http)  # type: ignore[arg-type]
+    with pytest.raises(WsfApiError, match="HTTP 503") as info:
+        client.alerts_raw()
+    assert info.value.status == 503
+    assert http.calls == 3
+
+
+def test_default_client_never_retries_transient_5xx():
+    http = SequenceHttp(FakeResponse(503, b"unavailable"), FakeResponse(200, []))
+    client = WsfClient("test-code", http=http)  # type: ignore[arg-type]
+    with pytest.raises(WsfApiError, match="HTTP 503"):
+        client.alerts_raw()
+    assert http.calls == 1
+
+
+def test_transient_5xx_backoff_grows(monkeypatch):
+    sleeps: list[float] = []
+    monkeypatch.setattr("wsf_core.client.time.sleep", sleeps.append)
+    http = SequenceHttp(FakeResponse(503, b""), FakeResponse(503, b""), FakeResponse(200, []))
+    client = WsfClient("test-code", transport_retries=2, http=http)  # type: ignore[arg-type]
+    client.alerts_raw()
+    assert sleeps == [0.5, 1.0]
 
 
 def test_vessel_history_strips_spaces_from_names():

@@ -90,7 +90,9 @@ canary.
 ## Ingest (M2)
 
 `wsf-prod-ingest-schedule` (15 min; token+horizon gated; 14-day rebuild
-~3-4 min at 300 ms spacing; archives everything raw - the API cannot serve
+~3-4 min at 300 ms spacing, all-or-nothing, so the client retries
+transient failures - transport errors and 502/503/504, never 500/4xx -
+up to 3 times with 0.5 s stepped backoff before the run aborts; archives everything raw - the API cannot serve
 the past, so the raw archive is the only history, load-bearing for M4;
 `today-refresh` mode re-pulls today's 38 pairs on alert change and logs
 `ScheduleDivergence` - the standing instrument for whether `/schedule/{date}`
