@@ -192,6 +192,16 @@ one of these was found by probing, not reading.
 `as_of` stamp (metered, per theme 3), degraded modes, and a poller that
 publishes what it has rather than dying mid-run (#95).
 
+**Retry blips, not answers.** A long sequential run against a feed with
+no SLA will meet a lone 503 eventually (2026-09-20: one 503 in 532 calls
+aborted a 7-minute horizon rebuild, paged, then self-healed 13 minutes
+later). The client retries transport errors and 502/503/504 under the
+caller's opt-in budget, and never retries 500 or any 4xx: those are the
+API telling you something, and retrying them during a real outage
+(2026-09-19: 500 on every endpoint for two hours) only adds load. The
+15-second vessel poller keeps zero retries - a failed poll is its data
+point, and the alarm is the signal.
+
 ## 5. Static export and CDN traps
 
 - A `useSearchParams` Suspense boundary placed too high leaves the

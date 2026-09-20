@@ -64,6 +64,11 @@ def _tls_context() -> ssl.SSLContext:
     return ctx
 
 
+# Gateway-level "upstream unavailable" answers. A lone 503 mid-rebuild
+# (2026-09-20) is the same kind of blip as a read timeout; a 500 is not.
+_TRANSIENT_STATUSES = frozenset({502, 503, 504})
+
+
 class WsfClient:
     def __init__(
         self,
@@ -78,9 +83,11 @@ class WsfClient:
         self._base_url = base_url.rstrip("/")
         # Retry policy belongs to the caller's failure taxonomy: the vessel
         # poller treats a failed poll as a data point (default 0), while the
-        # schedule refresher opts into one transport retry - a single 10 s
-        # read timeout must not abort a 532-call horizon rebuild (it did, on
-        # 2026-07-30). Only transport failures retry; HTTP 4xx/5xx never do.
+        # schedule refresher opts into a few retries - a single 10 s read
+        # timeout (2026-07-30) or a lone HTTP 503 (2026-09-20) must not abort
+        # a 532-call horizon rebuild. Only transient failures retry: transport
+        # errors and the gateway statuses in _TRANSIENT_STATUSES. HTTP 500 and
+        # every 4xx are answers, not blips, and never retry.
         self._transport_retries = transport_retries
         self._http = http or urllib3.PoolManager(
             timeout=urllib3.Timeout(total=timeout_s),
@@ -93,13 +100,16 @@ class WsfClient:
         url = f"{self._base_url}{path}?apiaccesscode={self._access_code}"
         resp = None
         for attempt in range(self._transport_retries + 1):
+            last = attempt >= self._transport_retries
             try:
                 resp = self._http.request("GET", url)
-                break
             except Exception as exc:  # urllib3 raises a small zoo; one taxonomy bucket
-                if attempt >= self._transport_retries:
+                if last:
                     raise WsfApiError(f"transport failure for {path}: {exc}") from exc
-                time.sleep(0.5 * (attempt + 1))
+            else:
+                if resp.status not in _TRANSIENT_STATUSES or last:
+                    break
+            time.sleep(0.5 * (attempt + 1))
         assert resp is not None
 
         if resp.status == 400:
