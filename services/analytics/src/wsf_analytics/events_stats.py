@@ -52,6 +52,10 @@ def _publish(s3, bucket: str, key: str, doc: dict) -> None:
 
 
 def _totals(day: str) -> str:
+    # dt is a STRING partition key (see infra/modules/analytics/glue.tf) even
+    # though partition projection formats it as yyyy-MM-dd - Athena exposes
+    # it to SQL as varchar, so it must be compared against a string literal,
+    # not a DATE literal (varchar = date is a TYPE_MISMATCH in Athena/Presto).
     return f"""
     SELECT
       count(*) FILTER (WHERE event_type = 'pageview') AS pageviews,
@@ -94,7 +98,7 @@ def _monthly_totals(since: str, through: str) -> str:
     # as a unique or returning visitor, see docs/features/site-analytics.md
     # - and not to days_covered, which tracks how far the aggregation window
     # has progressed (any event, ambient included) rather than how many days
-    # had real human traffic.
+    # had real human traffic. dt is compared as a string, see _totals above.
     return f"""
     SELECT count(DISTINCT visitor_hash) FILTER (WHERE NOT ambient) AS unique_visitors,
            count(DISTINCT dt) AS days_covered

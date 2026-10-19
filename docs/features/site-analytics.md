@@ -98,6 +98,22 @@ the method supports.
   documented follow-up (see ADR-0007's consequences), not silently corrected for in the
   numbers shown today.
 
+## Operational notes
+
+- **`dt` is a string partition column, not a DATE one.** The `site_events`
+  Glue table (`infra/modules/analytics/glue.tf`) declares `dt` as
+  `type = "string"` even though partition projection formats it as
+  `yyyy-MM-dd` - Athena/Trino exposes the column to SQL as varchar. Every
+  query in `events_stats.py` compares it against a plain string literal
+  (`dt = '2026-08-01'`), never a `DATE '...'` literal - `varchar = date` is
+  a `TYPE_MISMATCH` that Athena rejects outright. This shipped broken on
+  2026-08-03 and failed every nightly run until fixed on 2026-08-08 (task
+  #57): the unit tests mock Athena entirely and can't catch a real SQL
+  type error, so `services/analytics/verify_queries.py` (the pre-deploy
+  real-Athena check) now also runs the full `events_stats.py` query suite,
+  not just the F4 history queries - see that file's docstring for how to
+  run it.
+
 ## Consent and copy
 
 A dismissible banner appears once per browser (localStorage flag, not itself a tracking
