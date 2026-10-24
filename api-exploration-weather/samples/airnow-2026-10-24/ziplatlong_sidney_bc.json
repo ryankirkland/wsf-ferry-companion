@@ -1,0 +1,47 @@
+[
+    {
+        "dateObserved": "2026-10-24",
+        "hourObserved": "14:00",
+        "localTimeZone": "PDT",
+        "reportingAreaName": null,
+        "siteID": "000100304",
+        "siteName": "Victoria Topaz",
+        "parameterName": "PM2.5",
+        "nowcastAQI": 17,
+        "aqiCategoryName": "Good",
+        "reportingAgency": "British Columbia Ministry of Environment",
+        "lookupBehavior": "Closest Reading By Pollutant",
+        "consideredMonitors": "All",
+        "lookupBoundary": "50 Miles"
+    },
+    {
+        "dateObserved": "2026-10-24",
+        "hourObserved": "14:00",
+        "localTimeZone": "PDT",
+        "reportingAreaName": null,
+        "siteID": "000100304",
+        "siteName": "Victoria Topaz",
+        "parameterName": "OZONE",
+        "nowcastAQI": 10,
+        "aqiCategoryName": "Good",
+        "reportingAgency": "British Columbia Ministry of Environment",
+        "lookupBehavior": "Closest Reading By Pollutant",
+        "consideredMonitors": "All",
+        "lookupBoundary": "50 Miles"
+    },
+    {
+        "dateObserved": "2026-10-24",
+        "hourObserved": "14:00",
+        "localTimeZone": "PDT",
+        "reportingAreaName": null,
+        "siteID": "000100134",
+        "siteName": "Vancouver Airport",
+        "parameterName": "PM10",
+        "nowcastAQI": 6,
+        "aqiCategoryName": "Good",
+        "reportingAgency": "Metro Vancouver",
+        "lookupBehavior": "Closest Reading By Pollutant",
+        "consideredMonitors": "All",
+        "lookupBoundary": "50 Miles"
+    }
+]

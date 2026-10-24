@@ -235,6 +235,48 @@ coordinates. Results:
 - The poller queries one representative terminal per AREA (6 calls per
   run, not 21) - representatives pinned in gridcells.json.
 
+## AirNow endpoint retirement and replacement (2026-10-24)
+
+Evidence: live calls with the project key from 14:33 PDT on 2026-10-24
+(n=12, all six area representatives from gridcells.json plus Sidney
+B.C.); key-scrubbed bodies in `samples/airnow-2026-10-24/`. AirNow's
+retirement notice: docs.airnowapi.org/docs/AirNowAPIUpdates2026June.pdf
+(dated 2026-06-17).
+
+- **Retired**: `/aq/observation/latLong/current/` answers HTTP 410 with
+  `{"WebServiceError":[{"Message":"This web service has been retired as
+  of October 1, 2026. ..."}]}` (`latLong_current_410_retired.json`).
+  Severity: blocker. First 410 in our poller logs: 2026-10-01 05:30 PDT (earlier failures that week were routine ReadTimeout and 502).
+- **Replacement**: `/aq/observation/current/ziplatlong/` with
+  `latitude`, `longitude`, `format=application/json` and the key.
+- Key parameter: `api_key` and `API_KEY` both return 200 (variants
+  tested on Seattle, n=1 each); `apiKey` returns 401 "Request not
+  authenticated." (`ziplatlong_apiKey_401.json`). Severity: minor.
+- `distance=30` returns a body byte-identical to no `distance` (Seattle,
+  n=1); every row reports `lookupBoundary: "50 Miles"`.
+- Row shape (camelCase, one row per pollutant): `dateObserved`
+  (`"2026-10-24"`, no trailing space), `hourObserved` (string,
+  `"14:00"`), `localTimeZone` (`"PDT"` - daylight-correct, unlike the
+  retired service's year-round "PST"), `reportingAreaName`, `siteID`,
+  `siteName`, `parameterName` (`"OZONE"`, not `"O3"`), `nowcastAQI`,
+  `aqiCategoryName`, `reportingAgency`, `lookupBehavior` (`"Closest
+  Reading By Pollutant"`), `consideredMonitors`, `lookupBoundary`.
+- `reportingAreaName` is null for 4 of 6 areas (Anacortes, Clinton,
+  Coupeville, Point Defiance representatives); Seattle returns
+  "Seattle-Bellevue-Kent Valley"; Bainbridge returns "Kitsap County"
+  where the retired service said "Bremerton-Silverdale-Bainbridge
+  Island". Severity: corrupting for anything that keys on area name.
+- Per-pollutant closest monitor: one response can mix sites, some
+  across the border - the Anacortes answer took PM10 from "Abbotsford
+  Airport"; Sidney B.C., uncovered at the retired service's 30-mile
+  radius, now returns Victoria and Vancouver monitors. Severity: minor.
+- `hourObserved` at a 14:33 PDT call was "14:00" for every area: the
+  label is the start of the current NowCast hour. Not observed: a
+  `"00:00"` row, so the midnight date convention is unverified.
+- "No data" is HTTP 200 with a `WebServiceError` object instead of a
+  list (third-party capture for a Nevada point, 2026-09-12; not
+  reproduced here because every Puget Sound point returned data).
+
 ## Pinned resolution (gridcells.json)
 
 `tools/weather/resolve-gridcells.py` resolves every terminal once and

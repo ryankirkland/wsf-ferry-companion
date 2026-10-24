@@ -20,6 +20,7 @@ const fx = (n) => readFileSync(path.resolve("public/dev-fixtures", n), "utf8");
 const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(new Date());
 const weather = fx("weather.template.json")
   .replace(/"%%MS(-?\d+)%%"/g, (_, n) => String(Date.now() + Number(n) * 60000))
+  .replace(/%%ISO(-?\d+)%%/g, (_, n) => new Date(Date.now() + Number(n) * 60000).toISOString())
   .replace(/%%TODAY%%/g, today)
   .replace(/%%NOW%%/g, new Date().toISOString());
 

@@ -17,9 +17,11 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   aqiTone,
+  currentAqi,
   getWeather,
   hourFor,
   type HourRow,
+  type TerminalAqi,
   type TerminalWx,
   type WeatherDoc,
 } from "@/lib/data/weather";
@@ -32,23 +34,23 @@ const STALE_FORECAST_MS = 12 * 3_600_000; // NWS updates a few times a day
 export const DEP_SLOT_ID = "wx-slot-dep";
 export const ARR_SLOT_ID = "wx-slot-arr";
 
-function chipTitle(row: HourRow, t: TerminalWx): string {
+function chipTitle(row: HourRow, aqi: TerminalAqi | null): string {
   const parts: string[] = [row[6]];
   if (row[4] !== null && row[4] >= 12) parts.push(`${row[5] ? `${row[5]} ` : ""}${row[4]} mph`);
   if (row[3] >= 15) parts.push(`${row[3]}% chance of rain`);
-  if (t.aqi) parts.push(`AQI ${t.aqi.aqi} ${t.aqi.category} (${t.aqi.pollutant}, ${t.aqi.area})`);
+  if (aqi) parts.push(`AQI ${aqi.aqi} ${aqi.category} (${aqi.pollutant}, ${aqi.site ?? aqi.area})`);
   return parts.join(" · ");
 }
 
-function Chip({ t, row }: { t: TerminalWx; row: HourRow }) {
+function Chip({ t, row, aqi }: { t: TerminalWx; row: HourRow; aqi: TerminalAqi | null }) {
   return (
-    <span className={styles.wxChip} title={chipTitle(row, t)} data-testid={`wx-${t.name}`}>
+    <span className={styles.wxChip} title={chipTitle(row, aqi)} data-testid={`wx-${t.name}`}>
       <WeatherIcon token={row[2]} size={22} />
       {row[1] !== null && <strong>{row[1]}°</strong>}
       {row[3] >= 15 && <span className={styles.wxDetail}>{row[3]}%</span>}
-      {t.aqi && (
-        <span className={`${styles.aqi} ${styles[`aqi-${aqiTone(t.aqi.aqi)}`]}`}>
-          AQI {t.aqi.aqi} {t.aqi.category}
+      {aqi && (
+        <span className={`${styles.aqi} ${styles[`aqi-${aqiTone(aqi.aqi)}`]}`}>
+          AQI {aqi.aqi} {aqi.category}
         </span>
       )}
     </span>
@@ -106,7 +108,11 @@ export function TerminalWeather({
 
   return (
     <>
-      {ends.map((e) => e.slot && createPortal(<Chip t={e.wx} row={e.row} />, e.slot, e.wx.name))}
+      {ends.map(
+        (e) =>
+          e.slot &&
+          createPortal(<Chip t={e.wx} row={e.row} aqi={currentAqi(e.wx, nowMs)} />, e.slot, e.wx.name),
+      )}
       {/* Stale disclosure: which forecast the chips came from. soundStamp
           gives the clock only when that is today - a days-old forecast
           used to print just "11:26 AM", which read as this morning's. */}

@@ -18,8 +18,13 @@ export interface TerminalAqi {
   category: string;
   pollutant: string;
   area: string;
+  /** The monitor that set the AQI - it can sit up to 50 miles away. */
+  site?: string | null;
   observed_date: string;
   observed_hour: number;
+  /** ISO UTC observation time. Absent on entries written before the
+   *  2026-10-24 AirNow migration, which are never current. */
+  observed_at?: string;
 }
 
 export interface TerminalWx {
@@ -87,6 +92,29 @@ export function hourFor(t: TerminalWx | undefined, ms: number): HourRow | null {
 /** Conditions right now: NWS's first hourly period IS the current hour. */
 export function nowRow(t: TerminalWx | undefined): HourRow | null {
   return t?.hours?.[0] ?? null;
+}
+
+/** Mirrors the poller's AQI_MAX_AGE: past this, a reading is not
+ *  "current air quality" and is not shown. */
+export const AQI_MAX_AGE_MS = 3 * 3_600_000;
+/** Mirrors AQI_MAX_FUTURE_SKEW: a reading stamped further ahead than
+ *  this is a bad stamp, not a forecast. */
+export const AQI_MAX_FUTURE_MS = 3_600_000;
+// The poller writes exactly this shape. Date.parse alone is not a check:
+// V8 reads junk like "%%ISO-40%%" as the year 2040, which a one-sided
+// age test then accepts as current (found by PR #189's review).
+const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+
+/** The terminal's AQI only while it is current, else null. The poller
+ *  already withdraws old readings; this guards the case it cannot - a
+ *  pipeline that stopped publishing leaves its last file in place, and
+ *  the 2026-10-01 AirNow retirement showed one 3 a.m. reading as current
+ *  for 23 days. */
+export function currentAqi(t: TerminalWx | undefined, nowMs: number): TerminalAqi | null {
+  const aqi = t?.aqi;
+  if (!aqi?.observed_at || !ISO_UTC.test(aqi.observed_at)) return null;
+  const ageMs = nowMs - Date.parse(aqi.observed_at);
+  return ageMs >= -AQI_MAX_FUTURE_MS && ageMs <= AQI_MAX_AGE_MS ? aqi : null;
 }
 
 /** EPA AQI category -> the token pair the chips color themselves with.

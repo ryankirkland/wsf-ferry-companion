@@ -37,21 +37,42 @@ the day - including the air, in smoke season.
   tools/weather/resolve-gridcells.py.
 - AirNow current observations for 6 reporting areas (one representative
   terminal each); overall AQI = worst reporting parameter (EPA
-  convention), winning pollutant recorded.
+  convention), winning pollutant recorded. Endpoint since 2026-10-24:
+  `/aq/observation/current/ziplatlong/` (the lat/long service it
+  replaces was retired 2026-10-01). It ignores `distance` (fixed 50-mile
+  lookup) and takes the closest monitor per pollutant, so one answer can
+  mix sites - Anacortes' PM10 came from Abbotsford, B.C. at the probe.
+  `area` in the contract is our pinned area name (AirNow's came back null
+  for 4 of 6 areas); `site` names the monitor that set the AQI.
 - Publishes `/data/weather.json` v1 (ADR-0005): per terminal
   `as_of` (NWS updateTime - forecaster publish time, never our fetch
   time), `hours` (156 compact rows: epoch_ms, temp_f, icon token,
   pop_pct, wind_mph, wind_dir, short text), `aqi`, or `unavailable`
-  with a reason. ~175 KB raw, small gzipped, 5-minute edge cache.
+  with a reason. `aqi` = {aqi, category, pollutant, area, site,
+  observed_date, observed_hour, observed_at}; `observed_at` (ISO UTC,
+  added 2026-10-24) is computed from AirNow's local date, hour and zone
+  label, and an entry without one is never treated as current. ~175 KB raw, small gzipped, 5-minute edge cache.
 - Failure honesty: a cell/area that fails after one retry keeps its
   last PUBLISHED entry - old `as_of` rides along so clients can label
-  staleness - and emits LastGoodFallbacks + a log line. Icons map from
+  staleness - and emits LastGoodFallbacks + a log line. **AQI has an age
+  cap**: a reading older than 3 h, or stamped more than 1 h in the
+  future, is withdrawn (published as `aqi: null`), whether it came fresh
+  from AirNow or from last-good. Every AirNow-covered terminal lands in
+  exactly one bucket per run - current fresh reading (uncounted),
+  current last-good (`LastGoodFallbacks`), or no current reading
+  (`AqiUnavailable`) - so an outage keeps counting for its whole length. Forecasts keep the label-it-don't-hide rule;
+  AQI cannot, because the chip has no room for an age and "current air
+  quality" from yesterday is wrong, not merely old. Added after the
+  2026-10-01 AirNow retirement served one 3 a.m. reading as current for
+  23 days. Icons map from
   the NWS icon URL's path segment (their /icons endpoint is deprecated;
   the frontend owns the artwork); unknown conditions degrade to a
   generic bucket, never break.
 - Alarms: `weather-not-published` (2 h of silence = dead pipeline;
   missing data breaches) and `weather-degraded`, which asks whether the
-  upstream integration is DEAD - >400 fallbacks in 12 h, i.e. no fresh
+  upstream integration is DEAD - >400 fallbacks plus AQI-unavailable
+  terminal-runs in 12 h (metric math since 2026-10-24, so the age cap cannot
+  make an outage longer than 3 h look like recovery), i.e. no fresh
   reading for half a day (expired key, moved endpoint, silently broken
   parse), not merely flaky. **Retuned 2026-08-22**: the first version
   summed >30 over 3 h, which real flaky days clear routinely (sums of
@@ -66,7 +87,12 @@ the day - including the air, in smoke season.
 
 - `lib/data/weather.ts`: TTL-cached fetch; `hourFor(terminal, ms)` owns
   the horizon rule (nothing rendered outside NWS's published hours);
-  `aqiTone` maps EPA thresholds (theirs, not ours).
+  `aqiTone` maps EPA thresholds (theirs, not ours). `currentAqi(t,
+  nowMs)` returns a terminal's AQI only while it is under
+  `AQI_MAX_AGE_MS` (3 h, mirroring the poller) and not over 1 h in the
+  future, and only for a strict ISO-UTC stamp - the guard for a pipeline
+  that stopped publishing and left its last file in place. Strict format
+  because `Date.parse` accepts junk (V8 reads "%%ISO-40%%" as 2040).
 - `lib/weather-glyphs.ts`: the ONE source of glyph artwork, consumed by
   the React `WeatherIcon` (trip pages) and the DOM-built map chips.
   Flat filled shapes on a fixed palette (amber sun, gray cloud, blue
@@ -115,6 +141,16 @@ the day - including the air, in smoke season.
 
 ## Status
 
+- 2026-10-24: AirNow migration. The lat/long observation service was
+  retired 2026-10-01 (announced June 2026); every AQI fetch got HTTP 410
+  for 23 days while the last-good fallback kept serving a single 3 a.m.
+  Oct 1 reading with no age on the chip. The degraded alarm fired once
+  and, having no ok_actions and never recovering, stayed silent after.
+  Fix: replacement endpoint + new field names (live probe with our key,
+  samples in api-exploration-weather/samples/airnow-2026-10-24/), a 3 h
+  AQI age cap in the poller and the client, `AqiUnavailable` folded into
+  the degraded alarm, and a test that pins the request URL (every other test
+  stubs the HTTP layer, so a retired endpoint could never fail CI).
 - 2026-09-13: h1 chips restacked under the names (one-line title, both
   AQIs side by side), stale-forecast copy made explicit, dev fixture
   filled with per-area AQI for every covered terminal to match

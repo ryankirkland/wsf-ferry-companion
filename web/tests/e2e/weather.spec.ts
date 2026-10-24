@@ -22,6 +22,7 @@ const soundToday = () =>
 function weatherDoc(baseMs: number): string {
   return fixture("weather.template.json")
     .replace(/"%%MS(-?\d+)%%"/g, (_, n) => String(baseMs + Number(n) * 60_000))
+    .replace(/%%ISO(-?\d+)%%/g, (_, n) => new Date(baseMs + Number(n) * 60_000).toISOString())
     .replace(/%%TODAY%%/g, soundToday())
     .replace(/%%NOW%%/g, new Date(baseMs).toISOString());
 }
@@ -56,6 +57,29 @@ test("the h1's terminal names wear their weather, with the EPA-colored AQI", asy
   // (the old strip printed a "no forecast" row here; the h1 placement
   // renders nothing instead).
   await expect(page.getByTestId("wx-Bainbridge Island")).toHaveCount(0);
+});
+
+test("an AQI older than 3 h is withdrawn while the forecast stays", async ({ page }) => {
+  // The 2026-10-01 AirNow retirement left one 3 a.m. reading on the page
+  // as current air quality for 23 days. A dead pipeline leaves its last
+  // file in place, so the client enforces the age cap too.
+  const fourHoursAgo = new Date(Date.now() - 4 * 3_600_000).toISOString();
+  const stale = weatherDoc(Date.now()).replace(
+    /"observed_at":\s*"[^"]*"/g,
+    `"observed_at": "${fourHoursAgo}"`,
+  );
+  await page.route("**/data/weather.json", (r) =>
+    r.fulfill({ body: stale, contentType: "application/json" }),
+  );
+  for (const p of ["pairs/**", "fares/**", "stats/**", "alerts.json", "capacity.json", "fleet.json"]) {
+    await page.route(`**/data/${p}`, (r) => r.fulfill({ status: 404, body: "" }));
+  }
+  await page.goto("/trip/seattle-bainbridge-island/");
+
+  const h1 = page.getByRole("heading", { level: 1 });
+  await expect(page.getByTestId("wx-Seattle")).toBeVisible();
+  await expect(h1).toContainText("°");
+  await expect(h1).not.toContainText("AQI");
 });
 
 test("weather absent means bare terminal names, not a broken h1", async ({ page }) => {
