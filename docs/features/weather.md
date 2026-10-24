@@ -55,9 +55,12 @@ the day - including the air, in smoke season.
 - Failure honesty: a cell/area that fails after one retry keeps its
   last PUBLISHED entry - old `as_of` rides along so clients can label
   staleness - and emits LastGoodFallbacks + a log line. **AQI has an age
-  cap**: a reading older than 3 h is withdrawn (published as `aqi:
-  null`), whether it came fresh from AirNow or from last-good, and is
-  counted as `AqiExpired`. Forecasts keep the label-it-don't-hide rule;
+  cap**: a reading older than 3 h, or stamped more than 1 h in the
+  future, is withdrawn (published as `aqi: null`), whether it came fresh
+  from AirNow or from last-good. Every AirNow-covered terminal lands in
+  exactly one bucket per run - current fresh reading (uncounted),
+  current last-good (`LastGoodFallbacks`), or no current reading
+  (`AqiUnavailable`) - so an outage keeps counting for its whole length. Forecasts keep the label-it-don't-hide rule;
   AQI cannot, because the chip has no room for an age and "current air
   quality" from yesterday is wrong, not merely old. Added after the
   2026-10-01 AirNow retirement served one 3 a.m. reading as current for
@@ -67,8 +70,8 @@ the day - including the air, in smoke season.
   generic bucket, never break.
 - Alarms: `weather-not-published` (2 h of silence = dead pipeline;
   missing data breaches) and `weather-degraded`, which asks whether the
-  upstream integration is DEAD - >400 fallbacks plus expired AQI
-  readings in 12 h (metric math since 2026-10-24, so the age cap cannot
+  upstream integration is DEAD - >400 fallbacks plus AQI-unavailable
+  terminal-runs in 12 h (metric math since 2026-10-24, so the age cap cannot
   make an outage longer than 3 h look like recovery), i.e. no fresh
   reading for half a day (expired key, moved endpoint, silently broken
   parse), not merely flaky. **Retuned 2026-08-22**: the first version
@@ -86,8 +89,10 @@ the day - including the air, in smoke season.
   the horizon rule (nothing rendered outside NWS's published hours);
   `aqiTone` maps EPA thresholds (theirs, not ours). `currentAqi(t,
   nowMs)` returns a terminal's AQI only while it is under
-  `AQI_MAX_AGE_MS` (3 h, mirroring the poller) - the guard for a
-  pipeline that stopped publishing and left its last file in place.
+  `AQI_MAX_AGE_MS` (3 h, mirroring the poller) and not over 1 h in the
+  future, and only for a strict ISO-UTC stamp - the guard for a pipeline
+  that stopped publishing and left its last file in place. Strict format
+  because `Date.parse` accepts junk (V8 reads "%%ISO-40%%" as 2040).
 - `lib/weather-glyphs.ts`: the ONE source of glyph artwork, consumed by
   the React `WeatherIcon` (trip pages) and the DOM-built map chips.
   Flat filled shapes on a fixed palette (amber sun, gray cloud, blue
@@ -143,8 +148,8 @@ the day - including the air, in smoke season.
   and, having no ok_actions and never recovering, stayed silent after.
   Fix: replacement endpoint + new field names (live probe with our key,
   samples in api-exploration-weather/samples/airnow-2026-10-24/), a 3 h
-  AQI age cap in the poller and the client, `AqiExpired` folded into the
-  degraded alarm, and a test that pins the request URL (every other test
+  AQI age cap in the poller and the client, `AqiUnavailable` folded into
+  the degraded alarm, and a test that pins the request URL (every other test
   stubs the HTTP layer, so a retired endpoint could never fail CI).
 - 2026-09-13: h1 chips restacked under the names (one-line title, both
   AQIs side by side), stale-forecast copy made explicit, dev fixture

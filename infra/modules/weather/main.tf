@@ -169,11 +169,14 @@ resource "aws_cloudwatch_metric_alarm" "weather_stale" {
 #
 # Since 2026-10-24 the poller withdraws any AQI older than 3 h instead of
 # carrying it forward (the endpoint retirement served one reading as
-# current for 23 days). A withdrawn reading counts as AqiExpired, not as
-# a fallback, so the alarm sums both: per terminal per run, exactly one
-# of the two fires during an outage, which keeps the blackout total at
-# 480 and the threshold math above unchanged. Alarming on fallbacks
-# alone would let an outage longer than 3 h look like recovery.
+# current for 23 days). Every AirNow-covered terminal now lands in exactly
+# one bucket per run: a current fresh reading (uncounted), a current
+# last-good one (LastGoodFallbacks), or no current reading at all
+# (AqiUnavailable). During a blackout each terminal therefore counts once
+# per run for the outage's whole length, the 12 h total stays 480, and the
+# threshold math above is unchanged (pinned by
+# test_a_sustained_blackout_reaches_the_alarm_total). Alarming on
+# fallbacks alone would let an outage longer than 3 h look like recovery.
 #
 # No ok_actions: recovery from a third party's outage is not news, and
 # double-tapping the ops topic on every transition is how an inbox
@@ -181,7 +184,7 @@ resource "aws_cloudwatch_metric_alarm" "weather_stale" {
 resource "aws_cloudwatch_metric_alarm" "weather_degraded" {
   alarm_name          = "wsf-prod-weather-degraded"
   alarm_description   = <<-EOT
-    Why: publishing still works but almost nothing FRESH arrived for ~12 h - over 400 last-good fallbacks plus withdrawn-as-too-old AQI readings, where routine flaky days measure ~190 and a total AQI blackout is 480 (thresholds retuned 2026-08-22 after the first version flapped 8 emails in a day). Not "AirNow had a bad afternoon": the integration looks broken - expired API key, retired endpoint (AirNow retired the lat/long service on 2026-10-01), or a parse that quietly stopped matching. This alarm stays in ALARM without re-notifying, so one email can mean weeks of breakage.
+    Why: publishing still works but almost nothing FRESH arrived for ~12 h - over 400 last-good fallbacks plus runs where a covered terminal had no current AQI at all, where routine flaky days measure ~190 and a total AQI blackout is 480 (thresholds retuned 2026-08-22 after the first version flapped 8 emails in a day). Not "AirNow had a bad afternoon": the integration looks broken - expired API key, retired endpoint (AirNow retired the lat/long service on 2026-10-01), or a parse that quietly stopped matching. This alarm stays in ALARM without re-notifying, so one email can mean weeks of breakage.
     Source: NWS api.weather.gov + AirNow (key in SSM).
     Feature: F6 terminal weather + air quality.
     Severity: MEDIUM - riders see an honestly-stamped old forecast and no AQI at all; the fix is usually the key, the endpoint or the parser, not waiting.
@@ -195,8 +198,8 @@ resource "aws_cloudwatch_metric_alarm" "weather_degraded" {
 
   metric_query {
     id          = "stale"
-    expression  = "FILL(fallbacks, 0) + FILL(expired, 0)"
-    label       = "Last-good fallbacks + expired AQI"
+    expression  = "FILL(fallbacks, 0) + FILL(unavailable, 0)"
+    label       = "Last-good fallbacks + AQI unavailable"
     return_data = true
   }
 
@@ -211,10 +214,10 @@ resource "aws_cloudwatch_metric_alarm" "weather_degraded" {
   }
 
   metric_query {
-    id = "expired"
+    id = "unavailable"
     metric {
       namespace   = "WSF/Weather"
-      metric_name = "AqiExpired"
+      metric_name = "AqiUnavailable"
       stat        = "Sum"
       period      = 43200
     }

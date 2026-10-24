@@ -323,7 +323,7 @@ def test_stale_reading_from_airnow_is_not_published(aws, monkeypatch):
     result = run(monkeypatch, {"gridpoints": forecast(), "airnowapi.org": airnow(hour="08:00")})
 
     assert published()["terminals"]["7"]["aqi"] is None
-    assert result["AqiExpired"] == 2  # both covered terminals
+    assert result["AqiUnavailable"] == 2  # both covered terminals
 
 
 def test_last_good_aqi_survives_only_inside_the_age_cap(aws, monkeypatch):
@@ -332,14 +332,80 @@ def test_last_good_aqi_survives_only_inside_the_age_cap(aws, monkeypatch):
     # AirNow dies 30 min later: the 19:00Z reading is still current.
     result = run(monkeypatch, {"gridpoints": forecast(), "airnowapi.org": None})
     assert published()["terminals"]["7"]["aqi"]["aqi"] == 54
-    assert result["LastGoodFallbacks"] == 2 and result["AqiExpired"] == 0
+    assert result["LastGoodFallbacks"] == 2 and result["AqiUnavailable"] == 0
 
-    # Still dead 4 h later: the reading has aged out and is withdrawn,
-    # counted as expired so the degraded alarm keeps seeing the outage.
+    # Still dead 4 h later: the reading has aged out and is withdrawn.
     later = NOW.replace(hour=23)
     result = run(monkeypatch, {"gridpoints": forecast(), "airnowapi.org": None}, now=later)
     assert published()["terminals"]["7"]["aqi"] is None
-    assert result["AqiExpired"] == 2 and result["LastGoodFallbacks"] == 0
+    assert result["AqiUnavailable"] == 2 and result["LastGoodFallbacks"] == 0
+
+    # And every run after that keeps counting: the published aqi is now
+    # null, and the first cut of this cap counted nothing from here on, so
+    # a sustained outage summed far below the degraded alarm's threshold.
+    from datetime import timedelta
+
+    for step in (1, 2):
+        result = run(
+            monkeypatch,
+            {"gridpoints": forecast(), "airnowapi.org": None},
+            now=later + timedelta(minutes=30 * step),
+        )
+        assert result["AqiUnavailable"] == 2 and result["LastGoodFallbacks"] == 0
+
+
+def test_a_sustained_blackout_reaches_the_alarm_total(aws, monkeypatch):
+    """infra/modules/weather: each covered terminal contributes exactly one
+    of LastGoodFallbacks or AqiUnavailable per run, so a 12 h blackout at
+    2 runs/h sums to 24 runs x covered terminals - the 480 the threshold
+    of 400 is set against (20 terminals in production, 2 here)."""
+    from datetime import timedelta
+
+    run(monkeypatch, {"gridpoints": forecast(), "airnowapi.org": airnow()})
+    total = 0
+    for i in range(24):
+        now = NOW + timedelta(minutes=30 * (i + 1))
+        result = run(monkeypatch, {"gridpoints": forecast(), "airnowapi.org": None}, now=now)
+        total += result["LastGoodFallbacks"] + result["AqiUnavailable"]
+    assert total == 24 * 2
+
+
+def test_cold_start_without_aqi_counts_as_unavailable(aws, monkeypatch):
+    result = run(monkeypatch, {"gridpoints": forecast(), "airnowapi.org": None})
+    assert published()["terminals"]["7"]["aqi"] is None
+    assert result["AqiUnavailable"] == 2 and result["LastGoodFallbacks"] == 0
+
+
+def test_a_future_stamped_reading_is_not_current(aws, monkeypatch):
+    # 23:00 PDT on the 19th is 06:00Z on the 20th - 10.5 h after NOW. A
+    # mislabeled zone or bad row, not a forecast.
+    result = run(monkeypatch, {"gridpoints": forecast(), "airnowapi.org": airnow(hour="23:00")})
+    assert published()["terminals"]["7"]["aqi"] is None
+    assert result["AqiUnavailable"] == 2
+
+
+def test_one_null_pollutant_does_not_drop_the_area(monkeypatch):
+    body = airnow(aqi_pm25=54, aqi_o3=26)
+    body[1]["nowcastAQI"] = None  # PM2.5 missing its number
+    monkeypatch.setattr(poller, "_get_json", lambda url, params=None, retry=True: body)
+    monkeypatch.setattr(poller, "_key", lambda: "test-key")
+    aqi = poller._aqi_for_area("Seattle", 47.6, -122.3)
+    assert aqi is not None and (aqi["aqi"], aqi["pollutant"]) == (26, "OZONE")
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"WebServiceError": {"Message": "a dict, not a list"}},
+        {"WebServiceError": "a bare string"},
+        {"WebServiceError": []},
+    ],
+)
+def test_any_error_body_shape_is_an_absence_not_a_crash(monkeypatch, capsys, body):
+    monkeypatch.setattr(poller, "_get_json", lambda url, params=None, retry=True: body)
+    monkeypatch.setattr(poller, "_key", lambda: "test-key")
+    assert poller._aqi_for_area("Port Townsend", 48.1, -122.8) is None
+    assert "AirNowNoData" in capsys.readouterr().out
 
 
 def test_pre_migration_entry_is_withdrawn(aws, monkeypatch):
@@ -368,4 +434,5 @@ def test_pre_migration_entry_is_withdrawn(aws, monkeypatch):
     result = run(monkeypatch, {"gridpoints": forecast(), "airnowapi.org": None})
 
     assert published()["terminals"]["7"]["aqi"] is None
-    assert result["AqiExpired"] == 1
+    # Seattle's legacy entry and Bainbridge's absent one both count.
+    assert result["AqiUnavailable"] == 2

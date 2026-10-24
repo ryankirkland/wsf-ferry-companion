@@ -48,6 +48,9 @@ AIRNOW_OBSERVATIONS_URL = "https://www.airnowapi.org/aq/observation/current/zipl
 # Without a cap, the 2026-10-01 retirement served one 3 a.m. reading as
 # current for 23 days.
 AQI_MAX_AGE = timedelta(hours=3)
+# A reading stamped this far in the future is a mislabeled zone or a bad
+# row, not a forecast - treat it like any other unreadable time.
+AQI_MAX_FUTURE_SKEW = timedelta(hours=1)
 # AirNow's localTimeZone labels (US + the Canadian monitors it now returns).
 _TZ_OFFSET_H = {
     "HST": -10,
@@ -100,9 +103,9 @@ def _observed_at(date_s: str, hour_s: str | int, tz_label: str) -> str | None:
 
 
 def _aqi_current(aqi: dict | None, now: datetime) -> bool:
-    """True when an AQI entry carries an observation time within the cap.
-    Entries from before the 2026-10-24 migration have no observed_at and
-    are therefore never current."""
+    """True when an AQI entry carries an observation time inside the age
+    cap and not implausibly in the future. Entries from before the
+    2026-10-24 migration have no observed_at and are never current."""
     stamp = (aqi or {}).get("observed_at")
     if not stamp:
         return False
@@ -110,7 +113,7 @@ def _aqi_current(aqi: dict | None, now: datetime) -> bool:
         observed = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
     except ValueError:
         return False
-    return now - observed <= AQI_MAX_AGE
+    return -AQI_MAX_FUTURE_SKEW <= now - observed <= AQI_MAX_AGE
 
 
 def _cells() -> dict:
@@ -201,16 +204,28 @@ def _aqi_for_area(area: str, lat: float, lon: float) -> dict | None:
         },
         retry=False,
     )
-    if isinstance(body, dict) and body.get("WebServiceError"):
-        # "No data" is a 200 with an error body, not an empty list.
-        message = str(body["WebServiceError"][0].get("Message", ""))[:200]
+    if isinstance(body, dict) and "WebServiceError" in body:
+        # "No data" is a 200 with an error body, not an empty list. Logged
+        # verbatim (truncated) rather than parsed: its shape is theirs.
+        message = json.dumps(body["WebServiceError"])[:200]
         print(json.dumps({"AirNowNoData": {"area": area, "message": message}}))
         return None
     if not body or not isinstance(body, list):
         return None
+    # One pollutant without a number must not cost the area its others.
+    rows = [
+        r
+        for r in body
+        if isinstance(r, dict)
+        and isinstance(r.get("nowcastAQI"), int)
+        and not isinstance(r.get("nowcastAQI"), bool)
+    ]
+    if not rows:
+        print(json.dumps({"AirNowParseError": {"area": area, "error": "no numeric nowcastAQI"}}))
+        return None
     try:
         # Overall AQI is the worst reporting parameter - the EPA convention.
-        worst = max(body, key=lambda r: r["nowcastAQI"])
+        worst = max(rows, key=lambda r: r["nowcastAQI"])
         observed_at = _observed_at(
             worst["dateObserved"], worst["hourObserved"], worst["localTimeZone"]
         )
@@ -251,7 +266,12 @@ def lambda_handler(event, context):
     s3 = boto3.client("s3")
     prior = _last_good(s3, bucket, "data/weather.json")
     now = _now()
-    counts = {"NwsCellErrors": 0, "AirNowAreaErrors": 0, "LastGoodFallbacks": 0, "AqiExpired": 0}
+    counts = {
+        "NwsCellErrors": 0,
+        "AirNowAreaErrors": 0,
+        "LastGoodFallbacks": 0,
+        "AqiUnavailable": 0,
+    }
 
     # One fetch per DISTINCT grid cell; terminals fan out from it.
     forecasts: dict[tuple, tuple[list, str | None] | None] = {}
@@ -318,23 +338,26 @@ def lambda_handler(event, context):
             terminals[tid] = entry
             continue
 
-        aqi = area_aqi.get(t["airnow_area"]) if t["airnow_area"] else None
-        if aqi is None and old.get("aqi"):
-            aqi = old["aqi"]
-            if _aqi_current(aqi, now):
+        aqi = None
+        if t["airnow_area"]:
+            # Every covered terminal lands in exactly one bucket per run:
+            # current fresh reading (uncounted), current last-good
+            # (LastGoodFallbacks), or no current reading at all
+            # (AqiUnavailable - expired, stale from AirNow, mis-stamped, or
+            # never had one). The degraded alarm sums the two counters, so
+            # an outage keeps counting for as long as it lasts; counting
+            # only the moment a reading expired went silent one run later.
+            fresh = area_aqi.get(t["airnow_area"])
+            if _aqi_current(fresh, now):
+                aqi = fresh
+            elif _aqi_current(old.get("aqi"), now):
+                aqi = old["aqi"]
                 counts["LastGoodFallbacks"] += 1
                 print(json.dumps({"LastGoodFallback": {"terminal": t["name"], "kind": "aqi"}}))
-        if aqi is not None and not _aqi_current(aqi, now):
-            # Too old to call current - from AirNow or from last-good alike.
-            # Counted separately so the degraded alarm still sees a dead
-            # integration once the fallback window has run out.
-            counts["AqiExpired"] += 1
-            print(
-                json.dumps(
-                    {"AqiExpired": {"terminal": t["name"], "observed_at": aqi.get("observed_at")}}
-                )
-            )
-            aqi = None
+            else:
+                counts["AqiUnavailable"] += 1
+                stamp = (fresh or old.get("aqi") or {}).get("observed_at")
+                print(json.dumps({"AqiUnavailable": {"terminal": t["name"], "observed_at": stamp}}))
         entry["aqi"] = aqi
         terminals[tid] = entry
 

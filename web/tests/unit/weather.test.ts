@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AQI_MAX_AGE_MS,
+  AQI_MAX_FUTURE_MS,
   aqiTone,
   currentAqi,
   hourFor,
@@ -79,6 +80,18 @@ describe("currentAqi - never show old air quality as current", () => {
   it("withdraws a pre-migration entry with no observation time (the 2026-10-01 bug)", () => {
     const legacy: TerminalAqi = { ...aqi, observed_at: undefined };
     expect(currentAqi(wx(legacy), observedMs)).toBeNull();
+  });
+
+  it("withdraws a reading stamped implausibly far in the future", () => {
+    expect(currentAqi(wx(aqi), observedMs - AQI_MAX_FUTURE_MS)).toBe(aqi);
+    expect(currentAqi(wx(aqi), observedMs - AQI_MAX_FUTURE_MS - 1)).toBeNull();
+  });
+
+  it("rejects junk that Date.parse would still read as a date", () => {
+    // V8 parses this unresolved fixture placeholder as 2040-01-01.
+    expect(Number.isFinite(Date.parse("%%ISO-40%%"))).toBe(true);
+    expect(currentAqi(wx({ ...aqi, observed_at: "%%ISO-40%%" }), observedMs)).toBeNull();
+    expect(currentAqi(wx({ ...aqi, observed_at: "2040" }), observedMs)).toBeNull();
   });
 
   it("withdraws an unparseable time and handles absent AQI", () => {

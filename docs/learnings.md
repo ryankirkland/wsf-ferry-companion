@@ -94,8 +94,12 @@ Meanwhile the last-good fallback - doing exactly its job - served one
 chip. Rules:
 - A fallback needs an expiry. "Keep the last good value" is honest only
   while the value is still the thing the UI claims it is; past that, the
-  honest answer is absence. Count the expiry in a metric the alarm sums,
-  or the cap makes a long outage look like recovery.
+  honest answer is absence. Count the ABSENCE, every run, in a metric
+  the alarm sums - not the moment of expiry. The first cut of this fix
+  counted only the run where a reading aged out; the next run published
+  null, counted nothing, and a sustained outage summed to ~140 against a
+  threshold of 400 (caught in PR #189's review). The test that pins it
+  runs a full 12 h blackout and asserts the alarm total.
 - A state alarm that never clears needs a second channel - a ticket
   that stays open, or a periodic re-notify - not a one-shot email.
 - Third parties announce retirements. AirNow published this one in June
@@ -262,6 +266,13 @@ point, and the alarm is the signal.
   retirement could never have failed CI. Pin the outbound request (URL
   and parameters) in at least one test per upstream, and parse at least
   one real captured payload rather than only hand-written fixtures.
+- `Date.parse` is not validation. V8 reads "%%ISO-40%%" as 2040-01-01,
+  so an unresolved fixture placeholder passed a one-sided age check and a
+  Playwright spec went green for the wrong reason (PR #189). Bound time
+  checks on both sides and require the exact format the producer writes.
+- A green e2e run against a local `out/` proves only what that build
+  contained; rebuild before trusting a pass on frontend changes, and
+  mutation-check new guards (break the guard, watch the test fail).
 - `cmd | tail` masks the exit code - it hid a pytest collection error
   and a ruff failure in one session. Run checks unpiped.
 - Test module basenames must be workspace-unique or pytest collection
