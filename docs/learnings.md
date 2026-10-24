@@ -84,6 +84,25 @@ Rules:
   `stats-not-fresh` cannot see, and neither has ever fired falsely.
   Judge alarms by signal and noise; the dimes are irrelevant.
 
+**One email can mean three weeks of breakage** (`weather-degraded`,
+2026-10-01 to 10-24). AirNow retired our endpoint; the alarm fired once,
+and because the integration never recovered and the alarm has no
+`ok_actions`, it then sat in ALARM in silence. In an inbox, "broke once
+and stayed broken" is indistinguishable from "broke once and healed".
+Meanwhile the last-good fallback - doing exactly its job - served one
+3 a.m. reading as current air quality for 23 days, with no age on the
+chip. Rules:
+- A fallback needs an expiry. "Keep the last good value" is honest only
+  while the value is still the thing the UI claims it is; past that, the
+  honest answer is absence. Count the expiry in a metric the alarm sums,
+  or the cap makes a long outage look like recovery.
+- A state alarm that never clears needs a second channel - a ticket
+  that stays open, or a periodic re-notify - not a one-shot email.
+- Third parties announce retirements. AirNow published this one in June
+  with a three-month window; nobody here reads their notices. Before
+  wiring a keyed third-party API, note where its deprecation notices
+  live and who is subscribed.
+
 ## 2. Cost: never trust upstream's word for "changed"
 
 **The invalidation burn (#76, `3fa720a`).** WSDOT flips the terminals
@@ -237,6 +256,12 @@ point, and the alarm is the signal.
   markers that receive their own center point.
 - Mocks cannot fail like production (#77's Athena type error) - pin
   query shapes and contracts where only production runs the real thing.
+- A test suite that stubs the whole HTTP layer cannot notice a retired
+  endpoint: every weather test replaced `_get_json`, so the URL the
+  poller called was asserted nowhere and the 2026-10-01 AirNow
+  retirement could never have failed CI. Pin the outbound request (URL
+  and parameters) in at least one test per upstream, and parse at least
+  one real captured payload rather than only hand-written fixtures.
 - `cmd | tail` masks the exit code - it hid a pytest collection error
   and a ruff failure in one session. Run checks unpiped.
 - Test module basenames must be workspace-unique or pytest collection

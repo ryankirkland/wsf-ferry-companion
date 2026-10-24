@@ -20,6 +20,14 @@ AirNow reporting areas ride along: one representative terminal per area
 keeps the poller at 6 AirNow calls instead of 21. Requires
 AIRNOW_API_KEY in the environment (it lives in .env).
 
+AirNow retired the lat/long observation service on 2026-10-01. Its
+replacement fixes the lookup radius at 50 miles and returns a null
+reportingAreaName for most Puget Sound points (4 of 6 areas at the
+2026-10-24 probe), so a re-run groups those terminals by their nearest
+PM2.5 monitor instead. That changes area keys in the diff - review it,
+and expect Sidney B.C. to gain an area it did not have under the 30-mile
+lookup.
+
 Usage:
   uv run tools/weather/resolve-gridcells.py
 """
@@ -34,7 +42,19 @@ import httpx
 OUT = Path(__file__).resolve().parents[2] / "services/weather/src/wsf_weather/gridcells.json"
 UA = {"User-Agent": "soundferries.com weather (contact: via site)"}
 TERMINALS_URL = "https://soundferries.com/data/terminals.json"
-AIRNOW_DISTANCE_MI = 30
+AIRNOW_OBSERVATIONS_URL = "https://www.airnowapi.org/aq/observation/current/ziplatlong/"
+
+
+def _airnow_area(rows: object) -> str | None:
+    """AirNow's area name when it gives one, else the nearest PM2.5
+    monitor's site (any parameter if PM2.5 is absent)."""
+    if not isinstance(rows, list) or not rows:
+        return None
+    if rows[0].get("reportingAreaName"):
+        return rows[0]["reportingAreaName"]
+    pm25 = [r for r in rows if r.get("parameterName") == "PM2.5"]
+    site = (pm25 or rows)[0].get("siteName")
+    return f"Near {site}" if site else None
 
 
 def main() -> None:
@@ -87,18 +107,17 @@ def main() -> None:
             )
 
         obs = httpx.get(
-            "https://www.airnowapi.org/aq/observation/latLong/current/",
+            AIRNOW_OBSERVATIONS_URL,
             params={
                 "format": "application/json",
                 "latitude": lat,
                 "longitude": lon,
-                "distance": AIRNOW_DISTANCE_MI,
-                "API_KEY": airnow_key,
+                "api_key": airnow_key,
             },
             timeout=30,
         )
-        if obs.status_code == 200 and obs.json():
-            entry["airnow_area"] = obs.json()[0]["ReportingArea"]
+        if obs.status_code == 200:
+            entry["airnow_area"] = _airnow_area(obs.json())
 
         rows.append(entry)
         time.sleep(0.4)

@@ -1,8 +1,18 @@
 import json
+from datetime import UTC, datetime
+from pathlib import Path
 
 import boto3
+import pytest
 from wsf_weather import poller
 from wsf_weather.icons import icon_token
+
+# Live AirNow responses captured 2026-10-24 (key scrubbed) - the first real
+# payloads from the replacement endpoint.
+SAMPLES = Path(__file__).resolve().parents[3] / "api-exploration-weather/samples/airnow-2026-10-24"
+# The fixtures' observations are 12:00 PDT on 2026-08-19 = 19:00Z; the
+# pinned clock sits 30 minutes later, inside the AQI age cap.
+NOW = datetime(2026, 8, 19, 19, 30, tzinfo=UTC)
 
 # Two covered terminals sharing conventions with production (Seattle,
 # Bainbridge on distinct cells) plus the real coverage gap (Sidney).
@@ -69,32 +79,37 @@ def forecast(update_time="2026-08-19T20:00:00+00:00", temp=64, short="Rain Showe
     }
 
 
-def airnow(aqi_pm25=54, aqi_o3=26):
+def airnow(aqi_pm25=54, aqi_o3=26, date="2026-08-19", hour="12:00", tz="PDT"):
+    """The /aq/observation/current/ziplatlong/ row shape (live probe 2026-10-24)."""
+
+    def row(param, aqi, category, site):
+        return {
+            "dateObserved": date,
+            "hourObserved": hour,
+            "localTimeZone": tz,
+            "reportingAreaName": None,  # null for 4 of 6 areas live
+            "siteID": "530330080",
+            "siteName": site,
+            "parameterName": param,
+            "nowcastAQI": aqi,
+            "aqiCategoryName": category,
+            "reportingAgency": "Washington State Dept. of Ecology",
+            "lookupBehavior": "Closest Reading By Pollutant",
+            "consideredMonitors": "All",
+            "lookupBoundary": "50 Miles",
+        }
+
     return [
-        {
-            "DateObserved": "2026-08-19 ",
-            "HourObserved": 12,
-            "LocalTimeZone": "PST",
-            "ReportingArea": "Seattle-Bellevue-Kent Valley",
-            "ParameterName": "O3",
-            "AQI": aqi_o3,
-            "Category": {"Number": 1, "Name": "Good"},
-        },
-        {
-            "DateObserved": "2026-08-19 ",
-            "HourObserved": 12,
-            "LocalTimeZone": "PST",
-            "ReportingArea": "Seattle-Bellevue-Kent Valley",
-            "ParameterName": "PM2.5",
-            "AQI": aqi_pm25,
-            "Category": {"Number": 2, "Name": "Moderate"},
-        },
+        row("OZONE", aqi_o3, "Good", "Seattle-Beacon Hill"),
+        row("PM2.5", aqi_pm25, "Moderate", "Seattle-10th & Weller"),
     ]
 
 
-def run(monkeypatch, responses):
+def run(monkeypatch, responses, now=NOW):
     """responses: url-substring -> payload (None = failure after retries)."""
     monkeypatch.setattr(poller, "_gridcells", DIM)
+    monkeypatch.setattr(poller, "_now", lambda: now)
+    monkeypatch.setattr(poller, "_key", lambda: "test-key")
 
     def fake_get(url, params=None, retry=True):
         for frag, payload in responses.items():
@@ -130,6 +145,11 @@ def test_contract_shape_and_honest_absence(aws, monkeypatch):
     assert short == "Rain Showers Likely"
     assert sea["hours"][1][3] == 0  # null precipitation -> 0, never None
     assert sea["aqi"]["aqi"] == 54 and sea["aqi"]["pollutant"] == "PM2.5"
+    # Area is OUR pinned name (AirNow's came back null); the site is real.
+    assert sea["aqi"]["area"] == "Seattle-Bellevue-Kent Valley"
+    assert sea["aqi"]["site"] == "Seattle-10th & Weller"
+    assert sea["aqi"]["observed_at"] == "2026-08-19T19:00:00Z"
+    assert sea["aqi"]["observed_hour"] == 12  # v1 contract stays an int
 
     # The coverage gap is PUBLISHED as a labeled absence, never omitted.
     sidney = doc["terminals"]["19"]
@@ -223,3 +243,129 @@ def test_every_poll_is_banked_to_the_raw_archive(aws, monkeypatch):
         boto3.client("s3").get_object(Bucket="wsf-test-raw", Key=keys[0])["Body"].read()
     )
     assert json.loads(raw)["terminals"]["7"]["hours"]  # the full published doc
+
+
+def test_requests_the_replacement_endpoint(monkeypatch):
+    """The HTTP layer is stubbed everywhere else, which is why the
+    2026-10-01 retirement could never have failed a test. Pin the request."""
+    seen = {}
+
+    def fake_get(url, params=None, retry=True):
+        seen.update(url=url, params=params, retry=retry)
+        return airnow()
+
+    monkeypatch.setattr(poller, "_get_json", fake_get)
+    monkeypatch.setattr(poller, "_key", lambda: "test-key")
+    poller._aqi_for_area("Seattle-Bellevue-Kent Valley", 47.6025, -122.3387)
+
+    assert seen["url"] == "https://www.airnowapi.org/aq/observation/current/ziplatlong/"
+    assert seen["params"]["latitude"] == 47.6025 and seen["params"]["longitude"] == -122.3387
+    assert seen["params"]["api_key"] == "test-key"  # apiKey is a 401 (probe)
+    assert "distance" not in seen["params"]  # ignored by the new service
+    assert seen["retry"] is False
+
+
+@pytest.mark.parametrize(
+    "sample, worst_aqi, pollutant, site",
+    [
+        ("ziplatlong_seattle.json", 28, "PM2.5", "Seattle-10th & Weller"),
+        ("ziplatlong_anacortes_null_area.json", 25, "PM2.5", "Anacortes-202 Ave (SO-AQS)"),
+    ],
+)
+def test_parses_real_payloads(monkeypatch, sample, worst_aqi, pollutant, site):
+    body = json.loads((SAMPLES / sample).read_text())
+    monkeypatch.setattr(poller, "_get_json", lambda url, params=None, retry=True: body)
+    monkeypatch.setattr(poller, "_key", lambda: "test-key")
+    aqi = poller._aqi_for_area("Pinned Area", 48.0, -122.0)
+
+    assert aqi is not None
+    assert (aqi["aqi"], aqi["pollutant"], aqi["site"]) == (worst_aqi, pollutant, site)
+    assert aqi["area"] == "Pinned Area"  # never AirNow's (possibly null) name
+    assert aqi["observed_at"] == "2026-10-24T21:00:00Z"  # 14:00 PDT
+
+
+def test_no_data_error_body_is_an_absence_not_a_crash(monkeypatch, capsys):
+    body = {"WebServiceError": [{"Message": "There are no observations available"}]}
+    monkeypatch.setattr(poller, "_get_json", lambda url, params=None, retry=True: body)
+    monkeypatch.setattr(poller, "_key", lambda: "test-key")
+
+    assert poller._aqi_for_area("Port Townsend", 48.1, -122.8) is None
+    assert "AirNowNoData" in capsys.readouterr().out
+
+
+def test_unexpected_shape_fails_closed(monkeypatch, capsys):
+    """The old field names are exactly what a silent parse break looks like."""
+    old_shape = [{"AQI": 40, "Category": {"Name": "Good"}, "ParameterName": "PM2.5"}]
+    monkeypatch.setattr(poller, "_get_json", lambda url, params=None, retry=True: old_shape)
+    monkeypatch.setattr(poller, "_key", lambda: "test-key")
+
+    assert poller._aqi_for_area("Seattle", 47.6, -122.3) is None
+    assert "AirNowParseError" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "date, hour, tz, expected",
+    [
+        ("2026-10-24", "14:00", "PDT", "2026-10-24T21:00:00Z"),
+        ("2026-01-15", "23:00", "PST", "2026-01-16T07:00:00Z"),  # crosses UTC midnight
+        ("2026-08-19 ", 12, "PDT", "2026-08-19T19:00:00Z"),  # legacy int hour, padded date
+        ("2026-10-24", "14:00", "XYZ", None),  # unknown zone label
+        ("2026-10-24", "25:00", "PDT", None),
+        ("not-a-date", "14:00", "PDT", None),
+    ],
+)
+def test_observed_at_converts_airnow_local_time(date, hour, tz, expected):
+    assert poller._observed_at(date, hour, tz) == expected
+
+
+def test_stale_reading_from_airnow_is_not_published(aws, monkeypatch):
+    # AirNow answered, but with a reading from 08:00 PDT - 4.5 h before NOW.
+    result = run(monkeypatch, {"gridpoints": forecast(), "airnowapi.org": airnow(hour="08:00")})
+
+    assert published()["terminals"]["7"]["aqi"] is None
+    assert result["AqiExpired"] == 2  # both covered terminals
+
+
+def test_last_good_aqi_survives_only_inside_the_age_cap(aws, monkeypatch):
+    run(monkeypatch, {"gridpoints": forecast(), "airnowapi.org": airnow()})
+
+    # AirNow dies 30 min later: the 19:00Z reading is still current.
+    result = run(monkeypatch, {"gridpoints": forecast(), "airnowapi.org": None})
+    assert published()["terminals"]["7"]["aqi"]["aqi"] == 54
+    assert result["LastGoodFallbacks"] == 2 and result["AqiExpired"] == 0
+
+    # Still dead 4 h later: the reading has aged out and is withdrawn,
+    # counted as expired so the degraded alarm keeps seeing the outage.
+    later = NOW.replace(hour=23)
+    result = run(monkeypatch, {"gridpoints": forecast(), "airnowapi.org": None}, now=later)
+    assert published()["terminals"]["7"]["aqi"] is None
+    assert result["AqiExpired"] == 2 and result["LastGoodFallbacks"] == 0
+
+
+def test_pre_migration_entry_is_withdrawn(aws, monkeypatch):
+    """The 2026-10-01 bug: a last-good entry with no observed_at was served
+    as current for 23 days. Without a time, it is never current."""
+    legacy = {
+        "terminals": {
+            "7": {
+                "name": "Seattle",
+                "as_of": "2026-08-19T18:00:00+00:00",
+                "hours": [[0, 60, "partly", 0, 5, "N", "x"]],
+                "aqi": {
+                    "aqi": 35,
+                    "category": "Good",
+                    "pollutant": "PM2.5",
+                    "area": "Seattle-Bellevue-Kent Valley",
+                    "observed_date": "2026-10-01",
+                    "observed_hour": 3,
+                },
+            }
+        }
+    }
+    boto3.client("s3").put_object(
+        Bucket="wsf-test-data", Key="data/weather.json", Body=json.dumps(legacy)
+    )
+    result = run(monkeypatch, {"gridpoints": forecast(), "airnowapi.org": None})
+
+    assert published()["terminals"]["7"]["aqi"] is None
+    assert result["AqiExpired"] == 1

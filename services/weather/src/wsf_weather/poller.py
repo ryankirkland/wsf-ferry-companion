@@ -22,7 +22,7 @@ overstate it.
 import json
 import os
 import time
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta, timezone
 from pathlib import Path
 
 import boto3
@@ -37,6 +37,34 @@ HOURS_PUBLISHED = 156  # NWS's full hourly horizon (~6.5 days)
 # Publishing beats completeness: leave this much budget for the S3 put.
 PUBLISH_RESERVE_MS = 20_000
 
+# AirNow retired /aq/observation/latLong/current/ on 2026-10-01 (HTTP 410,
+# announced June 2026); this is its named replacement. It ignores
+# `distance` (fixed 50-mile lookup) and picks the closest monitor PER
+# POLLUTANT, so one answer can mix sites. Probed live 2026-10-24.
+AIRNOW_OBSERVATIONS_URL = "https://www.airnowapi.org/aq/observation/current/ziplatlong/"
+# An AQI older than this is not "current air quality" and is never
+# published, fresh or last-good. NowCast labels the current hour, so a
+# healthy reading is under an hour old; 3 h tolerates two missed hours.
+# Without a cap, the 2026-10-01 retirement served one 3 a.m. reading as
+# current for 23 days.
+AQI_MAX_AGE = timedelta(hours=3)
+# AirNow's localTimeZone labels (US + the Canadian monitors it now returns).
+_TZ_OFFSET_H = {
+    "HST": -10,
+    "AKST": -9,
+    "AKDT": -8,
+    "PST": -8,
+    "PDT": -7,
+    "MST": -7,
+    "MDT": -6,
+    "CST": -6,
+    "CDT": -5,
+    "EST": -5,
+    "EDT": -4,
+    "AST": -4,
+    "ADT": -3,
+}
+
 _gridcells: dict | None = None
 _airnow_key: str | None = None
 
@@ -50,6 +78,39 @@ _client = httpx.Client(
     headers=UA,
     timeout=15,
 )
+
+
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
+def _observed_at(date_s: str, hour_s: str | int, tz_label: str) -> str | None:
+    """AirNow's local date + hour + zone label -> ISO UTC, or None when any
+    part is unreadable (callers fail closed: no time, no AQI)."""
+    offset = _TZ_OFFSET_H.get(str(tz_label).strip().upper())
+    try:
+        d = date.fromisoformat(str(date_s).strip())
+        hour = int(str(hour_s).split(":")[0])
+    except ValueError:
+        return None
+    if offset is None or not 0 <= hour <= 23:
+        return None
+    local = datetime(d.year, d.month, d.day, hour, tzinfo=timezone(timedelta(hours=offset)))
+    return local.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _aqi_current(aqi: dict | None, now: datetime) -> bool:
+    """True when an AQI entry carries an observation time within the cap.
+    Entries from before the 2026-10-24 migration have no observed_at and
+    are therefore never current."""
+    stamp = (aqi or {}).get("observed_at")
+    if not stamp:
+        return False
+    try:
+        observed = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return now - observed <= AQI_MAX_AGE
 
 
 def _cells() -> dict:
@@ -127,34 +188,54 @@ def _hours_from_forecast(fc: dict) -> tuple[list, str | None]:
     return rows, props.get("updateTime")
 
 
-def _aqi_for_area(lat: float, lon: float) -> dict | None:
+def _aqi_for_area(area: str, lat: float, lon: float) -> dict | None:
     # No retry: AQI is the garnish, and six areas must never eat the time
     # budget the forecast publish needs.
-    rows = _get_json(
-        "https://www.airnowapi.org/aq/observation/latLong/current/",
+    body = _get_json(
+        AIRNOW_OBSERVATIONS_URL,
         params={
             "format": "application/json",
             "latitude": lat,
             "longitude": lon,
-            "distance": 30,
-            "API_KEY": _key(),
+            "api_key": _key(),
         },
         retry=False,
     )
-    if not rows or not isinstance(rows, list):
+    if isinstance(body, dict) and body.get("WebServiceError"):
+        # "No data" is a 200 with an error body, not an empty list.
+        message = str(body["WebServiceError"][0].get("Message", ""))[:200]
+        print(json.dumps({"AirNowNoData": {"area": area, "message": message}}))
         return None
-    # Overall AQI is the worst reporting parameter - the EPA convention.
-    worst = max(rows, key=lambda r: r["AQI"])
-    return {
-        "aqi": worst["AQI"],
-        "category": worst["Category"]["Name"],
-        "pollutant": worst["ParameterName"],
-        "area": worst["ReportingArea"],
-        # AirNow reports a local observation hour (its LocalTimeZone is
-        # famously always "PST"); published raw for honest client display.
-        "observed_date": worst["DateObserved"].strip(),
-        "observed_hour": worst["HourObserved"],
-    }
+    if not body or not isinstance(body, list):
+        return None
+    try:
+        # Overall AQI is the worst reporting parameter - the EPA convention.
+        worst = max(body, key=lambda r: r["nowcastAQI"])
+        observed_at = _observed_at(
+            worst["dateObserved"], worst["hourObserved"], worst["localTimeZone"]
+        )
+        entry = {
+            "aqi": worst["nowcastAQI"],
+            "category": worst["aqiCategoryName"],
+            "pollutant": worst["parameterName"],
+            # Our pinned area name: AirNow's reportingAreaName came back
+            # null for 4 of 6 areas at the 2026-10-24 probe.
+            "area": area,
+            # The monitor that set the AQI - it can sit up to 50 miles away.
+            "site": worst.get("siteName") or None,
+            "observed_date": str(worst["dateObserved"]).strip(),
+            "observed_hour": int(str(worst["hourObserved"]).split(":")[0]),
+            "observed_at": observed_at,
+        }
+    except (KeyError, TypeError, ValueError) as exc:
+        print(json.dumps({"AirNowParseError": {"area": area, "error": repr(exc)[:200]}}))
+        return None
+    if observed_at is None:
+        print(
+            json.dumps({"AirNowParseError": {"area": area, "error": "unreadable observation time"}})
+        )
+        return None
+    return entry
 
 
 def _last_good(s3, bucket: str, key: str) -> dict:
@@ -169,7 +250,8 @@ def lambda_handler(event, context):
     bucket = os.environ["DATA_BUCKET"]
     s3 = boto3.client("s3")
     prior = _last_good(s3, bucket, "data/weather.json")
-    counts = {"NwsCellErrors": 0, "AirNowAreaErrors": 0, "LastGoodFallbacks": 0}
+    now = _now()
+    counts = {"NwsCellErrors": 0, "AirNowAreaErrors": 0, "LastGoodFallbacks": 0, "AqiExpired": 0}
 
     # One fetch per DISTINCT grid cell; terminals fan out from it.
     forecasts: dict[tuple, tuple[list, str | None] | None] = {}
@@ -203,7 +285,7 @@ def lambda_handler(event, context):
             area_aqi[area] = None
             continue
         rep = by_id[rep_id]
-        aqi = _aqi_for_area(rep["lat"], rep["lon"])
+        aqi = _aqi_for_area(area, rep["lat"], rep["lon"])
         if aqi is None:
             counts["AirNowAreaErrors"] += 1
             print(json.dumps({"AirNowAreaError": {"area": area}}))
@@ -238,13 +320,24 @@ def lambda_handler(event, context):
 
         aqi = area_aqi.get(t["airnow_area"]) if t["airnow_area"] else None
         if aqi is None and old.get("aqi"):
-            counts["LastGoodFallbacks"] += 1
-            print(json.dumps({"LastGoodFallback": {"terminal": t["name"], "kind": "aqi"}}))
             aqi = old["aqi"]
+            if _aqi_current(aqi, now):
+                counts["LastGoodFallbacks"] += 1
+                print(json.dumps({"LastGoodFallback": {"terminal": t["name"], "kind": "aqi"}}))
+        if aqi is not None and not _aqi_current(aqi, now):
+            # Too old to call current - from AirNow or from last-good alike.
+            # Counted separately so the degraded alarm still sees a dead
+            # integration once the fallback window has run out.
+            counts["AqiExpired"] += 1
+            print(
+                json.dumps(
+                    {"AqiExpired": {"terminal": t["name"], "observed_at": aqi.get("observed_at")}}
+                )
+            )
+            aqi = None
         entry["aqi"] = aqi
         terminals[tid] = entry
 
-    now = datetime.now(UTC)
     doc = {
         "v": 1,
         "generated_at": now.isoformat().replace("+00:00", "Z"),

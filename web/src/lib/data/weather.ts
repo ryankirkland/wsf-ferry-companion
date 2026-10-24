@@ -18,8 +18,13 @@ export interface TerminalAqi {
   category: string;
   pollutant: string;
   area: string;
+  /** The monitor that set the AQI - it can sit up to 50 miles away. */
+  site?: string | null;
   observed_date: string;
   observed_hour: number;
+  /** ISO UTC observation time. Absent on entries written before the
+   *  2026-10-24 AirNow migration, which are never current. */
+  observed_at?: string;
 }
 
 export interface TerminalWx {
@@ -87,6 +92,23 @@ export function hourFor(t: TerminalWx | undefined, ms: number): HourRow | null {
 /** Conditions right now: NWS's first hourly period IS the current hour. */
 export function nowRow(t: TerminalWx | undefined): HourRow | null {
   return t?.hours?.[0] ?? null;
+}
+
+/** Mirrors the poller's AQI_MAX_AGE: past this, a reading is not
+ *  "current air quality" and is not shown. */
+export const AQI_MAX_AGE_MS = 3 * 3_600_000;
+
+/** The terminal's AQI only while it is current, else null. The poller
+ *  already withdraws old readings; this guards the case it cannot - a
+ *  pipeline that stopped publishing leaves its last file in place, and
+ *  the 2026-10-01 AirNow retirement showed one 3 a.m. reading as current
+ *  for 23 days. */
+export function currentAqi(t: TerminalWx | undefined, nowMs: number): TerminalAqi | null {
+  const aqi = t?.aqi;
+  if (!aqi?.observed_at) return null;
+  const observedMs = Date.parse(aqi.observed_at);
+  if (!Number.isFinite(observedMs)) return null;
+  return nowMs - observedMs <= AQI_MAX_AGE_MS ? aqi : null;
 }
 
 /** EPA AQI category -> the token pair the chips color themselves with.
