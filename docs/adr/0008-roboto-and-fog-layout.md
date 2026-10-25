@@ -56,4 +56,8 @@
 - Roboto is Android's system font, so many riders already have it and the
   site looks native there.
 - The map's uppercase tracked terminal labels keep their style in Roboto 700.
+- Roboto has no Arrows block (U+2190-21FF): the "→" in route names falls back
+  to a system font, as it did under Inter. The Fog layout work draws route
+  arrows as an inline SVG icon instead of a text glyph, so weight and
+  alignment no longer depend on the fallback.
 - `docs/design/direction.md` Type section now points here.
