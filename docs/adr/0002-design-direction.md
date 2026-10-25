@@ -1,6 +1,6 @@
 # ADR-0002: Design direction is Paper Sound on real geography
 
-- **Status:** Accepted (2026-07-24)
+- **Status:** Accepted (2026-07-24); Type superseded by [ADR-0008](0008-roboto-and-fog-layout.md) (2026-10-25)
 - **Context:** The PRD required "whimsical, joyful, clean, celebrates WSF" with a
   map worth hanging on a wall, and deferred the visual call to Phase B. Taste
   calibration narrowed to illustrated warmth; three boards explored intensity.

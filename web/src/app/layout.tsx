@@ -9,16 +9,11 @@ import noticeStyles from "@/components/chrome/notices.module.css";
 import "@/styles/tokens.css";
 import "./globals.css";
 
-const gabarito = localFont({
-  src: "../fonts/gabarito-latin-wght-normal.woff2",
-  variable: "--font-gabarito",
-  weight: "400 900",
-  display: "swap",
-});
-
-const inter = localFont({
-  src: "../fonts/inter-latin-wght-normal.woff2",
-  variable: "--font-inter",
+// One family for every surface, map labels included (ADR-0008). Variable
+// weight axis, latin subset, self-hosted like the rest of the static export.
+const roboto = localFont({
+  src: "../fonts/roboto-latin-wght-normal.woff2",
+  variable: "--font-sans",
   weight: "100 900",
   display: "swap",
 });
@@ -44,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       data-mode="day"
       suppressHydrationWarning
-      className={`${gabarito.variable} ${inter.variable}`}
+      className={roboto.variable}
     >
       <head>
         {/* The map's two cross-origin hosts. Neither is discoverable until

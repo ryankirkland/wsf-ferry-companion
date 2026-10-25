@@ -55,13 +55,15 @@ Grain: canvas-baked speckle, dark `rgba(38,51,58,.06)` on day/dusk, light
 
 ## Type
 
-- **Gabarito** (500-800): display, headings, numbers, vessel/terminal labels.
-- **Inter** (400-700): body, UI, captions.
-- Labels on the map: Gabarito 700, uppercase, tracked `.10-.16em`, always haloed.
+Superseded 2026-10-25 by [ADR-0008](../adr/0008-roboto-and-fog-layout.md):
+
+- **Roboto** (variable 100-900) for everything: display, headings, numbers,
+  body, UI, captions. One self-hosted file, `--font-sans`.
+- Labels on the map: Roboto 700, uppercase, tracked `.10-.16em`, always haloed.
 - Scale: display `clamp(2.2rem,5vw,3.4rem)/800` · h2 `2rem/700` · card title
   `1.25rem/700` · body `1rem/1.55` · caption `.85rem` · micro `.72rem/700 upper`.
-- Map-rendered basemap labels keep engine fonts for now; Gabarito glyph
-  conversion is a delight, not a blocker.
+- Map-rendered basemap labels keep engine fonts (glyph PBFs under
+  `/assets/fonts`).
 
 ## Map visual language
 
