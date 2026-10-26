@@ -19,8 +19,8 @@ milestones, never as blockers.
   modes.
 - **Wake trails.** Gradient GeoJSON lines fading behind moving vessels
   (line-gradient with lineMetrics), replacing the CSS dash under markers.
-- **Brand glyphs on the basemap.** Convert Gabarito to PBF glyphs,
-  self-host, so map-rendered labels match the brand type.
+- **Brand glyphs on the basemap.** Convert Roboto to PBF glyphs,
+  self-host, so map-rendered labels match the brand type (ADR-0008).
 - **Arrival ripple.** A soft pulse when a vessel reaches dock.
 
 ## UX decisions parked 2026-07-30 (new-user walkthrough)
